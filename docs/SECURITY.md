@@ -15,6 +15,8 @@
   Webhooks are the only unauthenticated mutation; they are authenticated by signature instead.
 - **Transport:** run behind a TLS reverse proxy, or set `TLS_CERT`/`TLS_KEY` for direct HTTPS. Store API URLs must use HTTPS (localhost is allowed for development).
 
+**Open access (test deployments only).** `OPEN_ACCESS=true` adds `POST /api/open-login` (same-origin only). It signs any visitor in as the built-in admin `testas@apskaita.local`, whose password is random and unknown. The route returns 404 when the flag is off, and the flag is off by default. The free Render blueprint turns it on for trials, so a deployment with it on must never hold real data.
+
 ## Authorization (server side, every route)
 
 | Capability | admin | accountant | readonly |

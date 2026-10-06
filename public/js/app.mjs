@@ -121,8 +121,25 @@ async function boot() {
     window.onhashchange = route;
     await route();
   } catch (e) {
-    if (e.status === 401) loginView(); else loginView(e.message);
+    if (e.status !== 401) return loginView(e.message);
+    if (await openLogin()) return boot();
+    loginView();
   }
 }
-window.addEventListener('unauthenticated', () => { state.user = null; loginView('Sesija baigėsi – prisijunkite iš naujo.'); });
+
+// Test deployments with OPEN_ACCESS=true: sign in automatically, no password.
+let openLogins = 0;
+async function openLogin() {
+  if (++openLogins > 3) return false; // cookie not kept by the browser: fall back to the login form
+  try {
+    if (!(await get('/api/bootstrap-status')).openAccess) return false;
+    setCsrf((await post('/api/open-login')).csrf);
+    return true;
+  } catch { return false; }
+}
+window.addEventListener('unauthenticated', async () => {
+  state.user = null;
+  if (await openLogin()) return boot();
+  loginView('Sesija baigėsi – prisijunkite iš naujo.');
+});
 boot();

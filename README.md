@@ -88,7 +88,7 @@ When the LLM provider is enabled, its output is validated against a strict schem
 ```bash
 createdb apskaita_test   # dedicated DB; tests DROP and recreate its public schema
 npm run check            # syntax of all JS and PHP files
-npm test                 # 45 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
+npm test                 # 46 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
 npm run test:browser     # Chromium UI smoke test (Playwright), screenshots in var/screenshots
 npm run perf             # 10,000-document timing (uses database apskaita_perf)
 ```

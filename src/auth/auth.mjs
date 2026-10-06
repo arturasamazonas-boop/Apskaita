@@ -22,6 +22,7 @@ export function verifyPassword(password, stored) {
 
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
+export const OPEN_ACCESS_EMAIL = 'testas@apskaita.local';
 export const ROLES = ['admin', 'accountant', 'readonly'];
 // Capability matrix enforced on every API route (see docs/SECURITY.md).
 const CAPS = {
@@ -50,12 +51,26 @@ export function createAuth({pool, sessionHours = 12, now = () => new Date()}) {
       throw new AppError(401, 'bad_credentials', 'Neteisingas el. paštas arba slaptažodis.');
     }
     await pool.query('DELETE FROM login_attempts WHERE key=$1', [key]);
+    return startSession(user, 'login');
+  }
+
+  async function startSession(user, action) {
     const token = crypto.randomBytes(32).toString('hex');
     const csrf = crypto.randomBytes(24).toString('hex');
     await pool.query('INSERT INTO sessions(token_hash, user_id, csrf_token, expires_at) VALUES ($1,$2,$3,$4)',
       [sha(token), user.id, csrf, new Date(now().getTime() + sessionHours * 3600000)]);
-    await audit(pool, {userId: user.id, action: 'login', entityType: 'user', entityId: user.id});
+    await audit(pool, {userId: user.id, action, entityType: 'user', entityId: user.id});
     return {token, csrf, user: publicUser(user)};
+  }
+
+  // OPEN_ACCESS=true (test deployments): sign in as a built-in admin without a password.
+  // The account gets a random password nobody knows, so it cannot be used through /api/login.
+  async function openLogin() {
+    await pool.query(`INSERT INTO users(email, name, role, password_hash) VALUES ($1,$2,'admin',$3) ON CONFLICT (email) DO NOTHING`,
+      [OPEN_ACCESS_EMAIL, 'Testas', hashPassword(crypto.randomBytes(24).toString('hex'))]);
+    const user = (await pool.query('SELECT * FROM users WHERE email=$1 AND active', [OPEN_ACCESS_EMAIL])).rows[0];
+    if (!user) throw new AppError(403, 'forbidden', 'Atviros prieigos naudotojas išjungtas.');
+    return startSession(user, 'login.open_access');
   }
 
   async function session(token) {
@@ -70,7 +85,7 @@ export function createAuth({pool, sessionHours = 12, now = () => new Date()}) {
     if (token) await pool.query('DELETE FROM sessions WHERE token_hash=$1', [sha(token)]);
   }
 
-  return {login, session, logout};
+  return {login, openLogin, session, logout};
 }
 
 export function publicUser(u) {

@@ -19,6 +19,8 @@ export function loadConfig(env = process.env) {
     tlsKey: env.TLS_KEY || '',
     maxUploadBytes: Number(env.MAX_UPLOAD_MB || 25) * 1024 * 1024,
     sessionHours: Number(env.SESSION_HOURS || 12),
+    // Test deployments only: anyone opening the site is signed in as the built-in admin, no password.
+    openAccess: env.OPEN_ACCESS === 'true',
     jobStaleMinutes: Math.max(5, Number(env.JOB_STALE_MINUTES || 15)),
     jobConcurrency: Math.max(1, Number(env.JOB_CONCURRENCY || 2)),
     runWorkerInProcess: env.WORKER_IN_PROCESS !== 'false',

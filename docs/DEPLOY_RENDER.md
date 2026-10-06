@@ -35,17 +35,22 @@ Konfigūracija yra faile [`render.yaml`](../render.yaml).
 1. Prisiregistruokite https://render.com su „Sign in with GitHub“. Kortelės nereikia.
 2. Spauskite **New → Blueprint**.
 3. Suteikite prieigą prie saugyklos **Apskaita** ir ją pasirinkite.
-4. Įveskite tris laukus:
-   - `DATABASE_URL`: Neon connection string iš 1 žingsnio.
-   - `BOOTSTRAP_ADMIN_EMAIL`: jūsų el. paštas.
-   - `BOOTSTRAP_ADMIN_PASSWORD`: pradinis slaptažodis, bent 10 simbolių.
+4. Įveskite vienintelį lauką `DATABASE_URL`: Neon connection string iš 1 žingsnio.
 5. Spauskite **Apply**. Pirmas diegimas užtrunka ~10–15 min.
-6. Kai būsena taps **Live**, atsidarykite `https://apskaita-….onrender.com` ir prisijunkite.
+6. Kai būsena taps **Live**, atsidarykite `https://apskaita-….onrender.com`. Programa atsidaro **be slaptažodžio**.
 
    Pirmą kartą atsidarys pradinių nustatymų vedlys.
-7. Saugumo sumetimais:
-   - pasikeiskite slaptažodį;
-   - Render paslaugos **Environment** skiltyje ištrinkite `BOOTSTRAP_ADMIN_PASSWORD`.
+
+### Testinė versija be slaptažodžio (`OPEN_ACCESS=true`)
+
+Kiekvienas, turintis nuorodą, dirba kaip administratorius (*testas@apskaita.local*). Tai tinka tik bandymams. **Nekelkite tikrų sąskaitų, išrašų ar sutarčių.**
+
+Kai prireiks tikro naudojimo, Render → **apskaita** → **Environment**:
+1. `OPEN_ACCESS` pakeiskite į `false`.
+2. Pridėkite `BOOTSTRAP_ADMIN_EMAIL` ir `BOOTSTRAP_ADMIN_PASSWORD` (bent 10 simbolių).
+
+   Jei duomenų bazėje jau yra testinis naudotojas, administratorius automatiškai nesukuriamas. Tokiu atveju naudokite naują Neon duomenų bazę, nes testinių duomenų vis tiek nereikėtų laikyti.
+3. **Save Changes**.
 
 Kolegoms prisijungimus kuriate *Nustatymai → Naudotojai*.
 

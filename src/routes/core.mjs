@@ -1,7 +1,7 @@
 // Core API: auth, settings, users, chart of accounts, rules, journal, contacts, products, jobs, audit.
 import {AppError, tx} from '../db.mjs';
 import {requireCap, createUser, publicUser, hashPassword, ROLES} from '../auth/auth.mjs';
-import {readJson} from '../http.mjs';
+import {readJson, sameOrigin} from '../http.mjs';
 import {audit} from '../audit.mjs';
 import {postEntry, reverseEntry, validateLines, entryLines} from '../ledger/ledger.mjs';
 import {money} from '../lib/money.mjs';
@@ -13,12 +13,20 @@ const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
 const page = (q) => ({limit: Math.min(Math.max(Number(q.limit) || 50, 1), 200), offset: Math.max(Number(q.offset) || 0, 0)});
 
 export function register(r, {pool, auth, config}) {
+  const setSessionCookie = (res, token) => res.setHeader('Set-Cookie', `sid=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${config.sessionHours * 3600}${config.secureCookies ? '; Secure' : ''}`);
   // ---------------------------------------------------------------- auth
   r.post('/api/login', async ({req, res}) => {
     const b = await readJson(req);
     const ip = req.socket.remoteAddress || '';
     const {token, csrf, user} = await auth.login(s(b.email, 200), String(b.password || ''), ip);
-    res.setHeader('Set-Cookie', `sid=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${config.sessionHours * 3600}${config.secureCookies ? '; Secure' : ''}`);
+    setSessionCookie(res, token);
+    return {user, csrf};
+  }, {public: true});
+  r.post('/api/open-login', async ({req, res}) => {
+    if (!config.openAccess) throw new AppError(404, 'not_found', 'Nerasta.');
+    if (!sameOrigin(req)) throw new AppError(403, 'csrf', 'Užklausa iš kitos svetainės atmesta.');
+    const {token, csrf, user} = await auth.openLogin();
+    setSessionCookie(res, token);
     return {user, csrf};
   }, {public: true});
   r.post('/api/logout', async ({res, token}) => {
@@ -34,7 +42,7 @@ export function register(r, {pool, auth, config}) {
     await pool.query('SELECT 1');
     return {ok: true};
   }, {public: true});
-  r.get('/api/bootstrap-status', async () => ({needsAdmin: !(await pool.query('SELECT 1 FROM users LIMIT 1')).rowCount}), {public: true});
+  r.get('/api/bootstrap-status', async () => ({needsAdmin: !(await pool.query('SELECT 1 FROM users LIMIT 1')).rowCount, openAccess: !!config.openAccess}), {public: true});
 
   // ---------------------------------------------------------------- company settings
   r.get('/api/settings/company', async ({user}) => { requireCap(user, 'read'); return (await pool.query('SELECT * FROM company_settings WHERE id=1')).rows[0]; });

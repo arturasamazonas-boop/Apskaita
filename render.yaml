@@ -4,8 +4,9 @@
 #   * No persistent disk on the free plan → uploaded files are stored in the database (STORAGE_BACKEND=postgres).
 #   * Database: Neon free PostgreSQL (0.5 GB, no expiry; choose region AWS Europe Central / Frankfurt).
 #     Render's own free database is deleted after 30 days, so it is not used here.
-# Dashboard → New → Blueprint → this repository. You will be asked for DATABASE_URL (Neon connection string),
-# BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD. See docs/DEPLOY_RENDER.md.
+# Dashboard → New → Blueprint → this repository. You will be asked only for DATABASE_URL (Neon connection string).
+# OPEN_ACCESS=true: TEST VERSION WITHOUT PASSWORD – anyone with the link works as administrator. Do not enter real
+# data; for real use set OPEN_ACCESS=false and add BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD. See docs/DEPLOY_RENDER.md.
 services:
   - type: web
     name: apskaita
@@ -44,7 +45,5 @@ services:
         generateValue: true
       - key: DATABASE_URL
         sync: false
-      - key: BOOTSTRAP_ADMIN_EMAIL
-        sync: false
-      - key: BOOTSTRAP_ADMIN_PASSWORD
-        sync: false
+      - key: OPEN_ACCESS
+        value: "true"
