@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr><MsgId>MSG-OCT</MsgId><CreDtTm>2026-10-01T08:00:00</CreDtTm></GrpHdr>
+    <Stmt>
+      <Id>STMT-2026-10</Id>
+      <ElctrncSeqNb>10</ElctrncSeqNb>
+      <CreDtTm>2026-10-01T08:00:00</CreDtTm>
+      <FrToDt><FrDtTm>2026-10-01T00:00:00</FrDtTm><ToDtTm>2026-10-31T23:59:59</ToDtTm></FrToDt>
+      <Acct><Id><IBAN>LT977044060000000001</IBAN></Id><Ccy>EUR</Ccy></Acct>
+      <Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">1000.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-10-01</Dt></Dt></Bal>
+      <Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">1238.80</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-10-31</Dt></Dt></Bal>
+      <Ntry>
+        <NtryRef>B2026100001</NtryRef>
+        <Amt Ccy="EUR">60.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-03</Dt></BookgDt>
+        <ValDt><Dt>2026-10-03</Dt></ValDt>
+        <AcctSvcrRef>B2026100001</AcctSvcrRef>
+        <NtryDtls><TxDtls>
+          <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+          <RltdPties><Dbtr><Nm>UAB Klientas ir partneriai</Nm></Dbtr><DbtrAcct><Id><IBAN>LT078888888888888888</IBAN></Id></DbtrAcct></RltdPties>
+          <RmtInf><Ustrd>Dalinis apmokėjimas PP000041</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>B2026100002</NtryRef>
+        <Amt Ccy="EUR">61.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-06</Dt></BookgDt>
+        <ValDt><Dt>2026-10-06</Dt></ValDt>
+        <AcctSvcrRef>B2026100002</AcctSvcrRef>
+        <NtryDtls><TxDtls>
+          <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+          <RltdPties><Dbtr><Nm>UAB Klientas ir partneriai</Nm></Dbtr><DbtrAcct><Id><IBAN>LT078888888888888888</IBAN></Id></DbtrAcct></RltdPties>
+          <RmtInf><Ustrd>Likutis PP000041</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>B2026100003</NtryRef>
+        <Amt Ccy="EUR">119.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-07</Dt></BookgDt>
+        <ValDt><Dt>2026-10-07</Dt></ValDt>
+        <AcctSvcrRef>B2026100003</AcctSvcrRef>
+        <NtryDtls><TxDtls>
+          <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+          <RltdPties><Dbtr><Nm>Stripe Payments Europe Ltd</Nm></Dbtr><DbtrAcct><Id><IBAN>IE29AIBK93115212345678</IBAN></Id></DbtrAcct></RltdPties>
+          <RmtInf><Ustrd>STRIPE PAYOUT po_demo_001</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>B2026100004</NtryRef>
+        <Amt Ccy="EUR">1.20</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-08</Dt></BookgDt>
+        <ValDt><Dt>2026-10-08</Dt></ValDt>
+        <AcctSvcrRef>B2026100004</AcctSvcrRef>
+        <NtryDtls><TxDtls>
+          <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+          <RltdPties><Cdtr><Nm>Pavyzdžio bankas</Nm></Cdtr><CdtrAcct><Id><IBAN>LT000000000000000000</IBAN></Id></CdtrAcct></RltdPties>
+          <RmtInf><Ustrd>Komisinis mokestis</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

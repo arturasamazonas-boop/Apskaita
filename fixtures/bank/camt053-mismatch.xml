@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr><MsgId>MSG-BAD</MsgId><CreDtTm>2026-10-01T08:00:00</CreDtTm></GrpHdr>
+    <Stmt>
+      <Id>STMT-2026-11</Id>
+      <ElctrncSeqNb>11</ElctrncSeqNb>
+      <CreDtTm>2026-10-01T08:00:00</CreDtTm>
+      <FrToDt><FrDtTm>2026-11-01T00:00:00</FrDtTm><ToDtTm>2026-11-30T23:59:59</ToDtTm></FrToDt>
+      <Acct><Id><IBAN>LT977044060000000001</IBAN></Id><Ccy>EUR</Ccy></Acct>
+      <Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">1238.80</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-11-01</Dt></Dt></Bal>
+      <Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">1300.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-11-30</Dt></Dt></Bal>
+      <Ntry>
+        <NtryRef>B2026110001</NtryRef>
+        <Amt Ccy="EUR">50.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-11-03</Dt></BookgDt>
+        <ValDt><Dt>2026-11-03</Dt></ValDt>
+        <AcctSvcrRef>B2026110001</AcctSvcrRef>
+        <NtryDtls><TxDtls>
+          <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+          <RltdPties><Dbtr><Nm>UAB Klientas ir partneriai</Nm></Dbtr><DbtrAcct><Id><IBAN>LT078888888888888888</IBAN></Id></DbtrAcct></RltdPties>
+          <RmtInf><Ustrd>Mokėjimas</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>
