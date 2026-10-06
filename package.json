@@ -12,7 +12,7 @@
     "demo:seed": "node src/cli.mjs demo-seed",
     "fixtures": "node scripts/make-fixtures.mjs",
     "check": "node scripts/check-syntax.mjs",
-    "test": "node --test --test-concurrency=1 test/",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "perf": "node scripts/perf.mjs",
     "backup": "sh scripts/backup.sh",
     "restore": "sh scripts/restore.sh"

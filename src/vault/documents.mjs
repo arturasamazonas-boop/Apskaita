@@ -128,7 +128,9 @@ export async function searchDocuments(db, user, {q = '', kind = '', status = '',
   if (q) {
     const terms = String(q).toLowerCase().replace(/[^\p{L}\p{N}\s\-_.\/]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 8)
       .map((t) => t.replace(/[^\p{L}\p{N}]/gu, '')).filter(Boolean).map((t) => `${t}:*`);
-    if (terms.length) where.push(`d.search_text @@ to_tsquery('simple', ${p(terms.join(' & '))})`);
+    const raw = String(q).trim().slice(0, 100);
+    const ts = terms.length ? `d.search_text @@ to_tsquery('simple', ${p(terms.join(' & '))})` : 'false';
+    where.push(`(${ts} OR d.reference_number ILIKE ${p('%' + raw.replace(/[%_\\]/g, '') + '%')} OR d.title ILIKE $${params.length})`);
   }
   if (kind) where.push(`d.kind = ${p(kind)}`);
   if (workflow) where.push(`d.workflow = ${p(workflow)}`);
