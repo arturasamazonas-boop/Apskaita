@@ -74,8 +74,8 @@ test('7. overlapping CSV statements import each real transaction once and keep t
   assert.equal((await openProposal(fee.id)).data.kind, 'fee');
   await approveTx(fee.id);
   const l = await ledgerTotals(t.app.pool);
-  assert.equal(l['2730'], '300.00');
-  assert.equal(l['6810'], '2.50');
+  assert.equal(l['273'], '300.00');
+  assert.equal(l['6314'], '2.50');
 });
 
 test('8. statement balance mismatch is visible and cannot be silently approved', async () => {
@@ -169,7 +169,7 @@ test('11. net sales 100, VAT 21, processor fee 2, payout 119 reconcile separatel
   const diff = (c) => (Number(after[c] || 0) - Number(before[c] || 0)).toFixed(2);
   assert.equal(diff('5000'), '-100.00', 'sales');
   assert.equal(diff('4492'), '-21.00', 'VAT');
-  assert.equal(diff('6820'), '2.00', 'processor fees');
+  assert.equal(diff('6205'), '2.00', 'processor fees');
   assert.equal(diff('2710'), '119.00', 'bank payout');
   assert.equal(diff('2410'), '0.00', 'receivable settled');
   const fee = (await txs(`WHERE amount='-1.20'`))[0];
@@ -196,7 +196,7 @@ test('advance before invoice uses the clearing account; later application moves 
   assert.equal(ap.body.remaining, '137.00');
   const l = await ledgerTotals(t.app.pool);
   assert.equal(l['2710'], cashBefore, 'no second cash movement');
-  assert.equal(l['4490'], '-137.00');
+  assert.equal(l['442'], '-137.00');
   assert.equal((await acc.get(`/api/invoices/${inv.invoiceId}`)).body.balance.payment_status, 'paid');
   // Trial balance stays balanced overall.
   const tb = (await acc.get('/api/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;

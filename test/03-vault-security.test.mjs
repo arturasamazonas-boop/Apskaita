@@ -59,17 +59,17 @@ test('6. contract is searchable by authorized users, keeps versions and never po
 });
 
 test('13a. unbalanced postings are rejected by the API and by the database', async () => {
-  const r = await acc.post('/api/journal', {date: '2026-09-30', description: 'Bandymas', lines: [{account: '6899', debit: '10'}, {account: '2710', credit: '9.99'}]});
+  const r = await acc.post('/api/journal', {date: '2026-09-30', description: 'Bandymas', lines: [{account: '6312', debit: '10'}, {account: '2710', credit: '9.99'}]});
   assert.equal(r.status, 422);
   const c = await t.app.pool.connect();
   try {
     await c.query('BEGIN');
     const e = await c.query(`INSERT INTO journal_entries(entry_date, description, source_type, idempotency_key) VALUES ('2026-09-30','x','manual','raw-1') RETURNING id`);
-    await c.query(`INSERT INTO journal_lines(entry_id, account_code, debit) VALUES ($1,'6899',10)`, [e.rows[0].id]);
+    await c.query(`INSERT INTO journal_lines(entry_id, account_code, debit) VALUES ($1,'6312',10)`, [e.rows[0].id]);
     await c.query(`INSERT INTO journal_lines(entry_id, account_code, credit) VALUES ($1,'2710',9)`, [e.rows[0].id]);
     await assert.rejects(c.query('COMMIT'), /UNBALANCED/);
   } finally { await c.query('ROLLBACK').catch(() => {}); c.release(); }
-  const ok = await acc.post('/api/journal', {date: '2026-09-30', description: 'Pradiniai likučiai', kind: 'opening', lines: [{account: '2710', debit: '1000'}, {account: '3010', credit: '1000'}]});
+  const ok = await acc.post('/api/journal', {date: '2026-09-30', description: 'Pradiniai likučiai', kind: 'opening', lines: [{account: '2710', debit: '1000'}, {account: '3011', credit: '1000'}]});
   assert.equal(ok.status, 200, JSON.stringify(ok.body));
   await assert.rejects(t.app.pool.query(`UPDATE journal_lines SET debit=5 WHERE entry_id=$1`, [ok.body.id]), /IMMUTABLE/);
   await assert.rejects(t.app.pool.query(`DELETE FROM journal_entries WHERE id=$1`, [ok.body.id]), /IMMUTABLE/);
@@ -84,13 +84,13 @@ test('13b. locked periods apply to API approvals, manual entries, background wor
   const ap = await acc.post(`/api/proposals/${p.id}/approve`, {contentHash: p.content_hash});
   assert.equal(ap.status, 422);
   assert.ok(ap.body.issues.some((i) => i.code === 'period_locked'));
-  const j = await acc.post('/api/journal', {date: '2026-09-15', description: 'Į užrakintą', lines: [{account: '6899', debit: '1'}, {account: '2710', credit: '1'}]});
+  const j = await acc.post('/api/journal', {date: '2026-09-15', description: 'Į užrakintą', lines: [{account: '6312', debit: '1'}, {account: '2710', credit: '1'}]});
   assert.equal(j.status, 409);
   await assert.rejects(t.app.pool.query(`INSERT INTO journal_entries(entry_date, description, source_type, idempotency_key) VALUES ('2026-09-01','x','job','job-1')`), /PERIOD_LOCKED/);
   // Background-style posting (service call without HTTP) is equally rejected.
   const {postEntry} = await import('../src/ledger/ledger.mjs');
   const {tx} = await import('../src/db.mjs');
-  await assert.rejects(tx(t.app.pool, (db) => postEntry(db, {date: '2026-09-02', description: 'job', sourceType: 'job', idempotencyKey: 'job-2', lines: [{account: '6899', debit: '1'}, {account: '2710', credit: '1'}]})), /Laikotarpis užrakintas/);
+  await assert.rejects(tx(t.app.pool, (db) => postEntry(db, {date: '2026-09-02', description: 'job', sourceType: 'job', idempotencyKey: 'job-2', lines: [{account: '6312', debit: '1'}, {account: '2710', credit: '1'}]})), /Laikotarpis užrakintas/);
   // Unlocking requires admin.
   assert.equal((await acc.post('/api/settings/lock-period', {lockedThrough: null})).status, 403);
   assert.equal((await admin.post('/api/settings/lock-period', {lockedThrough: null, note: 'Klaidingai užrakinta testui'})).status, 200);

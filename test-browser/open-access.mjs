@@ -8,11 +8,11 @@ const browser = await chromium.launch(process.env.PW_CHROMIUM ? {executablePath:
 try {
   const page = await browser.newPage();
   await page.goto(t.base + '/');
-  await page.waitForSelector('#nav', {timeout: 15000});
+  await page.waitForSelector('.menubar', {timeout: 15000});
   if (await page.$('.login-card')) throw new Error('login form shown');
   if (process.argv[2]) await page.screenshot({path: process.argv[2]});
   await page.context().clearCookies();
   await page.reload();
-  await page.waitForSelector('#nav', {timeout: 15000});
+  await page.waitForSelector('.menubar', {timeout: 15000});
   console.log('open access UI: OK');
 } finally { await browser.close(); await t.close(); }

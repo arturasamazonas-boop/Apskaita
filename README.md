@@ -11,14 +11,17 @@ A working web application for one Lithuanian legal entity (EUR, Europe/Vilnius).
 | Invoice inbox | Single and batch upload; native PDF, DOCX, scanned PDF, JPG and PNG. OCR uses Tesseract `lit+eng` with orientation and skew correction. Detects files that contain several documents and splits them. Extracted fields keep their provenance (page/bbox, DOCX paragraph or table cell). Uncertain, missing and conflicting values are flagged with a reason. Provides classification rules, keyword suggestions and an optional LLM provider. Deterministic server recalculation and validation. Versioned proposals, approval tied to the exact version hash, idempotent posting, bulk approval of selected items. Duplicate detection by file hash and by business identifiers. Re-extraction of a posted document creates a correction proposal. |
 | Document vault | Private, content-addressed, write-once storage with explicit versions. Originals are kept separate from derived files (previews, OCR). Metadata, tags, contract lifecycle, full-text search with authorization, signed download links, access log, deletion guard, retention fields. |
 | Bank | CSV/XLSX with column mapping and preview, CAMT.053, MT940, PDF/image fallback. Balance and continuity checks, with authorized resolution that requires a note. Deduplication by bank ID or by fingerprint plus occurrence count, so two identical legitimate payments are both kept. Evidence-based matching with many-to-many allocations, partial and over-payments, refunds, bank and processor fees, processor payouts, own-account transfers, and advances through a clearing account that are later applied without moving cash a second time. |
-| Ledger and reports | Chart of accounts and posting roles; journal with DB-enforced balance, period lock and immutability; reversals; opening balances; manual cost-of-sales workflow. Reports: trial balance, general ledger with drill-down, P&L (flagged incomplete when cost of sales is missing), balance sheet, VAT registers, receivables and payables aging, sales (period/store/customer/product), operational order metrics, purchases, payments. CSV/XLSX export. Ledger reconciliation checks. |
+| Ledger and reports | Chart of accounts from the accountant's workbook (UAB; class → group → account tree, posting only to leaf accounts, enforced in the DB) and posting roles; journal with DB-enforced balance, period lock and immutability; reversals; opening balances; manual cost-of-sales workflow. Reports: trial balance, general ledger with drill-down, P&L (flagged incomplete when cost of sales is missing), balance sheet, VAT registers, receivables and payables aging, sales (period/store/customer/product), operational order metrics, purchases, payments. CSV/XLSX export. Ledger reconciliation checks. |
+| Products and stock | Product cards: code, barcode, group, units, sale and purchase prices, VAT code, revenue and purchase accounts, supplier, manufacturer, origin, CN code, weight, location, minimum stock, notes, store mappings. Stock balances and movement history come from posted invoices plus manual opening balances, count adjustments and write-offs. Includes a low-stock filter and a weighted average cost. |
+| Payroll | Employees; monthly payroll sheets using LT 2026 MMA/NPD formula, GPM, employee and employer Sodra (dated parameters), a working-day norm with public holidays and pro-rata starts; approval posts one balanced journal entry; cancel by reversal; printable payslips. |
+| Interface | Desktop-style top menu bar with drop-down menus (Žinynai, Dokumentai, Prekyba, Likučiai, Finansai, Atlyginimai, Ataskaitos, Servisas) and a quick-action toolbar. Keyboard-navigable and collapsing behind a toggle on phones. |
 | Sales | Manual invoices with series numbering assigned on approval (unique under concurrency), PDF generation, credit notes/partial returns linked to the original, manual purchases. |
 | Integrations | Saleor (GraphQL, JWS-verified webhooks, initial, incremental and reconcile syncs) and OpenCart (a bundled read-only extension, because the core API cannot list orders). Durable, resumable jobs with retries and rate limits. Out-of-order protection. Configurable status mapping and invoice mode, with protection against double issuing. Refunds become credit-note proposals; posted invoices are never changed. Demo connections are explicitly labelled. |
 | i.SAF | i.SAF 1.2 XML export, validated with xmllint against the XSD, with blocking errors per document. Export ≠ submission. |
 | Security | scrypt passwords and DB sessions, role checks on every API route, CSRF tokens plus same-origin check, strict CSP, upload type and size checks, PDF active-content and zip-bomb checks, optional ClamAV, encrypted store secrets, append-only audit log. |
 | Operations | Durable PostgreSQL job queue, backup and restore scripts with verification, Dockerfile and docker-compose, a performance script measured with 10,000 documents. |
 
-**Deferred by scope:** payroll, manufacturing, advanced warehouse/FIFO, automated fixed-asset depreciation, multi-company, direct bank APIs, international tax automation (reverse charge, EU acquisitions, OSS), multi-currency postings, legacy `.doc`/`.xls` conversion.
+**Deferred by scope:** Sodra/VMI payroll declaration files and automatic vacation/sick pay from average earnings, manufacturing, FIFO stock valuation and stock postings, automated fixed-asset depreciation, multi-company, direct bank APIs, international tax automation (reverse charge, EU acquisitions, OSS), multi-currency postings, legacy `.doc`/`.xls` conversion.
 
 ## Stack and why
 
@@ -88,7 +91,7 @@ When the LLM provider is enabled, its output is validated against a strict schem
 ```bash
 createdb apskaita_test   # dedicated DB; tests DROP and recreate its public schema
 npm run check            # syntax of all JS and PHP files
-npm test                 # 46 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
+npm test                 # 51 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
 npm run test:browser     # Chromium UI smoke test (Playwright), screenshots in var/screenshots
 npm run perf             # 10,000-document timing (uses database apskaita_perf)
 ```
@@ -98,7 +101,8 @@ npm run perf             # 10,000-document timing (uses database apskaita_perf)
 ## Documentation
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) – modules, data model, how each server invariant is enforced
-- [docs/ACCOUNTING.md](docs/ACCOUNTING.md) – posting rules, rounding, settlements, cost of sales
+- [docs/ACCOUNTING.md](docs/ACCOUNTING.md) – chart of accounts, posting rules, rounding, settlements, cost of sales, stock
+- [docs/PAYROLL.md](docs/PAYROLL.md) – payroll parameters, calculation, workflow and limits
 - [docs/FORMATS.md](docs/FORMATS.md) – supported upload and bank formats, extraction behaviour and limits
 - [docs/TAX_RULES.md](docs/TAX_RULES.md) – VAT codes, sources, supported scenarios, assumptions needing accountant review
 - [docs/ISAF.md](docs/ISAF.md) – i.SAF mapping, XSD provenance, validation
@@ -123,4 +127,4 @@ test/           node:test suites (+ PHP harness); test-browser/ Playwright smoke
 
 ## Screenshots
 
-Taken by the browser smoke test: the review screen with the selected field's source highlighted on the original, an unclear OCR'd VAT amount blocking approval, bank reconciliation, the trial balance, the i.SAF check, and the mobile layout. See [docs/screenshots](docs/screenshots).
+Taken by the browser smoke test and a manual capture of the new screens (top menu, chart of accounts tree, product card, payroll sheet, payslip): the review screen with the selected field's source highlighted on the original, an unclear OCR'd VAT amount blocking approval, bank reconciliation, the trial balance, the i.SAF check, and the mobile layout. See [docs/screenshots](docs/screenshots).

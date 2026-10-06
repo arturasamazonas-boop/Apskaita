@@ -48,7 +48,7 @@ try {
     const cp = (d.id % 500) + 1;
     const net = (50 + (d.id % 400)).toFixed(2), vat = (Number(net) * 0.21).toFixed(2), gross = (Number(net) + Number(vat)).toFixed(2);
     const e = (await client.query(`INSERT INTO journal_entries(entry_date, description, source_type, source_id, idempotency_key) VALUES ($1,'perf','invoice',$2,$3) RETURNING id`, [d.issue_date, String(i + 1), `perf:${d.id}`])).rows[0].id;
-    const lines = sales ? [['2410', gross, 0, cp], ['5000', 0, net, null], ['4492', 0, vat, null]] : [['6309', net, 0, null], ['2441', vat, 0, null], ['4430', 0, gross, cp]];
+    const lines = sales ? [['2410', gross, 0, cp], ['5000', 0, net, null], ['4492', 0, vat, null]] : [['6317', net, 0, null], ['2441', vat, 0, null], ['443', 0, gross, cp]];
     for (const [a, dr, cr, c] of lines) await client.query(`INSERT INTO journal_lines(entry_id, account_code, debit, credit, counterparty_id) VALUES ($1,$2,$3,$4,$5)`, [e, a, dr, cr, c]);
     const inv = (await client.query(`INSERT INTO invoices(register, doc_type, series, number, number_key, issue_date, due_date, currency, counterparty_id, counterparty_key, counterparty_snapshot, company_snapshot,
         net_total, vat_total, gross_total, document_id, proposal_id, journal_entry_id, approved_by) VALUES ($1,'vat_invoice','NR',$2,$3,$4,$4::date + 14,'EUR',$5,$6,$7,'{}',$8,$9,$10,$11,$12,$13,$14) RETURNING id`,

@@ -27,7 +27,7 @@ test('1. digital purchase invoice: fields, lines, accounts, posts balanced entri
   assert.equal(d.counterparty.iban, 'LT601010012345678901');
   assert.equal(d.lines.length, 3);
   assert.deepEqual(d.lines.map((l) => [l.quantity, l.unitPrice, l.accountCode, l.lineType]), [
-    ['10', '4.50', '6308', 'expense'], ['1', '899.00', '1240', 'asset'], ['1', '6.00', '6120', 'service']]);
+    ['10', '4.50', '6322', 'expense'], ['1', '899.00', '1240', 'asset'], ['1', '6.00', '6206', 'service']]);
   assert.ok(d.lines.every((l) => l.vatTreatment === 'deductible' && l.suggestion.explanation));
   assert.equal(p.blocking, false, JSON.stringify(errors(p)));
   assert.equal(doc.processing_status, 'ready');
@@ -43,7 +43,7 @@ test('1. digital purchase invoice: fields, lines, accounts, posts balanced entri
   const ap = await acc.post(`/api/proposals/${p.id}/approve`, {contentHash: p.content_hash});
   assert.equal(ap.status, 200, JSON.stringify(ap.body));
   const totals = await ledgerTotals(t.app.pool);
-  assert.deepEqual(totals, {1240: '899.00', 2441: '199.50', 4430: '-1149.50', 6120: '6.00', 6308: '45.00'});
+  assert.deepEqual(totals, {1240: '899.00', 2441: '199.50', 443: '-1149.50', 6206: '6.00', 6322: '45.00'});
   const tb = await acc.get('/api/reports/trial-balance?from=2026-01-01&to=2026-12-31');
   assert.equal(tb.status, 200);
   assert.equal(tb.body.totals.debit, tb.body.totals.credit);
@@ -141,7 +141,7 @@ test('4. double approval clicks and retried jobs produce one posting; stale appr
   const wrongHash = await acc.post(`/api/proposals/${ed.body.id}/approve`, {contentHash: m.proposal.content_hash});
   assert.equal(wrongHash.status, 409);
   // Goods for resale → inventory, not expense.
-  assert.ok(ed.body.data.lines.every((l) => l.accountCode === '2040' && l.lineType === 'inventory'));
+  assert.ok(ed.body.data.lines.every((l) => l.accountCode === '204' && l.lineType === 'inventory'));
 });
 
 test('5. authorized supplier rule is reusable and auditable; suggestions never create rules', async () => {
@@ -150,7 +150,7 @@ test('5. authorized supplier rule is reusable and auditable; suggestions never c
   const cp = (await t.app.pool.query(`SELECT id FROM counterparties WHERE company_code='303333333'`)).rows[0];
   assert.ok(cp);
   // Read-only cannot create rules.
-  const body = {name: 'Tinklo paslaugos – serveriai', register: 'purchase', counterparty_id: cp.id, match_text: 'serverio', priority: 10, effective_from: '2026-01-01', account_code: '6307', line_type: 'service', vat_treatment: 'deductible'};
+  const body = {name: 'Tinklo paslaugos – serveriai', register: 'purchase', counterparty_id: cp.id, match_text: 'serverio', priority: 10, effective_from: '2026-01-01', account_code: '6316', line_type: 'service', vat_treatment: 'deductible'};
   assert.equal((await ro.post('/api/rules', body)).status, 403);
   const rule = await acc.post('/api/rules', body);
   assert.equal(rule.status, 200, JSON.stringify(rule.body));
@@ -162,7 +162,7 @@ test('5. authorized supplier rule is reusable and auditable; suggestions never c
   await t.drain();
   const child = await acc.get(`/api/documents/${sp.body.documents[1]}`);
   const p = (await acc.get(`/api/proposals/${child.body.proposals[0].id}`)).body;
-  assert.equal(p.data.lines[0].accountCode, '6307');
+  assert.equal(p.data.lines[0].accountCode, '6316');
   assert.equal(p.data.lines[0].suggestion.source, 'rule');
   assert.match(p.data.lines[0].suggestion.explanation, /Tinklo paslaugos – serveriai.*v1/);
   assert.ok(errors(p).some((e) => e.code === 'duplicate_posted'), 'page 2 is TP 2026-0470 already posted in test 4');
@@ -170,7 +170,7 @@ test('5. authorized supplier rule is reusable and auditable; suggestions never c
   assert.equal(auditRows.length, 1);
   assert.equal(auditRows[0].details.signedOffBy, t.users.accountant.id);
   // New version keeps history.
-  const v2 = await acc.post('/api/rules', {...body, rule_key: rule.body.rule_key, account_code: '6309'});
+  const v2 = await acc.post('/api/rules', {...body, rule_key: rule.body.rule_key, account_code: '6317'});
   assert.equal(v2.body.version, 2);
   const all = (await acc.get('/api/rules?all=1')).body.filter((x) => x.rule_key === rule.body.rule_key);
   assert.deepEqual(all.map((x) => [x.version, x.status]), [[2, 'active'], [1, 'retired']]);

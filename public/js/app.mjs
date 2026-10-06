@@ -2,34 +2,96 @@
 import {h, clear, get, post, put, setCsrf, toast, showError, guard, field, input, select, pageHeader, section, can} from './core.mjs';
 
 export const state = {user: null, company: null};
-const NAV = [
-  ['apzvalga', 'Apžvalga', () => import('./pages/dashboard.mjs')],
-  ['deze', 'Dokumentų dėžutė', () => import('./pages/inbox.mjs')],
-  ['pardavimai', 'Pardavimai', () => import('./pages/sales.mjs')],
-  ['pirkimai', 'Pirkimai', () => import('./pages/purchases.mjs')],
-  ['bankas', 'Bankas ir mokėjimai', () => import('./pages/bank.mjs')],
-  ['dokumentai', 'Dokumentai', () => import('./pages/vault.mjs')],
-  ['kontaktai', 'Kontaktai ir prekės', () => import('./pages/contacts.mjs')],
-  ['ataskaitos', 'Ataskaitos', () => import('./pages/reports.mjs')],
-  ['integracijos', 'Integracijos', () => import('./pages/integrations.mjs')],
-  ['nustatymai', 'Nustatymai', () => import('./pages/settings.mjs')],
+// Page modules by first hash segment.
+const PAGES = {
+  apzvalga: ['Apžvalga', () => import('./pages/dashboard.mjs')],
+  deze: ['Dokumentų dėžutė', () => import('./pages/inbox.mjs')],
+  pardavimai: ['Pardavimai', () => import('./pages/sales.mjs')],
+  pirkimai: ['Pirkimai', () => import('./pages/purchases.mjs')],
+  bankas: ['Bankas ir mokėjimai', () => import('./pages/bank.mjs')],
+  dokumentai: ['Dokumentai', () => import('./pages/vault.mjs')],
+  kontaktai: ['Kontrahentai', () => import('./pages/contacts.mjs')],
+  prekes: ['Prekės ir paslaugos', () => import('./pages/products.mjs')],
+  saskaitos: ['Sąskaitų planas', () => import('./pages/chart.mjs')],
+  atlyginimai: ['Atlyginimai', () => import('./pages/payroll.mjs')],
+  ataskaitos: ['Ataskaitos', () => import('./pages/reports.mjs')],
+  integracijos: ['Integracijos', () => import('./pages/integrations.mjs')],
+  nustatymai: ['Nustatymai', () => import('./pages/settings.mjs')],
+};
+
+// Top menu bar with drop-down menus. Items: [label, hash path, capability?] or '-' (separator).
+export const MENU = [
+  ['Žinynai', [['Sąskaitų planas', 'saskaitos'], ['Kontrahentai', 'kontaktai'], ['Prekės ir paslaugos', 'prekes'], ['Darbuotojai', 'atlyginimai/darbuotojai'], '-',
+    ['PVM kodai', 'nustatymai/pvm'], ['Dokumentų serijos', 'nustatymai/serijos'], ['Klasifikavimo taisyklės', 'nustatymai/taisykles']]],
+  ['Dokumentai', [['Dokumentų dėžutė (įkėlimas)', 'deze'], ['Dokumentų archyvas', 'dokumentai'], ['Įkelti sutartį ar kitą dokumentą', 'dokumentai/naujas', 'write']]],
+  ['Prekyba', [['Pardavimo sąskaitos', 'pardavimai'], ['Nauja pardavimo sąskaita', 'pardavimai/nauja', 'write'], ['Parduotuvių užsakymai', 'pardavimai/uzsakymai'], '-',
+    ['Pirkimo sąskaitos', 'pirkimai'], ['Nauja pirkimo sąskaita', 'pirkimai/nauja', 'write']]],
+  ['Likučiai', [['Prekių likučiai', 'prekes/likuciai'], ['Prekių judėjimas', 'prekes/judejimas'], ['Savikaina (COGS)', 'ataskaitos/savikaina']]],
+  ['Finansai', [['Banko operacijos', 'bankas'], ['Banko išrašai', 'bankas/israsai'], ['Importuoti išrašą', 'bankas/importas', 'write'], ['Avansai', 'bankas/avansai'], ['Banko sąskaitos', 'bankas/saskaitos'], '-',
+    ['Žurnalas ir rankiniai įrašai', 'ataskaitos/zurnalas'], ['Didžioji knyga', 'ataskaitos/knyga']]],
+  ['Atlyginimai', [['Darbo užmokesčio žiniaraščiai', 'atlyginimai'], ['Naujas žiniaraštis', 'atlyginimai/naujas', 'write'], ['Darbuotojai', 'atlyginimai/darbuotojai'], ['Tarifai ir parametrai', 'atlyginimai/parametrai']]],
+  ['Ataskaitos', [['Pelno (nuostolių) ataskaita', 'ataskaitos/pelnas'], ['Balansas', 'ataskaitos/balansas'], ['Bandomasis balansas', 'ataskaitos/bandomasis'], '-',
+    ['Pardavimų PVM registras', 'ataskaitos/pvm-pardavimai'], ['Pirkimų PVM registras', 'ataskaitos/pvm-pirkimai'], ['i.SAF eksportas', 'ataskaitos/isaf'], '-',
+    ['Pirkėjų skolos', 'ataskaitos/gautinos'], ['Skolos tiekėjams', 'ataskaitos/moketinos'], ['Pardavimai', 'ataskaitos/pardavimai'], ['Užsakymų rodikliai', 'ataskaitos/operaciniai'],
+    ['Pirkimai ir sąnaudos', 'ataskaitos/pirkimai'], ['Mokėjimų suvestinė', 'ataskaitos/mokejimai']]],
+  ['Servisas', [['Įmonės duomenys', 'nustatymai/imone'], ['Kontavimo susiejimai', 'nustatymai/kontavimas'], ['Laikotarpių užrakinimas', 'nustatymai/laikotarpiai'], ['Integracijos (e. parduotuvės)', 'integracijos'], '-',
+    ['Naudotojai', 'nustatymai/naudotojai'], ['Audito žurnalas', 'nustatymai/auditas'], ['Foninės užduotys', 'nustatymai/uzduotys']]],
 ];
+// Quick actions under the menu bar (like a desktop toolbar).
+const TOOLBAR = [['Apžvalga', 'apzvalga'], ['+ Pardavimas', 'pardavimai/nauja', 'write'], ['+ Pirkimas', 'pirkimai/nauja', 'write'], ['Įkelti dokumentus', 'deze', 'write'], ['Banko išrašas', 'bankas/importas', 'write'], ['+ Prekė', 'prekes/nauja', 'write']];
 
 const root = document.getElementById('app');
-let main;
+let main, menubar;
+
+function closeMenus(except) {
+  menubar?.querySelectorAll('.menu-top[aria-expanded="true"]').forEach((b) => { if (b !== except) b.setAttribute('aria-expanded', 'false'); });
+}
+
+function menuBar() {
+  const allowed = (it) => it === '-' || !it[2] || can(state.user, it[2]);
+  const tops = [];
+  const bar = h('ul', {class: 'menubar', role: 'menubar', 'aria-label': 'Pagrindinis meniu'}, MENU.map(([label, items], i) => {
+    const list = h('ul', {class: 'menu-list', role: 'menu', 'aria-label': label}, items.filter(allowed).map((it) => (it === '-'
+      ? h('li', {class: 'menu-sep', role: 'separator'})
+      : h('li', {role: 'none'}, h('a', {role: 'menuitem', href: `#/${it[1]}`, 'data-path': it[1], tabindex: '-1', onclick: () => closeMenus()}, it[0])))));
+    const items$ = () => [...list.querySelectorAll('a')];
+    const btn = h('button', {class: 'menu-top', type: 'button', role: 'menuitem', 'aria-haspopup': 'true', 'aria-expanded': 'false', tabindex: i ? '-1' : '0',
+      onclick: () => { const open = btn.getAttribute('aria-expanded') !== 'true'; closeMenus(btn); btn.setAttribute('aria-expanded', String(open)); },
+      onmouseenter: () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches && menubar.querySelector('.menu-top[aria-expanded="true"]')) { closeMenus(btn); btn.setAttribute('aria-expanded', 'true'); } },
+      onkeydown: (e) => {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'Enter' || k === ' ') { e.preventDefault(); closeMenus(btn); btn.setAttribute('aria-expanded', 'true'); items$()[0]?.focus(); }
+        else if (k === 'ArrowRight' || k === 'ArrowLeft') { e.preventDefault(); const j = (i + (k === 'ArrowRight' ? 1 : tops.length - 1)) % tops.length; const wasOpen = btn.getAttribute('aria-expanded') === 'true'; closeMenus(); tops[j].focus(); if (wasOpen) tops[j].setAttribute('aria-expanded', 'true'); }
+        else if (k === 'Escape') closeMenus();
+      }}, label);
+    list.addEventListener('keydown', (e) => {
+      const its = items$(); const at = its.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); its[(at + 1) % its.length].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); its[(at - 1 + its.length) % its.length].focus(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeMenus(); btn.focus(); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); btn.dispatchEvent(new KeyboardEvent('keydown', {key: e.key})); }
+      else if (e.key === 'Tab') closeMenus();
+    });
+    tops.push(btn);
+    return h('li', {class: 'menu', role: 'none'}, btn, list);
+  }));
+  return bar;
+}
 
 function shell() {
-  const navList = h('ul', {class: 'nav-list'}, NAV.map(([key, label]) => h('li', null, h('a', {href: `#/${key}`, 'data-key': key}, label))));
-  const toggle = h('button', {class: 'nav-toggle', 'aria-expanded': 'false', 'aria-controls': 'nav', onclick: () => { const open = document.body.classList.toggle('nav-open'); toggle.setAttribute('aria-expanded', String(open)); }}, '☰ Meniu');
+  const toggle = h('button', {class: 'nav-toggle', 'aria-expanded': 'false', 'aria-controls': 'menubar', onclick: () => { const open = document.body.classList.toggle('nav-open'); toggle.setAttribute('aria-expanded', String(open)); }}, '☰ Meniu');
   main = h('main', {id: 'main', tabindex: '-1'});
+  menubar = h('nav', {id: 'menubar', class: 'menubar-wrap'}, menuBar());
+  const toolbar = h('div', {class: 'toolbar', role: 'toolbar', 'aria-label': 'Greiti veiksmai'},
+    TOOLBAR.filter((t) => !t[2] || can(state.user, t[2])).map(([label, path]) => h('a', {class: 'tool', href: `#/${path}`}, label)));
   clear(root,
     h('a', {class: 'skip', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); }}, 'Pereiti prie turinio'),
-    h('header', {class: 'topbar'}, toggle, h('div', {class: 'brand'}, 'Apskaita', state.company?.name ? h('span', {class: 'brand-company'}, state.company.name) : null),
+    h('header', {class: 'topbar'}, toggle, h('a', {class: 'brand', href: '#/apzvalga'}, 'Apskaita', state.company?.name ? h('span', {class: 'brand-company'}, state.company.name) : null),
       h('div', {class: 'userbox'}, h('span', null, `${state.user.name || state.user.email} · ${{admin: 'Administratorius', accountant: 'Buhalteris', readonly: 'Tik skaitymas'}[state.user.role]}`),
         h('button', {class: 'btn btn-small', onclick: logout}, 'Atsijungti'))),
-    h('nav', {id: 'nav', 'aria-label': 'Pagrindinis meniu'}, navList),
-    main);
+    menubar, toolbar, main);
 }
+document.addEventListener('click', (e) => { if (menubar && !menubar.contains(e.target)) closeMenus(); });
 
 async function logout() { await post('/api/logout').catch(() => {}); location.hash = ''; location.reload(); }
 
@@ -54,16 +116,23 @@ async function route() {
   if (!state.user) return;
   const [key, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || 'apzvalga').split('/');
   if (!state.company?.onboarding_done && can(state.user, 'settings') && key !== 'pradzia') { location.hash = '#/pradzia'; return; }
-  document.querySelectorAll('.nav-list a').forEach((a) => a.setAttribute('aria-current', a.dataset.key === key ? 'page' : 'false'));
+  const here = [key, ...rest].join('/');
+  menubar?.querySelectorAll('.menu').forEach((m) => {
+    let best = '';
+    m.querySelectorAll('a[data-path]').forEach((a) => { const p = a.dataset.path; if ((here === p || here.startsWith(p + '/')) && p.length > best.length) best = p; });
+    m.classList.toggle('current', !!best);
+    m.querySelectorAll('a[data-path]').forEach((a) => a.setAttribute('aria-current', a.dataset.path === best ? 'page' : 'false'));
+  });
+  closeMenus();
   document.body.classList.remove('nav-open');
   clear(main, h('div', {class: 'loading'}, 'Kraunama…'));
   try {
     if (key === 'pradzia') return onboarding();
-    const entry = NAV.find(([k]) => k === key);
+    const entry = PAGES[key];
     if (!entry) { clear(main, pageHeader('Puslapis nerastas')); return; }
-    const mod = await entry[2]();
+    const mod = await entry[1]();
     await mod.render(main, rest, state);
-    document.title = `${entry[1]} – Apskaita`;
+    document.title = `${entry[0]} – Apskaita`;
   } catch (e) {
     if (e.status === 401) return;
     showError(e);

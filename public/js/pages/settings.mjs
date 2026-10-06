@@ -1,14 +1,16 @@
 // Nustatymai: company, VAT codes, chart of accounts, posting mappings, series, rules, users, period lock, retention, audit, jobs.
 import {h, clear, get, post, put, pageHeader, section, table, money, date, dateTime, guard, select, input, field, can, modal, LINE_TYPE, VAT_T, pager} from '../core.mjs';
 
-const TABS = [['imone', 'Įmonė'], ['pvm', 'PVM kodai'], ['saskaitos', 'Sąskaitų planas'], ['kontavimas', 'Kontavimo susiejimai'], ['serijos', 'Dokumentų serijos'], ['taisykles', 'Klasifikavimo taisyklės'],
+const TABS = [['imone', 'Įmonė'], ['pvm', 'PVM kodai'], ['kontavimas', 'Kontavimo susiejimai'], ['serijos', 'Dokumentų serijos'], ['taisykles', 'Klasifikavimo taisyklės'],
   ['laikotarpiai', 'Laikotarpių užrakinimas'], ['naudotojai', 'Naudotojai'], ['auditas', 'Audito žurnalas'], ['uzduotys', 'Foninės užduotys']];
 
 export async function render(main, rest, state) {
   const key = rest[0] || 'imone';
   const body = h('div', {class: 'report-body'});
-  clear(main, pageHeader('Nustatymai'), h('div', {class: 'report-layout'}, h('nav', {class: 'subnav', 'aria-label': 'Nustatymai'}, TABS.map(([k, t]) => h('a', {href: `#/nustatymai/${k}`, 'aria-current': k === key ? 'page' : 'false'}, t))), body));
-  const fn = {imone: company, pvm: taxes, saskaitos: chart, kontavimas: roles, serijos: series, taisykles: rules, laikotarpiai: lock, naudotojai: users, auditas: auditLog, uzduotys: jobs}[key] || company;
+  if (key === 'saskaitos') { location.replace('#/saskaitos'); return; }
+  // Sections are reached from the top menu (Žinynai / Servisas); no side menu.
+  clear(main, pageHeader((TABS.find(([k]) => k === key) || TABS[0])[1]), body);
+  const fn = {imone: company, pvm: taxes, kontavimas: roles, serijos: series, taisykles: rules, laikotarpiai: lock, naudotojai: users, auditas: auditLog, uzduotys: jobs}[key] || company;
   await fn(body, state);
 }
 
@@ -36,22 +38,12 @@ async function taxes(body, state) {
     })()) : null);
 }
 
-async function chart(body, state) {
-  const rows = await get('/api/accounts');
-  clear(body, h('h2', null, 'Sąskaitų planas'), h('p', {class: 'hint'}, 'Pradinis supaprastintas planas – pritaikykite su buhalteriu. Naudojamų sąskaitų tipo keisti negalima.'),
-    table([{label: 'Kodas', key: 'code'}, {label: 'Pavadinimas', key: 'name'}, {label: 'Tipas', render: (a) => ({asset: 'Turtas', liability: 'Įsipareigojimai', equity: 'Nuosavybė', revenue: 'Pajamos', expense: 'Sąnaudos'}[a.type])}, {label: 'Vaidmuo', key: 'system_role'},
-      {label: 'Aktyvi', render: (a) => (can(state.user, 'settings') ? h('input', {type: 'checkbox', checked: a.active, 'aria-label': `Aktyvi ${a.code}`, onchange: (e) => guard(() => put(`/api/accounts/${a.code}`, {active: e.target.checked}), 'Išsaugota.')}) : a.active ? 'taip' : 'ne')}], rows),
-    can(state.user, 'settings') ? section('Nauja sąskaita', (() => {
-      const f = {code: input({inputmode: 'numeric'}), name: input(), type: select([['expense', 'Sąnaudos'], ['revenue', 'Pajamos'], ['asset', 'Turtas'], ['liability', 'Įsipareigojimai'], ['equity', 'Nuosavybė']], 'expense')};
-      return h('form', {onsubmit: async (e) => { e.preventDefault(); if (await guard(() => post('/api/accounts', {code: f.code.value, name: f.name.value, type: f.type.value}), 'Pridėta.')) chart(body, state); }}, h('div', {class: 'form-grid'}, field('Kodas', f.code), field('Pavadinimas', f.name), field('Tipas', f.type)), h('button', {class: 'btn btn-primary'}, 'Pridėti'));
-    })()) : null);
-}
-
 async function roles(body, state) {
   const rows = await get('/api/accounts');
   const ROLE = {receivable: 'Pirkėjų skolos', payable: 'Skolos tiekėjams', vat_input: 'Gautinas PVM', vat_output: 'Mokėtinas PVM', bank_default: 'Bankas (numatyta)', advances_received: 'Gauti avansai', advances_paid: 'Sumokėti avansai',
     transfer_clearing: 'Pinigai kelyje', unidentified: 'Neišaiškinti mokėjimai', bank_fees: 'Banko mokesčiai', processor_fees: 'Tarpininkų mokesčiai', cogs: 'Savikaina', inventory: 'Atsargos', revenue_goods: 'Prekių pajamos', revenue_services: 'Paslaugų pajamos',
-    revenue_shipping: 'Pristatymo pajamos', retained_earnings: 'Nepaskirstytasis pelnas', current_result: 'Ataskaitinių metų rezultatas', prepaid: 'Ateinančių laik. sąnaudos', fixed_assets: 'Ilgalaikis turtas'};
+    revenue_shipping: 'Pristatymo pajamos', retained_earnings: 'Nepaskirstytasis pelnas', current_result: 'Ataskaitinių metų rezultatas', prepaid: 'Ateinančių laik. sąnaudos', fixed_assets: 'Ilgalaikis turtas',
+    payroll_expense: 'DU sąnaudos (numatyta)', payroll_payable: 'Mokėtinas DU', payroll_gpm: 'Mokėtinas GPM', payroll_sodra: 'Mokėtinos Sodros įmokos', payroll_other: 'Kitos išmokos darbuotojams'};
   const sel = Object.fromEntries(Object.keys(ROLE).map((r) => [r, select(rows.filter((a) => a.active).map((a) => [a.code, `${a.code} ${a.name}`]), rows.find((a) => a.system_role === r)?.code || '', {disabled: !can(state.user, 'settings')})]));
   clear(body, h('h2', null, 'Kontavimo susiejimai'), h('p', {class: 'hint'}, 'Kurios sąskaitos naudojamos automatiniuose įrašuose. Pakeitimai taikomi tik naujiems įrašams.'),
     h('form', {onsubmit: async (e) => { e.preventDefault(); await guard(() => put('/api/posting-roles', Object.fromEntries(Object.entries(sel).map(([k, v]) => [k, v.value]))), 'Išsaugota.'); }}, h('div', {class: 'form-grid'}, Object.entries(ROLE).map(([k, t]) => field(t, sel[k]))),

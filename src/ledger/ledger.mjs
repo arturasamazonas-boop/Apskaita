@@ -43,7 +43,7 @@ export async function postEntry(db, {date, description, sourceType, sourceId = n
   const v = validateLines(norm);
   if (!v.ok) throw new AppError(422, 'unbalanced', v.errors.join(' '), {errors: v.errors});
   const codes = [...new Set(norm.map((l) => l.account))];
-  const acc = await db.query('SELECT code FROM accounts WHERE code = ANY($1) AND active', [codes]);
+  const acc = await db.query('SELECT code FROM accounts WHERE code = ANY($1) AND active AND postable', [codes]);
   if (acc.rowCount !== codes.length) {
     const found = new Set(acc.rows.map((r) => r.code));
     throw new AppError(422, 'bad_account', `Nežinoma arba neaktyvi sąskaita: ${codes.filter((c) => !found.has(c)).join(', ')}`);

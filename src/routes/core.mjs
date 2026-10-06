@@ -94,13 +94,36 @@ export function register(r, {pool, auth, config}) {
   });
 
   // ---------------------------------------------------------------- chart of accounts, tax, series, posting roles
-  r.get('/api/accounts', async ({user}) => { requireCap(user, 'read'); return (await pool.query('SELECT * FROM accounts ORDER BY code')).rows; });
+  // Default: accounts open for posting (for pickers). ?all=1: the whole tree with group headers, in chart order.
+  r.get('/api/accounts', async ({user, query}) => {
+    requireCap(user, 'read');
+    if (query.all) return (await pool.query(`SELECT a.*, (SELECT count(*) FROM journal_lines l WHERE l.account_code=a.code)::int AS line_count FROM accounts a ORDER BY rpad(a.code, 8, ' ')`)).rows;
+    return (await pool.query('SELECT * FROM accounts WHERE postable ORDER BY code')).rows;
+  });
   r.post('/api/accounts', async ({req, user}) => {
     requireCap(user, 'settings');
     const b = await readJson(req);
     if (!/^\d{1,8}$/.test(s(b.code))) throw new AppError(400, 'bad_code', 'Sąskaitos kodas – iki 8 skaitmenų.');
     if (!['asset', 'liability', 'equity', 'revenue', 'expense'].includes(b.type)) throw new AppError(400, 'bad_type', 'Netinkamas sąskaitos tipas.');
-    const row = (await pool.query('INSERT INTO accounts(code, name, type, subtype) VALUES ($1,$2,$3,$4) RETURNING *', [s(b.code), s(b.name, 200), b.type, s(b.subtype, 30)])).rows[0];
+    // A sub-account turns its parent into a group, which is only possible while the parent has no postings.
+    const row = await tx(pool, async (db) => {
+      let level = 1, parent = null;
+      if (b.parent_code) {
+        parent = (await db.query('SELECT * FROM accounts WHERE code=$1 FOR UPDATE', [s(b.parent_code)])).rows[0];
+        if (!parent) throw new AppError(400, 'bad_parent', 'Grupė nerasta.');
+        if (!s(b.code).startsWith(parent.code)) throw new AppError(400, 'bad_code', `Subsąskaitos kodas turi prasidėti grupės kodu ${parent.code}.`);
+        if (parent.postable) {
+          if ((await db.query('SELECT 1 FROM journal_lines WHERE account_code=$1 LIMIT 1', [parent.code])).rowCount) throw new AppError(409, 'used', `Sąskaita ${parent.code} jau turi įrašų – subsąskaitų jai kurti negalima.`);
+          if (parent.system_role) throw new AppError(409, 'role', `Sąskaita ${parent.code} naudojama automatiniams įrašams – pirmiausia pakeiskite kontavimo susiejimą.`);
+          await db.query('UPDATE accounts SET postable=false WHERE code=$1', [parent.code]);
+        }
+        level = Math.min(parent.level + 1, 5);
+        if (b.type !== parent.type) b.type = parent.type;
+      }
+      return (await db.query('INSERT INTO accounts(code, name, type, subtype, parent_code, level, postable) VALUES ($1,$2,$3,$4,$5,$6,true) ON CONFLICT (code) DO NOTHING RETURNING *',
+        [s(b.code), s(b.name, 200), b.type, s(b.subtype, 30) || parent?.subtype || '', parent?.code || null, level])).rows[0];
+    });
+    if (!row) throw new AppError(409, 'exists', 'Tokia sąskaita jau yra.');
     await audit(pool, {userId: user.id, action: 'account.create', entityType: 'account', entityId: row.code, details: row});
     return row;
   });
@@ -119,7 +142,7 @@ export function register(r, {pool, auth, config}) {
     return tx(pool, async (db) => {
       for (const [role, code] of Object.entries(b || {})) {
         if (!/^[a-z_]{3,30}$/.test(role)) continue;
-        const acc = (await db.query('SELECT code FROM accounts WHERE code=$1 AND active', [code])).rows[0];
+        const acc = (await db.query('SELECT code FROM accounts WHERE code=$1 AND active AND postable', [code])).rows[0];
         if (!acc) throw new AppError(400, 'bad_account', `Sąskaita ${code} nerasta.`);
         await db.query('UPDATE accounts SET system_role=NULL WHERE system_role=$1', [role]);
         await db.query('UPDATE accounts SET system_role=$1 WHERE code=$2', [role, code]);
@@ -273,32 +296,6 @@ export function register(r, {pool, auth, config}) {
     await audit(pool, {userId: user.id, action: 'counterparty.update', entityType: 'counterparty', entityId: row.id, details: {note: 'Užregistruotų dokumentų rekvizitai nekeičiami (išsaugota kopija).'}});
     return row;
   });
-  r.get('/api/products', async ({user, query}) => {
-    requireCap(user, 'read');
-    const {limit, offset} = page(query);
-    const q = s(query.q, 100);
-    const rows = (await pool.query(`SELECT p.*, (SELECT json_agg(json_build_object('storeId', x.store_id, 'externalId', x.external_id, 'externalSku', x.external_sku)) FROM product_external_refs x WHERE x.product_id=p.id) AS external_refs
-      FROM products p WHERE ($1='' OR p.name ILIKE '%'||$1||'%' OR p.sku ILIKE $1||'%') ORDER BY p.name LIMIT ${limit + 1} OFFSET ${offset}`, [q])).rows;
-    return {items: rows.slice(0, limit), hasMore: rows.length > limit};
-  });
-  r.post('/api/products', async ({req, user}) => {
-    requireCap(user, 'write');
-    const b = await readJson(req);
-    return saveProduct(pool, user, null, b);
-  });
-  r.put('/api/products/:id', async ({req, user, params}) => {
-    requireCap(user, 'write');
-    return saveProduct(pool, user, params.id, await readJson(req));
-  });
-  r.post('/api/products/:id/external-refs', async ({req, user, params}) => {
-    requireCap(user, 'write');
-    const b = await readJson(req);
-    const row = (await pool.query(`INSERT INTO product_external_refs(store_id, external_id, product_id, external_sku) VALUES ($1,$2,$3,$4)
-      ON CONFLICT (store_id, external_id) DO UPDATE SET product_id=EXCLUDED.product_id, external_sku=EXCLUDED.external_sku RETURNING *`, [b.storeId, s(b.externalId, 100), params.id, s(b.externalSku, 100)])).rows[0];
-    await audit(pool, {userId: user.id, action: 'product.external_ref', entityType: 'product', entityId: params.id, details: row});
-    return row;
-  });
-
   // ---------------------------------------------------------------- jobs & audit
   r.get('/api/jobs', async ({user, query}) => {
     requireCap(user, 'read');
@@ -345,17 +342,6 @@ export async function saveRule(db, user, b) {
   return row;
 }
 
-async function saveProduct(pool, user, id, b) {
-  if (!s(b.name)) throw new AppError(400, 'name', 'Nurodykite pavadinimą.');
-  const vals = [s(b.sku, 60), s(b.name), b.kind === 'service' ? 'service' : 'goods', s(b.unit || 'vnt.', 20), s(b.tax_code || 'PVM1', 10), b.unit_price ? String(b.unit_price).replace(',', '.') : null, b.revenue_account || null, b.expense_account || null, b.active !== false];
-  const row = id
-    ? (await pool.query('UPDATE products SET sku=$2, name=$3, kind=$4, unit=$5, tax_code=$6, unit_price=$7, revenue_account=$8, expense_account=$9, active=$10 WHERE id=$1 RETURNING *', [id, ...vals])).rows[0]
-    : (await pool.query('INSERT INTO products(sku, name, kind, unit, tax_code, unit_price, revenue_account, expense_account, active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *', vals)).rows[0];
-  if (!row) throw new AppError(404, 'not_found', 'Prekė nerasta.');
-  await audit(pool, {userId: user.id, action: id ? 'product.update' : 'product.create', entityType: 'product', entityId: row.id});
-  return row;
-}
-
 export async function sourceLink(db, e) {
   if (e.source_type === 'invoice') {
     const i = (await db.query('SELECT id, register, series, number, document_id FROM invoices WHERE id=$1', [e.source_id])).rows[0];
@@ -364,6 +350,10 @@ export async function sourceLink(db, e) {
   if (e.source_type === 'bank') {
     const t = (await db.query(`SELECT t.id, s.document_id FROM bank_transactions t JOIN bank_statements s ON s.id=t.first_statement_id WHERE t.id=$1`, [e.source_id])).rows[0];
     return t ? {type: 'bank_transaction', id: t.id, label: `Banko operacija #${t.id}`, documentId: t.document_id} : null;
+  }
+  if (e.source_type === 'payroll') {
+    const r = (await db.query('SELECT id, period FROM payroll_runs WHERE id=$1', [e.source_id])).rows[0];
+    return r ? {type: 'payroll', id: r.id, label: `DU žiniaraštis ${r.period}`, href: `#/atlyginimai/${r.id}`} : null;
   }
   return {type: e.source_type, id: e.source_id, label: e.source_type};
 }

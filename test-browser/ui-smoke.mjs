@@ -34,7 +34,8 @@ try {
   });
 
   await step('drag & drop area uploads invoices; processing finishes; review queue', async () => {
-    await page.getByRole('link', {name: 'Dokumentų dėžutė', exact: true}).click();
+    await page.locator('.menu-top', {hasText: 'Dokumentai'}).click();
+    await page.getByRole('menuitem', {name: 'Dokumentų dėžutė (įkėlimas)'}).click();
     await page.locator('#inbox-files').setInputFiles([path.join(FIX, 'invoices', 'digital.pdf'), path.join(FIX, 'invoices', 'scanned.pdf')]);
     await page.getByText('įkelta, atpažįstama').first().waitFor();
     await t.drain();
@@ -100,9 +101,9 @@ try {
   await step('reports: trial balance, P&L, drill-down, VAT register reconciliation, i.SAF check', async () => {
     await page.goto(t.base + '/#/ataskaitos/bandomasis');
     await page.getByRole('button', {name: 'Rodyti'}).click();
-    await page.getByRole('link', {name: '6308'}).waitFor();
+    await page.getByRole('link', {name: '6322'}).waitFor();
     await page.screenshot({path: path.join(shots, '07-bandomasis-balansas.png')});
-    await page.getByRole('link', {name: '6308'}).click();
+    await page.getByRole('link', {name: '6322'}).click();
     await page.getByRole('heading', {name: 'Didžioji knyga'}).waitFor();
     await page.getByText(/Biuro tiekimas/).first().waitFor();
     await page.goto(t.base + '/#/ataskaitos/pelnas');
@@ -118,20 +119,21 @@ try {
   });
 
   await step('vault, contacts, integrations and settings pages render', async () => {
-    for (const [hash, heading] of [['dokumentai', 'Dokumentai'], ['kontaktai', 'Kontaktai ir prekės'], ['integracijos', 'Integracijos'], ['nustatymai/taisykles', 'Klasifikavimo taisyklės'], ['pirkimai', 'Pirkimai'], ['pardavimai/uzsakymai', 'Pardavimai']]) {
+    for (const [hash, heading] of [['dokumentai', 'Dokumentai'], ['kontaktai', 'Kontrahentai'], ['saskaitos', 'Sąskaitų planas'], ['prekes', 'Prekės ir paslaugos'], ['atlyginimai', 'Darbo užmokestis'], ['atlyginimai/darbuotojai', 'Darbuotojai'], ['integracijos', 'Integracijos'], ['nustatymai/taisykles', 'Klasifikavimo taisyklės'], ['pirkimai', 'Pirkimai'], ['pardavimai/uzsakymai', 'Pardavimai']]) {
       await page.goto(`${t.base}/#/${hash}`);
       await page.getByRole('heading', {name: heading}).first().waitFor();
     }
     await page.screenshot({path: path.join(shots, '09-integracijos.png')});
   });
 
-  await step('mobile layout: navigation menu toggles, no horizontal overflow on lists', async () => {
+  await step('mobile layout: top menu collapses behind a toggle, no horizontal overflow on lists', async () => {
     const m = await browser.newContext({viewport: {width: 390, height: 844}, storageState: await ctx.storageState()});
     const mp = await m.newPage();
     mp.on('pageerror', (e) => errors.push(`mobile pageerror: ${e.message}`));
     await mp.goto(t.base + '/#/deze');
     await mp.getByRole('button', {name: '☰ Meniu'}).click();
-    await mp.getByRole('link', {name: 'Bankas ir mokėjimai', exact: true}).click();
+    await mp.locator('.menu-top', {hasText: 'Finansai'}).click();
+    await mp.getByRole('menuitem', {name: 'Banko operacijos'}).click();
     await mp.getByRole('heading', {name: 'Bankas ir mokėjimai'}).waitFor();
     const overflow = await mp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(overflow <= 1, `horizontal overflow ${overflow}px`);

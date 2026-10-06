@@ -5,7 +5,7 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | Command | What it does |
 |---|---|
 | `npm run check` | `node --check` on all JS modules, `php -l` on the OpenCart extension |
-| `npm test` | 46 `node:test` tests across 10 files |
+| `npm test` | 51 `node:test` tests across 11 files |
 | `npm run test:browser` | Chromium (Playwright) UI smoke test of the real UI and server |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 
@@ -27,6 +27,16 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | 12 | Repeated imports and equal numbers across stores stay distinct; partial returns create linked corrections | `05-integrations` 12a/12b and `04-accounting` 12b |
 | 13 | Unbalanced postings, locked periods, unauthorized access, read-only mutations rejected | `03` 13a/13b/13c (API and raw DB inserts, background-style posting, CSRF, cross-origin, lockout, unsafe uploads, security headers) |
 | 14 | Missing cost of sales visible; reports reconcile with ledger and sources; i.SAF fixtures validate | `04` 14a (P&L incomplete → complete after COGS; trial balance, balance sheet, VAT, sales, receivables reconciliation; drill-down; CSV/XLSX), `06-isaf` 14b/14c |
+
+## Chart of accounts, products and stock, payroll (`10-chart-products-payroll`)
+
+| Area | What the test checks |
+|---|---|
+| Chart | Tree imported from the workbook. Posting roles. Pickers list leaf accounts only. Posting to a group is rejected by the API and by a raw insert (DB trigger). A sub-account turns an unused leaf into a group. A used account cannot be split. Sub-account codes must start with the parent code. |
+| Upgrade | A database migrated to 008 with postings on old starter accounts is upgraded. Used accounts are deactivated and keep their postings; unused ones are removed. Bank accounts are repointed. |
+| Products | All card fields are saved. SKU is unique. A group account is refused. Stock comes from opening balance, write-off (reason required), and an approved purchase and sale linked to the product. Also checked: totals, weighted average cost, balance on a date, the movement list with running balance, immutability of movements, low-stock filter, partial update, and services without stock. |
+| Payroll calculation | 2026 NPD formula, GPM, VSD/PSD, employer Sodra. Net pay at 2000 € and at MMA. NPD phase-out and cap. Fixed NPD. Pro-rata days, extra pension and the fixed-term employer rate. Hourly pay. The working-day norm with holidays. |
+| Payroll sheet | Employees. A masked personal code for read-only users. Sheet creation with the norm and pro-rata start. Editing bonus and advance. One sheet per month. Read-only cannot approve. Approval posts the expected amounts to 6304/6203, 4480, 4481 and 4482. Double approval posts once. An approved sheet is read-only. The journal source link. Cancel by reversal, re-approval with a new entry, and no deletion after approval. |
 
 ## Other checks
 

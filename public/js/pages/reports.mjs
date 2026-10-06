@@ -11,9 +11,10 @@ const EXTRA = [['isaf', 'i.SAF eksportas'], ['zurnalas', 'Žurnalas ir rankiniai
 
 export async function render(main, rest, state) {
   const key = rest[0] || 'pelnas';
-  const menu = h('nav', {class: 'subnav', 'aria-label': 'Ataskaitos'}, [...REPORTS.map(([k, , t]) => [k, t]), ...EXTRA].map(([k, t]) => h('a', {href: `#/ataskaitos/${k}`, 'aria-current': k === key ? 'page' : 'false'}, t)));
+  // Reports are chosen from the top menu (Ataskaitos / Finansai / Likučiai); no side menu.
+  const title = [...REPORTS.map(([k, , t]) => [k, t]), ...EXTRA].find(([k]) => k === key)?.[1] || REPORTS[0][2];
   const body = h('div', {class: 'report-body'});
-  clear(main, pageHeader('Ataskaitos'), h('div', {class: 'report-layout'}, menu, body));
+  clear(main, pageHeader(title), body);
   if (key === 'isaf') return isaf(body, state);
   if (key === 'zurnalas') return journal(body, state, rest[1]);
   if (key === 'savikaina') return cogs(body, state);
@@ -54,7 +55,7 @@ async function reportView(body, [key, name, title, mode], rest) {
     if (!res.ok) throw new Error('Eksportas nepavyko.');
     const blob = await res.blob(); const a = h('a', {href: URL.createObjectURL(blob), download: `${name}.${fmt}`}); document.body.append(a); a.click(); a.remove();
   })}, fmt.toUpperCase());
-  clear(body, h('h2', null, title), h('div', {class: 'filters'}, inputs, h('button', {class: 'btn btn-primary', onclick: () => guard(load)}, 'Rodyti'), exportBtn('csv'), exportBtn('xlsx')), out);
+  clear(body, h('div', {class: 'filters'}, inputs, h('button', {class: 'btn btn-primary', onclick: () => guard(load)}, 'Rodyti'), exportBtn('csv'), exportBtn('xlsx')), out);
   if (mode !== 'ledger' || f.account.value) await load();
 }
 
@@ -64,6 +65,7 @@ async function entryModal(id) {
     e.source?.documentId ? h('a', {class: 'btn btn-small', href: `#/dokumentai/${e.source.documentId}`}, 'Šaltinio dokumentas') : null,
     e.source?.type === 'invoice' ? h('a', {class: 'btn btn-small', href: `#/pirkimai/s/${e.source.id}`}, 'Sąskaita') : null,
     e.source?.type === 'bank_transaction' ? h('a', {class: 'btn btn-small', href: `#/bankas/tx/${e.source.id}`}, 'Banko operacija') : null,
+    e.source?.type === 'payroll' ? h('a', {class: 'btn btn-small', href: e.source.href}, 'DU žiniaraštis') : null,
     table([{label: 'Sąskaita', render: (l) => `${l.account_code} ${l.account_name}`}, {label: 'Debetas', num: true, render: (l) => (Number(l.debit) ? money(l.debit) : '')}, {label: 'Kreditas', num: true, render: (l) => (Number(l.credit) ? money(l.credit) : '')}, {label: 'Aprašymas', key: 'description'}], e.lines)), {wide: true});
 }
 
@@ -123,14 +125,14 @@ async function cogs(body, state) {
   const periods = await get('/api/cogs-periods');
   const month = input({type: 'month', value: today().slice(0, 7)}), amount = input({inputmode: 'decimal'}), note = input();
   clear(body, h('h2', null, 'Parduotų prekių savikaina'),
-    h('p', {class: 'hint'}, 'Atsargos apskaitomos pirkimo metu (2040), o savikaina registruojama atskirai buhalterio. Kol mėnesio savikaina nepatvirtinta, pelno ataskaita žymima kaip neišsami – savikaina nelaikoma nuliu.'),
+    h('p', {class: 'hint'}, 'Atsargos apskaitomos pirkimo metu (204), o savikaina registruojama atskirai buhalterio. Kol mėnesio savikaina nepatvirtinta, pelno ataskaita žymima kaip neišsami – savikaina nelaikoma nuliu.'),
     table([{label: 'Mėnuo', key: 'period'}, {label: 'Įrašas', key: 'journal_entry_id'}, {label: 'Patvirtinta', render: (p) => dateTime(p.confirmed_at)}, {label: 'Pastaba', key: 'note'}], periods, {empty: 'Savikaina dar neregistruota.'}),
     can(state.user, 'approve') ? section('Registruoti savikainą', h('form', {onsubmit: async (e) => {
       e.preventDefault();
       const [y, m] = month.value.split('-');
       const last = new Date(Date.UTC(Number(y), Number(m), 0)).toISOString().slice(0, 10);
       const r = await guard(() => post('/api/journal', {date: last, kind: 'cogs', cogsPeriod: month.value, description: `Parduotų prekių savikaina ${month.value}${note.value ? ' – ' + note.value : ''}`,
-        lines: [{account: '6000', debit: amount.value}, {account: '2040', credit: amount.value}]}), 'Savikaina užregistruota.');
+        lines: [{account: '6000', debit: amount.value}, {account: '204', credit: amount.value}]}), 'Savikaina užregistruota.');
       if (r) cogs(body, state);
-    }}, h('div', {class: 'form-grid'}, field('Mėnuo', month), field('Suma (EUR)', amount, 'Įrašas: D 6000 / K 2040 (suma pagal atsargų inventorizaciją ar kitą buhalterio skaičiavimą)'), field('Pastaba', note)), h('button', {class: 'btn btn-primary'}, 'Registruoti'))) : null);
+    }}, h('div', {class: 'form-grid'}, field('Mėnuo', month), field('Suma (EUR)', amount, 'Įrašas: D 6000 / K 204 (suma pagal atsargų inventorizaciją ar kitą buhalterio skaičiavimą)'), field('Pastaba', note)), h('button', {class: 'btn btn-primary'}, 'Registruoti'))) : null);
 }

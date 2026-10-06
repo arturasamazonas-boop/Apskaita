@@ -35,11 +35,11 @@ test('14a. missing cost of sales is visible; COGS posting completes profit; stat
   assert.equal(pl.totals.revenue, '80.00');
   // Manual inventory purchase and COGS workflow by the accountant.
   const purch = await acc.post('/api/manual-invoices', {register: 'purchase', series: 'PS', number: '1', issueDate: '2026-09-01', counterparty: {name: 'Tiekėjas', vatCode: 'LT777777716', companyCode: '307777777'},
-    lines: [{description: 'Prekė perpardavimui', quantity: '8', unitPrice: '4.00', taxCode: 'PVM1', accountCode: '2040', lineType: 'inventory', vatTreatment: 'deductible'}]});
+    lines: [{description: 'Prekė perpardavimui', quantity: '8', unitPrice: '4.00', taxCode: 'PVM1', accountCode: '204', lineType: 'inventory', vatTreatment: 'deductible'}]});
   assert.equal(purch.body.proposal.blocking, false, JSON.stringify(purch.body.proposal.validation.issues));
   assert.equal((await acc.post(`/api/proposals/${purch.body.proposal.id}/approve`, {contentHash: purch.body.proposal.content_hash})).status, 200);
   const cogs = await acc.post('/api/journal', {date: '2026-09-30', kind: 'cogs', cogsPeriod: '2026-09', description: 'Parduotų prekių savikaina 2026-09',
-    lines: [{account: '6000', debit: '32.00'}, {account: '2040', credit: '32.00'}]});
+    lines: [{account: '6000', debit: '32.00'}, {account: '204', credit: '32.00'}]});
   assert.equal(cogs.status, 200, JSON.stringify(cogs.body));
   const pl2 = (await acc.get('/api/reports/profit-loss?from=2026-01-01&to=2026-12-31')).body;
   assert.equal(pl2.incomplete, null);
@@ -109,8 +109,8 @@ test('re-extraction never alters a posted invoice; corrections post only the rev
   const ca = await acc.post(`/api/proposals/${corr.id}/approve`, {contentHash: corr.content_hash});
   assert.equal(ca.status, 200, JSON.stringify(ca.body));
   const after = await ledgerTotals(t.app.pool);
-  assert.equal((Number(after['6307']) - Number(before['6307'])).toFixed(2), '30.00');
-  assert.equal((Number(after['4430']) - Number(before['4430'])).toFixed(2), '-36.30');
+  assert.equal((Number(after['6316']) - Number(before['6316'])).toFixed(2), '30.00');
+  assert.equal((Number(after['443']) - Number(before['443'])).toFixed(2), '-36.30');
   const orig = (await acc.get(`/api/invoices/${ap.invoiceId}`)).body;
   assert.equal(orig.gross_total, '762.30');
   assert.equal(orig.balance.gross, '798.60');
