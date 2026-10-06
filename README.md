@@ -4,8 +4,6 @@ A working web application for one Lithuanian legal entity (EUR, Europe/Vilnius).
 
 > Not certified software. Tax treatment, the chart of accounts and i.SAF output must be reviewed by the company's accountant. See [docs/TAX_RULES.md](docs/TAX_RULES.md).
 
-This app lives in the `apskaita/` folder of the repository and is independent of the party game in the repository root (no shared code, no changes to the game).
-
 ## What is implemented
 
 | Area | Status |
@@ -39,7 +37,6 @@ npm dependencies are kept small: `pg`, `busboy`, `exceljs`, `jszip`, `fast-xml-p
 Requirements: Node ≥ 20, PostgreSQL ≥ 14 (with `pg_trgm`), `tesseract-ocr tesseract-ocr-lit poppler-utils imagemagick libxml2-utils postgresql-client`.
 
 ```bash
-cd apskaita
 npm ci
 createdb apskaita_dev                      # or set DATABASE_URL
 export DATABASE_URL=postgres://user:pass@127.0.0.1:5432/apskaita_dev
