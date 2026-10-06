@@ -1,0 +1,21 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header"><div class="container-fluid">
+    <div class="float-end"><button type="submit" form="form-apskaita" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i></button>
+      <a href="{{ back }}" class="btn btn-light"><i class="fa-solid fa-reply"></i></a></div>
+    <h1>{{ heading_title }}</h1>
+    <ol class="breadcrumb">{% for breadcrumb in breadcrumbs %}<li class="breadcrumb-item"><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>{% endfor %}</ol>
+  </div></div>
+  <div class="container-fluid"><div class="card"><div class="card-header">{{ text_edit }}</div><div class="card-body">
+    <form id="form-apskaita" action="{{ save }}" method="post" data-oc-toggle="ajax">
+      <div class="mb-3"><label class="form-label">{{ entry_endpoint }}</label><input type="text" readonly value="{{ endpoint }}" class="form-control"/></div>
+      <div class="mb-3"><label class="form-label">{{ entry_key }}</label><input type="text" name="other_apskaita_export_key" value="{{ other_apskaita_export_key }}" class="form-control"/></div>
+      <div class="mb-3"><label class="form-label">{{ entry_ips }}</label><textarea name="other_apskaita_export_ips" rows="3" class="form-control">{{ other_apskaita_export_ips }}</textarea></div>
+      <div class="mb-3"><label class="form-label">{{ entry_return_status }}</label><input type="text" name="other_apskaita_export_return_status_ids" value="{{ other_apskaita_export_return_status_ids }}" class="form-control"/></div>
+      <div class="form-check form-switch"><input type="hidden" name="other_apskaita_export_status" value="0"/>
+        <input type="checkbox" name="other_apskaita_export_status" value="1" id="input-status" class="form-check-input"{% if other_apskaita_export_status %} checked{% endif %}/>
+        <label for="input-status" class="form-check-label">{{ entry_status }}</label></div>
+    </form>
+  </div></div></div>
+</div>
+{{ footer }}

@@ -1,0 +1,367 @@
+[
+ {
+  "channel": {
+   "slug": "default-channel"
+  },
+  "invoices": [],
+  "fulfillments": [
+   {
+    "created": "2026-09-19T12:00:00Z"
+   }
+  ],
+  "grantedRefunds": [],
+  "metadata": [],
+  "chargeStatus": "FULL",
+  "id": "T3JkZXI6YWFh",
+  "number": "1001",
+  "status": "FULFILLED",
+  "created": "2026-09-18T10:00:00Z",
+  "updatedAt": "2026-09-20T08:00:00Z",
+  "userEmail": "ona@example.test",
+  "billingAddress": {
+   "firstName": "Ona",
+   "lastName": "Onaitė",
+   "companyName": "",
+   "streetAddress1": "Vilniaus g. 1",
+   "streetAddress2": "",
+   "city": "Vilnius",
+   "postalCode": "LT-01100",
+   "country": {
+    "code": "LT"
+   }
+  },
+  "lines": [
+   {
+    "id": "T3JkZXJMaW5lOjE=",
+    "productName": "Keramikinis puodelis",
+    "variantName": "",
+    "productSku": "MUG-1",
+    "productVariantId": "UHJvZHVjdFZhcmlhbnQ6MUG-1",
+    "quantity": 2,
+    "taxRate": 0.21,
+    "unitPrice": {
+     "net": {
+      "amount": 10
+     },
+     "gross": {
+      "amount": 12.1
+     }
+    },
+    "undiscountedUnitPrice": {
+     "net": {
+      "amount": 10
+     }
+    },
+    "totalPrice": {
+     "net": {
+      "amount": 20
+     },
+     "gross": {
+      "amount": 24.2
+     },
+     "tax": {
+      "amount": 4.2
+     }
+    }
+   }
+  ],
+  "shippingPrice": {
+   "net": {
+    "amount": 5
+   },
+   "gross": {
+    "amount": 6.05
+   },
+   "tax": {
+    "amount": 1.05
+   }
+  },
+  "shippingTaxRate": 0.21,
+  "total": {
+   "currency": "EUR",
+   "net": {
+    "amount": 25
+   },
+   "gross": {
+    "amount": 30.25
+   },
+   "tax": {
+    "amount": 5.25
+   }
+  }
+ },
+ {
+  "channel": {
+   "slug": "default-channel"
+  },
+  "invoices": [],
+  "fulfillments": [],
+  "grantedRefunds": [],
+  "metadata": [],
+  "chargeStatus": "FULL",
+  "id": "T3JkZXI6YmJi",
+  "number": "1002",
+  "status": "UNFULFILLED",
+  "created": "2026-09-21T10:00:00Z",
+  "updatedAt": "2026-09-21T10:05:00Z",
+  "userEmail": "petras@example.test",
+  "billingAddress": {
+   "firstName": "Petras",
+   "lastName": "Petraitis",
+   "companyName": "",
+   "streetAddress1": "Vilniaus g. 1",
+   "streetAddress2": "",
+   "city": "Vilnius",
+   "postalCode": "LT-01100",
+   "country": {
+    "code": "LT"
+   }
+  },
+  "lines": [
+   {
+    "id": "T3JkZXJMaW5lOjI=",
+    "productName": "Arbatinukas",
+    "variantName": "",
+    "productSku": "POT-1",
+    "productVariantId": "UHJvZHVjdFZhcmlhbnQ6POT-1",
+    "quantity": 1,
+    "taxRate": 0.21,
+    "unitPrice": {
+     "net": {
+      "amount": 30
+     },
+     "gross": {
+      "amount": 36.3
+     }
+    },
+    "undiscountedUnitPrice": {
+     "net": {
+      "amount": 30
+     }
+    },
+    "totalPrice": {
+     "net": {
+      "amount": 30
+     },
+     "gross": {
+      "amount": 36.3
+     },
+     "tax": {
+      "amount": 6.3
+     }
+    }
+   }
+  ],
+  "shippingPrice": {
+   "net": {
+    "amount": 0
+   },
+   "gross": {
+    "amount": 0
+   },
+   "tax": {
+    "amount": 0
+   }
+  },
+  "shippingTaxRate": 0,
+  "total": {
+   "currency": "EUR",
+   "net": {
+    "amount": 30
+   },
+   "gross": {
+    "amount": 36.3
+   },
+   "tax": {
+    "amount": 6.3
+   }
+  }
+ },
+ {
+  "channel": {
+   "slug": "default-channel"
+  },
+  "invoices": [],
+  "fulfillments": [
+   {
+    "created": "2026-09-23T09:00:00Z"
+   }
+  ],
+  "grantedRefunds": [],
+  "metadata": [
+   {
+    "key": "company_code",
+    "value": "301111111"
+   },
+   {
+    "key": "vat_code",
+    "value": "LT111111113"
+   }
+  ],
+  "chargeStatus": "FULL",
+  "id": "T3JkZXI6Y2Nj",
+  "number": "1003",
+  "status": "FULFILLED",
+  "created": "2026-09-22T10:00:00Z",
+  "updatedAt": "2026-09-23T10:00:00Z",
+  "userEmail": "buyer@firma.test",
+  "billingAddress": {
+   "firstName": "Jonas",
+   "lastName": "Vadovas",
+   "companyName": "UAB Verslo pirkėjas",
+   "streetAddress1": "Vilniaus g. 1",
+   "streetAddress2": "",
+   "city": "Vilnius",
+   "postalCode": "LT-01100",
+   "country": {
+    "code": "LT"
+   }
+  },
+  "lines": [
+   {
+    "id": "T3JkZXJMaW5lOjM=",
+    "productName": "Puodelių rinkinys",
+    "variantName": "",
+    "productSku": "SET-6",
+    "productVariantId": "UHJvZHVjdFZhcmlhbnQ6SET-6",
+    "quantity": 3,
+    "taxRate": 0.21,
+    "unitPrice": {
+     "net": {
+      "amount": 40
+     },
+     "gross": {
+      "amount": 48.4
+     }
+    },
+    "undiscountedUnitPrice": {
+     "net": {
+      "amount": 40
+     }
+    },
+    "totalPrice": {
+     "net": {
+      "amount": 120
+     },
+     "gross": {
+      "amount": 145.2
+     },
+     "tax": {
+      "amount": 25.2
+     }
+    }
+   }
+  ],
+  "shippingPrice": {
+   "net": {
+    "amount": 0
+   },
+   "gross": {
+    "amount": 0
+   },
+   "tax": {
+    "amount": 0
+   }
+  },
+  "shippingTaxRate": 0,
+  "total": {
+   "currency": "EUR",
+   "net": {
+    "amount": 120
+   },
+   "gross": {
+    "amount": 145.2
+   },
+   "tax": {
+    "amount": 25.2
+   }
+  }
+ },
+ {
+  "channel": {
+   "slug": "default-channel"
+  },
+  "invoices": [],
+  "fulfillments": [],
+  "grantedRefunds": [],
+  "metadata": [],
+  "chargeStatus": "FULL",
+  "id": "T3JkZXI6ZGRk",
+  "number": "1004",
+  "status": "FULFILLED",
+  "created": "2026-09-24T10:00:00Z",
+  "updatedAt": "2026-09-24T11:00:00Z",
+  "userEmail": "us@example.test",
+  "billingAddress": {
+   "firstName": "John",
+   "lastName": "Smith",
+   "companyName": "",
+   "streetAddress1": "Vilniaus g. 1",
+   "streetAddress2": "",
+   "city": "Vilnius",
+   "postalCode": "LT-01100",
+   "country": {
+    "code": "LT"
+   }
+  },
+  "lines": [
+   {
+    "id": "T3JkZXJMaW5lOjQ=",
+    "productName": "Keramikinis puodelis",
+    "variantName": "",
+    "productSku": "MUG-1",
+    "productVariantId": "UHJvZHVjdFZhcmlhbnQ6MUG-1",
+    "quantity": 1,
+    "taxRate": 0,
+    "unitPrice": {
+     "net": {
+      "amount": 10
+     },
+     "gross": {
+      "amount": 10
+     }
+    },
+    "undiscountedUnitPrice": {
+     "net": {
+      "amount": 10
+     }
+    },
+    "totalPrice": {
+     "net": {
+      "amount": 10
+     },
+     "gross": {
+      "amount": 10
+     },
+     "tax": {
+      "amount": 0
+     }
+    }
+   }
+  ],
+  "shippingPrice": {
+   "net": {
+    "amount": 0
+   },
+   "gross": {
+    "amount": 0
+   },
+   "tax": {
+    "amount": 0
+   }
+  },
+  "shippingTaxRate": 0,
+  "total": {
+   "currency": "USD",
+   "net": {
+    "amount": 10
+   },
+   "gross": {
+    "amount": 10
+   },
+   "tax": {
+    "amount": 0
+   }
+  }
+ }
+]

@@ -295,6 +295,10 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
       series = s.code; number = String(s.n).padStart(s.padding, '0');
     }
     const invoiceId = (await db.query(`SELECT nextval('invoices_id_seq') AS id`)).rows[0].id;
+    let documentId = p.document_id;
+    if (!documentId && issuedHere) {
+      documentId = (await createDocument(db, {kind: 'generated_invoice', title: `Pardavimo sąskaita ${series} ${number} – ${data.counterparty.name}`, workflow: 'generated', processing_status: 'posted'}, user.id)).id;
+    }
     const docType = p.kind === 'correction' ? 'correction' : data.docType;
     let lines = computed.lines.map((cl) => ({...data.lines[cl.index], ...cl}));
     let totals = {net: computed.net, vat: computed.vat, gross: computed.gross, deductible: computed.deductibleVat};
@@ -323,7 +327,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
         store_id, external_order_id, order_reference, payment_reference, approved_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
     [invoiceId, data.register, docType, series, number, issuedHere ? numberKey(series, number) : numberKeyValue, data.issueDate, data.vatPointDate || null, data.dueDate || null, data.currency,
-      cpId, computed.counterpartyKey, cpSnapshot, companySnapshot, totals.net, totals.vat, totals.gross, totals.deductible, p.document_id, p.id, entry.id, relatedId,
+      cpId, computed.counterpartyKey, cpSnapshot, companySnapshot, totals.net, totals.vat, totals.gross, totals.deductible, documentId, p.id, entry.id, relatedId,
       external?.store_id || null, p.external_order_id, data.orderReference || '', data.paymentReference || '', user.id]);
     let n = 0;
     for (const l of lines) {

@@ -1,0 +1,128 @@
+[
+ {
+  "order_id": "1001",
+  "store_id": "0",
+  "store_name": "Puodeliai OC",
+  "invoice_no": "15",
+  "invoice_prefix": "OC-2026-",
+  "firstname": "Rasa",
+  "lastname": "Rasaitė",
+  "email": "rasa@example.test",
+  "payment_company": "",
+  "payment_address_1": "Kauno g. 5",
+  "payment_address_2": "",
+  "payment_city": "Kaunas",
+  "payment_postcode": "LT-44000",
+  "payment_country": "Lithuania",
+  "payment_custom_field": "[]",
+  "total": "63.1600",
+  "order_status_id": "5",
+  "order_status": "Complete",
+  "currency_code": "EUR",
+  "currency_value": "1.00000000",
+  "date_added": "2026-09-18 12:00:00",
+  "date_modified": "2026-09-19 09:00:00",
+  "products": [
+   {
+    "order_product_id": "1",
+    "product_id": "40",
+    "name": "Dubenėlis",
+    "model": "BOWL-1",
+    "quantity": "4",
+    "price": "12.0000",
+    "total": "48.0000",
+    "tax": "2.5200"
+   }
+  ],
+  "totals": [
+   {
+    "code": "sub_total",
+    "title": "Tarpinė suma",
+    "value": "48.0000",
+    "sort_order": "1"
+   },
+   {
+    "code": "coupon",
+    "title": "Kuponas (RUDUO)",
+    "value": "-4.8000",
+    "sort_order": "2"
+   },
+   {
+    "code": "shipping",
+    "title": "Kurjeris",
+    "value": "9.0000",
+    "sort_order": "3"
+   },
+   {
+    "code": "tax",
+    "title": "PVM 21%",
+    "value": "10.9600",
+    "sort_order": "5"
+   },
+   {
+    "code": "total",
+    "title": "Iš viso",
+    "value": "63.1600",
+    "sort_order": "9"
+   }
+  ],
+  "returns": []
+ },
+ {
+  "order_id": "1002",
+  "store_id": "0",
+  "store_name": "Puodeliai OC",
+  "invoice_no": "0",
+  "invoice_prefix": "OC-2026-",
+  "firstname": "Tomas",
+  "lastname": "T.",
+  "email": "tomas@example.test",
+  "payment_company": "",
+  "payment_address_1": "",
+  "payment_address_2": "",
+  "payment_city": "",
+  "payment_postcode": "",
+  "payment_country": "",
+  "payment_custom_field": "[]",
+  "total": "12.1000",
+  "order_status_id": "1",
+  "order_status": "Pending",
+  "currency_code": "EUR",
+  "currency_value": "1.00000000",
+  "date_added": "2026-09-25 12:00:00",
+  "date_modified": "2026-09-25 12:00:00",
+  "products": [
+   {
+    "order_product_id": "2",
+    "product_id": "41",
+    "name": "Lėkštė",
+    "model": "PLATE-1",
+    "quantity": "1",
+    "price": "10.0000",
+    "total": "10.0000",
+    "tax": "2.1000"
+   }
+  ],
+  "totals": [
+   {
+    "code": "sub_total",
+    "title": "Tarpinė suma",
+    "value": "10.0000",
+    "sort_order": "1"
+   },
+   {
+    "code": "tax",
+    "title": "PVM 21%",
+    "value": "2.1000",
+    "sort_order": "5"
+   },
+   {
+    "code": "total",
+    "title": "Iš viso",
+    "value": "12.1000",
+    "sort_order": "9"
+   }
+  ],
+  "returns": []
+ }
+]

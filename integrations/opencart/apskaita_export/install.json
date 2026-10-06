@@ -1,0 +1,7 @@
+{
+  "name": "Apskaita – užsakymų eksportas (tik skaitymas)",
+  "description": "Read-only, HMAC-authenticated order export endpoint for the Apskaita accounting app. Does not modify OpenCart core files or data.",
+  "version": "1.0.0",
+  "author": "Apskaita",
+  "link": ""
+}
