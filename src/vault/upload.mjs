@@ -43,7 +43,7 @@ async function uploadOne({pool, storage, config}, user, f, workflow, meta) {
       if (dup.rows[0]) return {name, status: 'duplicate', documentId: dup.rows[0].document_id, message: `Identiškas failas jau įkeltas (dokumentas #${dup.rows[0].document_id}). Naujas įrašas nesukurtas.`};
     }
     const doc = await createDocument(db, {
-      kind: workflow === 'bank' ? 'bank_statement' : (meta.kind || 'unknown'), title: meta.title || name.replace(/\.[a-z0-9]+$/i, ''),
+      kind: workflow === 'bank' ? 'bank_statement' : (meta.kind || 'unknown'), title: meta.title || (workflow === 'invoice' ? '' : name.replace(/\.[a-z0-9]+$/i, '')),
       confidentiality: meta.confidentiality || 'normal', tags: meta.tags, notes: meta.notes, reference_number: meta.reference_number,
       counterparty_id: meta.counterparty_id, issue_date: meta.issue_date, start_date: meta.start_date, end_date: meta.end_date,
       contract_value: meta.contract_value, contract_currency: meta.contract_currency, contract_status: meta.contract_status,

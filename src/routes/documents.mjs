@@ -131,7 +131,7 @@ export function register(r, deps) {
     if (query.from) add('d.created_at >= ?::date', query.from);
     if (query.to) add('d.created_at < ?::date + 1', query.to);
     if (query.register) add(`p.data->>'register' = ?`, query.register);
-    const rows = (await pool.query(`SELECT d.id, d.title, d.kind, d.processing_status, d.processing_error, d.created_at, d.reference_number,
+    const rows = (await pool.query(`SELECT d.id, d.title, d.kind, (SELECT original_name FROM stored_files f WHERE f.document_id=d.id AND f.role='original' ORDER BY version LIMIT 1) AS file_name, d.processing_status, d.processing_error, d.created_at, d.reference_number,
         p.id AS proposal_id, p.version, p.kind AS proposal_kind, p.blocking, p.content_hash, p.data->>'register' AS register, p.data->'counterparty'->>'name' AS counterparty,
         p.data->>'issueDate' AS issue_date, p.validation->'computed'->>'gross' AS gross,
         (SELECT count(*) FROM jsonb_array_elements(p.validation->'issues') x WHERE x->>'level'='error') AS errors,

@@ -88,7 +88,7 @@ export async function updateMetadata(db, user, id, changes) {
   const doc = await loadDocumentForUser(db, user, id, {forUpdate: true});
   const f = sanitizeMeta(changes);
   if (f.confidentiality === 'admin_only' && !can(user, 'admin_only')) throw new AppError(403, 'forbidden', 'Tik administratorius gali nustatyti šį lygį.');
-  if (f.contract_status !== undefined) f.contract_status_manual = true;
+  if (f.contract_status !== undefined) f.contract_status_manual = !!f.contract_status;
   if ((f.kind && f.kind !== doc.kind) && ['posted'].includes(doc.processing_status)) throw new AppError(409, 'posted', 'Užregistruoto dokumento tipo keisti negalima.');
   const keys = Object.keys(f);
   if (!keys.length) return doc;

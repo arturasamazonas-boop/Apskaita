@@ -260,10 +260,10 @@ export function computeProposal(data, ctx) {
       const tol = fromUnits(BigInt(g.lines.length) * VAT_TOLERANCE_PER_LINE);
       if (money.isZero(diff)) note = 'Dokumento PVM suma sutampa su apskaičiuota.';
       else if (money.cmp(money.abs(diff), tol) <= 0) { used = money.norm(src.amount); note = `Dokumente PVM ${src.amount}, apskaičiuota ${computed}; skirtumas ${diff} neviršija apvalinimo per eilutes ribos (${tol}) – naudojama dokumento suma.`; info('sourceTotals.vat', 'vat_rounding', note); }
-      else if (!conf['sourceTotals.vat']) err('sourceTotals.vat', 'vat_mismatch', `PVM ${g.rate} %: dokumente ${src.amount}, apskaičiuota ${computed} (skirtumas ${diff}). Patikrinkite eilutes, tarifą arba dokumento PVM sumą.`);
+      else if (!conf['sourceTotals.vat']) err('sourceTotals.vat', 'vat_mismatch', `PVM ${Number(g.rate)} %: dokumente ${src.amount}, apskaičiuota ${computed} (skirtumas ${diff}). Patikrinkite eilutes, tarifą arba dokumento PVM sumą.`);
       else note = `Patvirtintas skirtumas: dokumente ${src.amount}, naudojama apskaičiuota ${computed}.`;
     } else if (g.rate !== null && Number(g.rate) > 0 && data.origin !== 'manual' && data.origin !== 'store') {
-      warn('sourceTotals.vat', 'vat_not_printed', `PVM ${g.rate} % suma dokumente nerasta – naudojama apskaičiuota ${computed}.`);
+      warn('sourceTotals.vat', 'vat_not_printed', `PVM ${Number(g.rate)} % suma dokumente nerasta arba neperskaityta – naudojama apskaičiuota ${computed}.`);
     }
     vatGroups.push({taxCode: g.taxCode, isafCode: g.isafCode, rate: g.rate, taxable: g.taxable, vatComputed: computed, vatSource: src?.amount ?? null, vat: used, note});
     // Allocate group VAT to lines proportionally (exact sum).
@@ -327,6 +327,9 @@ export function computeProposal(data, ctx) {
     for (const r of ['payable', 'receivable', 'vat_input', 'vat_output']) if (!roles[r]) err('entries', 'mapping', `Nenustatytas kontavimo susiejimas „${r}“.`);
   }
 
+  // Same message from several provenance paths (e.g. VAT total derived from the per-rate VAT) is shown once.
+  const seen = new Set();
+  for (let i = issues.length - 1; i >= 0; i--) { const k = `${issues[i].level}|${issues[i].message}`; if (seen.has(k)) issues.splice(i, 1); else seen.add(k); }
   const blocking = issues.some((x) => x.level === 'error');
   return {computed: {lines: lines.map(({index, ...l}) => ({index, net: l.net, vat: l.vat ?? null, gross: l.gross ?? null, rate: l.rate ?? null, isafCode: l.isafCode || ''})), vatGroups, net, vat, gross, deductibleVat, entries, numberKey: numberKey(data.series, data.number), counterpartyKey: counterpartyKey(data)}, issues, blocking};
 }
