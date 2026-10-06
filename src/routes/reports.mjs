@@ -6,6 +6,10 @@ import {audit} from '../audit.mjs';
 import * as R from '../reports/reports.mjs';
 import {todayVilnius} from '../invoices/context.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
+import {buildIsaf, validateXsd} from '../isaf/isaf.mjs';
+import {createDocument, addFile} from '../vault/documents.mjs';
+import {tx} from '../db.mjs';
+import path from 'node:path';
 
 const REPORTS = {
   'trial-balance': (db, q) => R.trialBalance(db, q),
@@ -22,7 +26,30 @@ const REPORTS = {
   payments: (db, q) => R.paymentsReport(db, q),
 };
 
-export function register(r, {pool}) {
+export function register(r, {pool, storage}) {
+  const isafCheck = async (query) => {
+    const res = await buildIsaf(pool, {from: query.from, to: query.to, dataType: query.type || 'F'});
+    const xsd = await validateXsd(res.xml, path.join(storage.baseDir, 'tmp'));
+    return {...res, xsd, exportable: !res.errors.length && xsd.valid !== false};
+  };
+  r.get('/api/isaf/check', async ({user, query}) => {
+    requireCap(user, 'read');
+    const {xml, ...rest} = await isafCheck(query);
+    return {...rest, size: xml.length, note: 'Eksportas nėra pateikimas: failą į VMI i.SAF sistemą įkelkite patys.'};
+  });
+  r.get('/api/isaf/download', async ({user, query, res}) => {
+    requireCap(user, 'approve');
+    const c = await isafCheck(query);
+    if (!c.exportable) throw new AppError(422, 'isaf_invalid', 'i.SAF failas turi blokuojančių klaidų – peržiūrėkite patikros rezultatus.');
+    const name = `isaf_${query.type || 'F'}_${query.from}_${query.to}.xml`;
+    await tx(pool, async (db) => {
+      const doc = await createDocument(db, {kind: 'other', title: `i.SAF ${query.type || 'F'} ${query.from}–${query.to}`, tags: ['isaf'], workflow: 'generated', processing_status: 'stored', notes: 'Sugeneruotas i.SAF failas (nepateiktas VMI automatiškai).'}, user.id);
+      await addFile(db, storage, {documentId: doc.id, buffer: Buffer.from(c.xml, 'utf8'), mime: 'application/xml', originalName: name, role: 'generated', userId: user.id});
+      await audit(db, {userId: user.id, action: 'isaf.export', entityType: 'document', entityId: doc.id, details: {from: query.from, to: query.to, type: query.type || 'F', summary: c.summary}});
+    });
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
+    res.end(c.xml);
+  });
   r.get('/api/dashboard', async ({user, query}) => { requireCap(user, 'read'); return R.dashboard(pool, {...query, today: todayVilnius()}); });
   r.get('/api/reports/:name', async ({user, params, query, res}) => {
     requireCap(user, 'read');
