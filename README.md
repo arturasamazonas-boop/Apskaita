@@ -49,6 +49,8 @@ The first admin login opens the onboarding wizard (company, VAT, accounts, numbe
 
 **Demo data (fictional, empty database only):** `npm run demo:seed` creates demo users with generated passwords printed once, fixture invoices, a contract, a bank statement and a store marked **DEMO**.
 
+**Online (Render, ES):** see [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md) – `render.yaml` creates the web service, PostgreSQL and the document disk; every push to `main` deploys automatically.
+
 **Docker:**
 
 ```bash
@@ -86,7 +88,7 @@ When the LLM provider is enabled, its output is validated against a strict schem
 ```bash
 createdb apskaita_test   # dedicated DB; tests DROP and recreate its public schema
 npm run check            # syntax of all JS and PHP files
-npm test                 # 42 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup
+npm test                 # 44 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
 npm run test:browser     # Chromium UI smoke test (Playwright), screenshots in var/screenshots
 npm run perf             # 10,000-document timing (uses database apskaita_perf)
 ```

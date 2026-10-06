@@ -5,9 +5,11 @@ import fs from 'node:fs';
 import {loadConfig} from './config.mjs';
 import {createApp} from './app.mjs';
 import {startScheduler} from './scheduler.mjs';
+import {bootstrapAdmin} from './bootstrap.mjs';
 
 const config = loadConfig();
 const app = await createApp(config);
+await bootstrapAdmin(app.pool);
 const server = config.tlsCert && config.tlsKey
   ? https.createServer({cert: fs.readFileSync(config.tlsCert), key: fs.readFileSync(config.tlsKey)}, app.handle)
   : http.createServer(app.handle);

@@ -5,7 +5,7 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | Command | What it does |
 |---|---|
 | `npm run check` | `node --check` on all JS modules, `php -l` on the OpenCart extension |
-| `npm test` | 42 `node:test` tests across 8 files |
+| `npm test` | 44 `node:test` tests across 9 files |
 | `npm run test:browser` | Chromium (Playwright) UI smoke test of the real UI and server |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 

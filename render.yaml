@@ -1,0 +1,47 @@
+# Render Blueprint: web service (Docker) + PostgreSQL 16 + persistent disk for documents, Frankfurt (EU).
+# Dashboard → New → Blueprint → choose this repository. You will be asked for BOOTSTRAP_ADMIN_EMAIL
+# and BOOTSTRAP_ADMIN_PASSWORD (first administrator, created only while there are no users).
+services:
+  - type: web
+    name: apskaita
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: starter            # a persistent disk requires a paid instance
+    branch: main
+    autoDeploy: true         # every push to main is deployed automatically
+    healthCheckPath: /api/health
+    disk:
+      name: documents
+      mountPath: /data/storage
+      sizeGB: 5
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: STORAGE_DIR
+        value: /data/storage
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: WORKER_IN_PROCESS
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: apskaita-db
+          property: connectionString
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+
+databases:
+  - name: apskaita-db
+    databaseName: apskaita
+    user: apskaita
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"

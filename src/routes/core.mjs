@@ -30,6 +30,10 @@ export function register(r, {pool, auth, config}) {
     const company = (await pool.query('SELECT name, onboarding_done, vat_registered, locked_through FROM company_settings WHERE id=1')).rows[0];
     return {user, csrf: session.csrf, company};
   });
+  r.get('/api/health', async ({res}) => {
+    await pool.query('SELECT 1');
+    return {ok: true};
+  }, {public: true});
   r.get('/api/bootstrap-status', async () => ({needsAdmin: !(await pool.query('SELECT 1 FROM users LIMIT 1')).rowCount}), {public: true});
 
   // ---------------------------------------------------------------- company settings
