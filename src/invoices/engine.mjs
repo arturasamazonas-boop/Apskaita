@@ -159,7 +159,8 @@ export function computeProposal(data, ctx) {
   }
 
   // Required fields.
-  if (!data.number) err('number', 'required', 'Nenurodytas dokumento numeris.');
+  if (!data.number && !data.issueHere) err('number', 'required', 'Nenurodytas dokumento numeris.');
+  if (data.issueHere && !data.seriesCode) err('seriesCode', 'required', 'Pasirinkite dokumentų seriją.');
   if (!data.issueDate || !/^\d{4}-\d{2}-\d{2}$/.test(data.issueDate)) err('issueDate', 'required', 'Nenurodyta arba netinkama išrašymo data.');
   if (!data.counterparty?.name) err('counterparty.name', 'required', data.register === 'sales' ? 'Nenurodytas pirkėjas.' : 'Nenurodytas tiekėjas.');
   const cpVat = normalizeVat(data.counterparty?.vatCode);

@@ -35,7 +35,7 @@ export async function findDuplicates(db, {data, computed, documentId, fileSha}) 
       WHERE f.sha256=$1 AND f.role='original' AND f.document_id<>$2 AND d.processing_status<>'rejected' LIMIT 1`, [fileSha, documentId]);
     if (r.rows[0]) out.sameFile = r.rows[0].document_id;
   }
-  if (!data.register || !data.number) return out;
+  if (!data.register || !data.number || data.issueHere) return out;
   const key = computed.numberKey, cpKey = computed.counterpartyKey;
   const docType = data.docType === 'vat_invoice' || data.docType === 'invoice' ? ['vat_invoice', 'invoice'] : [data.docType];
   const posted = await db.query(`SELECT id, series, number, issue_date, gross_total FROM invoices WHERE register=$1 AND counterparty_key=$2 AND number_key=$3 AND doc_type = ANY($4)`,

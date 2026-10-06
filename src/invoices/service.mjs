@@ -287,7 +287,8 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     }
     // Numbering for invoices issued in this application (unique under concurrency: row lock + unique index).
     let series = data.series || '', number = data.number;
-    if (p.kind === 'manual_invoice' || (p.kind === 'credit_note' && data.register === 'sales' && data.issueHere)) {
+    const issuedHere = !!data.issueHere && data.register === 'sales' && ['manual_invoice', 'credit_note', 'invoice'].includes(p.kind);
+    if (issuedHere) {
       const seriesCode = data.seriesCode;
       const s = (await db.query(`UPDATE document_series SET next_number = next_number + 1 WHERE code=$1 AND active RETURNING next_number - 1 AS n, padding, code`, [seriesCode])).rows[0];
       if (!s) throw new AppError(422, 'series', 'Dokumentų serija nerasta arba neaktyvi.');
@@ -321,7 +322,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
         counterparty_snapshot, company_snapshot, net_total, vat_total, gross_total, deductible_vat, document_id, proposal_id, journal_entry_id, related_invoice_id,
         store_id, external_order_id, order_reference, payment_reference, approved_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
-    [invoiceId, data.register, docType, series, number, p.kind === 'manual_invoice' ? `${series}${Number(number)}` : numberKeyValue, data.issueDate, data.vatPointDate || null, data.dueDate || null, data.currency,
+    [invoiceId, data.register, docType, series, number, issuedHere ? numberKey(series, number) : numberKeyValue, data.issueDate, data.vatPointDate || null, data.dueDate || null, data.currency,
       cpId, computed.counterpartyKey, cpSnapshot, companySnapshot, totals.net, totals.vat, totals.gross, totals.deductible, p.document_id, p.id, entry.id, relatedId,
       external?.store_id || null, p.external_order_id, data.orderReference || '', data.paymentReference || '', user.id]);
     let n = 0;
@@ -341,6 +342,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
         counterparty_id=$3, reference_number=$4, issue_date=$5, updated_at=now() WHERE id=$1`, [p.document_id, p.kind === 'correction' ? 'purchase_invoice' : docKindFor(data), cpId, `${series} ${number}`.trim(), data.issueDate]);
       await refreshSearch(db, p.document_id);
     }
+    if (issuedHere || data.generatePdf) await enqueue(db, 'render_invoice_pdf', {invoiceId: String(invoiceId)}, {idempotencyKey: `pdf:${invoiceId}`});
     if (p.external_order_id) await db.query(`UPDATE external_orders SET state='posted', invoice_id=COALESCE(invoice_id,$2), updated_at=now() WHERE id=$1`, [p.external_order_id, invoiceId]);
     await audit(db, {userId: user.id, action: 'proposal.approve', entityType: 'proposal', entityId: p.id, details: {invoiceId, journalEntryId: entry.id, version: p.version, contentHash: p.content_hash, documentId: p.document_id, gross: totals.gross}});
     return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim()};
