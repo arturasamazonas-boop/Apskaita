@@ -30,8 +30,8 @@ export async function generalLedger(db, {account, from, to, today, limit = 500, 
   const acc = (await db.query('SELECT * FROM accounts WHERE code=$1', [account])).rows[0];
   const opening = (await db.query(`SELECT coalesce(sum(l.debit - l.credit),0) AS v FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code=$1 AND e.entry_date < $2`, [account, from])).rows[0].v;
   const rows = (await db.query(`SELECT e.id AS entry_id, e.entry_date, e.description, e.source_type, e.source_id, l.debit, l.credit, l.description AS line_description, c.name AS counterparty,
-      (SELECT i.document_id FROM invoices i WHERE e.source_type='invoice' AND i.id::text = e.source_id) AS document_id
-    FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id LEFT JOIN counterparties c ON c.id=l.counterparty_id
+      i.document_id
+    FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id LEFT JOIN counterparties c ON c.id=l.counterparty_id LEFT JOIN invoices i ON i.journal_entry_id = e.id
     WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3 ORDER BY e.entry_date, e.id, l.id LIMIT ${Number(limit)} OFFSET ${Number(offset)}`, [account, from, to])).rows;
   let bal = opening;
   for (const r of rows) { bal = money.add(bal, money.sub(r.debit, r.credit)); r.balance = bal; }

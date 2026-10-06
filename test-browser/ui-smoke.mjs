@@ -77,11 +77,13 @@ try {
     await page.getByRole('heading', {name: 'Eilutės'}).waitFor();
     await page.getByRole('button', {name: 'Patvirtinti', exact: true}).click();
     await page.getByText(/PP 000001/).waitFor();
+    await page.getByRole('heading', {name: 'Dokumentų dėžutė'}).waitFor();
   });
 
   await step('bank import with preview and approval of a match', async () => {
     await page.goto(t.base + '/#/bankas/importas');
-    await page.locator('input[type=file]').setInputFiles(path.join(FIX, 'bank', 'camt053-october.xml'));
+    await page.getByRole('heading', {name: 'Išrašo failas'}).waitFor();
+    await page.locator('section input[type=file]').setInputFiles(path.join(FIX, 'bank', 'camt053-october.xml'));
     await page.getByRole('button', {name: 'Įkelti ir peržiūrėti'}).click();
     await page.getByText(/Pradinis likutis \+ įplaukos/).waitFor();
     await page.screenshot({path: path.join(shots, '05-banko-importas.png')});

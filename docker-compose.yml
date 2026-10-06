@@ -1,0 +1,27 @@
+# Local/production-like startup: PostgreSQL + app (+ optional separate worker).
+# 1) cp .env.example .env and set APP_SECRET_KEY, POSTGRES_PASSWORD
+# 2) docker compose up -d --build
+# 3) docker compose exec app node src/cli.mjs create-admin admin@jusu-imone.lt "Vardas Pavardė"
+# TLS: put a reverse proxy (Caddy/nginx) in front, or set TLS_CERT/TLS_KEY. SECURE_COOKIES=true requires HTTPS.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: apskaita
+      POSTGRES_USER: apskaita
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U apskaita"], interval: 5s, retries: 20}
+  app:
+    build: .
+    image: apskaita:local
+    depends_on: {db: {condition: service_healthy}}
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://apskaita:${POSTGRES_PASSWORD}@db:5432/apskaita
+      STORAGE_DIR: /data/storage
+    volumes: [files:/data/storage]
+    ports: ["127.0.0.1:3100:3100"]
+volumes:
+  dbdata:
+  files:

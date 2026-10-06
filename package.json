@@ -14,8 +14,8 @@
     "check": "node scripts/check-syntax.mjs",
     "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "perf": "node scripts/perf.mjs",
-    "backup": "sh scripts/backup.sh",
-    "restore": "sh scripts/restore.sh",
+    "backup": "node scripts/backup.mjs",
+    "restore": "node scripts/restore.mjs",
     "test:browser": "node test-browser/ui-smoke.mjs"
   },
   "engines": {
