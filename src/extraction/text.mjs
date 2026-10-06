@@ -11,7 +11,9 @@ import JSZip from 'jszip';
 import {XMLParser} from 'fast-xml-parser';
 
 const run = promisify(execFile);
-const exec = (cmd, args, opts = {}) => run(cmd, args, {timeout: 180000, maxBuffer: 64 * 1024 * 1024, ...opts});
+// OCR_TIMEOUT_MS scales all tool timeouts for slow hosts (e.g. shared/free CPUs). Default 240 s per step.
+const OCR_TIMEOUT = Math.max(30000, Number(process.env.OCR_TIMEOUT_MS || 240000));
+const exec = (cmd, args, opts = {}) => run(cmd, args, {maxBuffer: 64 * 1024 * 1024, ...opts, timeout: Math.max(opts.timeout || 0, OCR_TIMEOUT)});
 
 export const OCR_PROVIDER = {name: 'tesseract', scoreMeaning: 'Tesseract žodžio atpažinimo patikimumas 0–100 (ne tikimybė, kad reikšmė teisinga)'};
 

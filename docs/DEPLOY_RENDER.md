@@ -1,59 +1,88 @@
-# Talpinimas Render (Frankfurtas, ES)
+# Talpinimas internete nemokamai: Render + Neon (ES)
 
-Konfigūracija yra faile [`render.yaml`](../render.yaml). Ji sukuria:
+Konfigūracija yra faile [`render.yaml`](../render.yaml).
 
-| Kas | Planas | Paskirtis |
+| Kas | Planas | Pastabos |
 |---|---|---|
-| Interneto paslauga `apskaita` (Docker) | Starter | Programa, foninis atpažinimas (OCR) |
-| Diskas `documents`, 5 GB, prijungtas prie `/data/storage` | apmokamas pagal GB | Originalūs dokumentai ir peržiūros |
-| PostgreSQL 16 `apskaita-db` | basic-256mb | Duomenų bazė |
+| Programa: Render web service (Docker), Frankfurtas | **Free** | Po 15 min. be lankytojų „užmiega“. Pirmas atidarymas po to trunka apie minutę. 750 nemokamų valandų per mėnesį. |
+| Duomenų bazė: Neon PostgreSQL, AWS Europe Central (Frankfurtas) | **Free** | 0,5 GB. Galioja neribotą laiką ir neištrinama po 30 dienų, kitaip nei Render nemokama bazė. |
+| Įkelti failai | – | Saugomi duomenų bazėje (`STORAGE_BACKEND=postgres`), nes nemokamas Render planas neturi nuolatinio disko. |
 
-Nemokamas planas netinka: jame nėra nuolatinio disko, o nemokama duomenų bazė po 30 dienų ištrinama. Kainas tikrinkite render.com/pricing.
+## Ribojimai (svarbu žinoti)
 
-## Paleidimas (vieną kartą)
+- **Lėtas OCR.** Nemokamas serveris labai silpnas (≈0,1 CPU, 512 MB). Testuojant tokiomis sąlygomis:
+  - skaitmeninis PDF atpažintas per ~5 s;
+  - **skenuotas PDF – per ~6 min.**
 
-1. Prisiregistruokite render.com ir prisijunkite su savo GitHub paskyra („Sign in with GitHub“).
-2. Įveskite mokėjimo kortelę: **Billing** skiltyje.
-3. Spauskite **New → Blueprint**.
-4. Suteikite Render prieigą prie saugyklos `arturasamazonas-boop/apskaita` ir ją pasirinkite.
-5. Render parodys, ką sukurs, ir paprašys dviejų reikšmių:
+  Užduotys vykdomos fone po vieną. Puslapio laikyti atidaryto nebūtina.
+- **Atsibudimas.** Programai užmigus, nebaigta užduotis automatiškai paleidžiama iš naujo, kai programa vėl atsibunda (patikrinta).
+- **Vieta.** 0,5 GB pakanka maždaug keliems šimtams dokumentų su peržiūromis. Paskyrą užpildžius, reikės mokamo Neon plano.
+- **Paskirtis.** Šis variantas skirtas bandymui ir dalijimuisi su kolegomis. Realiai įmonės apskaitai rekomenduojamas mokamas planas (žr. apačioje).
+
+## 1. Neon duomenų bazė (~5 min.)
+
+1. Prisiregistruokite https://neon.com (galima su GitHub paskyra).
+2. Sukurkite projektą:
+   - **Name:** `apskaita`
+   - **Postgres version:** 16 arba naujesnė
+   - **Region:** *AWS Europe Central 1 (Frankfurt)*
+3. Projekto puslapyje spauskite **Connect** ir nukopijuokite **Connection string**. Jis atrodo taip: `postgresql://…@ep-….eu-central-1.aws.neon.tech/neondb?sslmode=require…`.
+
+   Laikykite jį slaptai, nes tai prieiga prie visų duomenų.
+
+## 2. Render programa (~15 min.)
+
+1. Prisiregistruokite https://render.com su „Sign in with GitHub“. Kortelės nereikia.
+2. Spauskite **New → Blueprint**.
+3. Suteikite prieigą prie saugyklos **Apskaita** ir ją pasirinkite.
+4. Įveskite tris laukus:
+   - `DATABASE_URL`: Neon connection string iš 1 žingsnio.
    - `BOOTSTRAP_ADMIN_EMAIL`: jūsų el. paštas.
    - `BOOTSTRAP_ADMIN_PASSWORD`: pradinis slaptažodis, bent 10 simbolių.
+5. Spauskite **Apply**. Pirmas diegimas užtrunka ~10–15 min.
+6. Kai būsena taps **Live**, atsidarykite `https://apskaita-….onrender.com` ir prisijunkite.
 
-   Jos naudojamos tik pirmą kartą, kol programoje dar nėra naudotojų.
-6. Spauskite **Apply**. Pirmas paleidimas užtrunka apie 10 minučių: įdiegiama atpažinimo (OCR) programa ir sukuriama duomenų bazė.
-7. Kai paslaugos būsena taps **Live**, atsidarykite adresą `https://apskaita-….onrender.com`, kuris rodomas paslaugos puslapio viršuje, ir prisijunkite.
+   Pirmą kartą atsidarys pradinių nustatymų vedlys.
+7. Saugumo sumetimais:
+   - pasikeiskite slaptažodį;
+   - Render paslaugos **Environment** skiltyje ištrinkite `BOOTSTRAP_ADMIN_PASSWORD`.
 
-Saugumo sumetimais po pirmo prisijungimo:
-- Pasikeiskite slaptažodį.
-- Paslaugos **Environment** skiltyje ištrinkite `BOOTSTRAP_ADMIN_PASSWORD`.
+Kolegoms prisijungimus kuriate *Nustatymai → Naudotojai*.
 
-Programa veiks ir be šių kintamųjų.
+## Pakeitimai
 
-## Kasdienis darbas
+Kiekvienas įkėlimas į `main` šaką automatiškai įdiegiamas per ~10 min. Atnaujinimo metu programa trumpai nepasiekiama.
 
-- **Pakeitimai:** kiekvienas įkėlimas į `main` šaką (`git push`) automatiškai įdiegiamas per kelias minutes. Diegimo metu programa trumpam būna nepasiekiama, nes diskas gali būti prijungtas tik prie vienos kopijos.
-- **Kolegos:** prisijungimus kuriate *Nustatymai → Naudotojai* su vaidmeniu administratorius, buhalteris arba tik skaitymas.
-- **Savas domenas:** paslaugos **Settings → Custom Domains**. HTTPS sertifikatas suteikiamas automatiškai.
+## Perėjimas į mokamą variantą vėliau
+
+Render paslaugos **Settings → Instance Type** pasirinkite *Starter*. Taip programa nebeužmigs ir OCR veiks keliasdešimt kartų greičiau.
+
+Dalyvaujančius nustatymus galima palikti, nes failai toliau bus saugomi duomenų bazėje. Neon galima pakeisti mokamu planu arba Render PostgreSQL. Duomenų perkėlimui naudokite `scripts/backup.mjs` ir `scripts/restore.mjs` ([BACKUP.md](BACKUP.md)).
 
 ## Atsarginės kopijos
 
-- **Duomenų bazė:** mokamiems Render PostgreSQL planams kopijas daro Render (žr. duomenų bazės skiltį „Recovery“).
-- **Diskas:** Render daro disko momentines kopijas (žr. paslaugos skiltį „Disks“).
-- **Nepriklausoma pilna kopija:** duomenų bazė ir failai kartu, su patikra. Paslaugos **Shell** skiltyje vykdykite `node scripts/backup.mjs /data/storage/backups`, tada failą atsisiųskite. Smulkiau – [BACKUP.md](BACKUP.md).
+- **Neon:** nemokamas planas leidžia atkurti duomenis iki trumpo laikotarpio atgal (žr. Neon „Restore“).
+- **Nepriklausoma pilna kopija:** savo kompiuteryje, su Docker arba Node, paleiskite:
+
+  ```
+  DATABASE_URL=<Neon connection string> node scripts/backup.mjs
+  ```
+
+  Failai yra pačioje duomenų bazėje, todėl patenka į kopiją.
 
 ## Jei kas nepavyksta
 
-- **Paslauga neįsijungia:** žiūrėkite **Logs**. Turi matytis eilutės `[db] migrated …` ir `Apskaita: http://0.0.0.0:…`.
-- **Nepavyksta prisijungti pirmą kartą:** **Logs** turi būti eilutė `[bootstrap] sukurtas pirmasis administratorius …`. Jei jos nėra, patikrinkite, ar įvesti abu `BOOTSTRAP_…` kintamieji ir ar slaptažodis turi bent 10 simbolių.
+- **Paslauga neįsijungia:** žiūrėkite Render **Logs**. Turi matytis eilutės `[db] migrated …` ir `Apskaita: http://0.0.0.0:…`.
+- **Klaida apie duomenų bazę:** patikrinkite, ar `DATABASE_URL` nukopijuotas visas.
+- **Nepavyksta prisijungti:** **Logs** turi būti `[bootstrap] sukurtas pirmasis administratorius …`.
 
 ## Kas patikrinta
 
-Prieš įkeliant šią konfigūraciją Docker atvaizdas buvo sukurtas ir paleistas su tokiais pat nustatymais kaip Render:
-- prievadas 10000, `NODE_ENV=production`, saugūs slapukai, prijungtas diskas;
-- administratorius sukurtas iš aplinkos kintamųjų;
-- sveikatos patikra `/api/health` veikia;
-- prisijungta, įkelta ir atpažinta sąskaita, i.SAF schemos patikra praėjo;
-- po paleidimo iš naujo dokumentai ir duomenys išliko.
+Tas pats Docker atvaizdas buvo paleistas su nemokamo Render ribojimais (`--cpus=0.1 --memory=512m`) ir šiais nustatymais. Patikrinta:
+- sukurtas administratorius;
+- skaitmeninė ir skenuota sąskaita atpažintos;
+- atminties naudota ~80 MB;
+- serverį nutraukus OCR viduryje, užduotis po paleidimo baigta;
+- failai saugomi duomenų bazėje ir išlieka.
 
-Pačiame Render diegimas dar neatliktas: tam reikia jūsų paskyros.
+Pačiame Render ir Neon diegimas neatliktas: tam reikia jūsų paskyrų. Neon jungtis su SSL (`sslmode=require`) lokaliai netikrinta.

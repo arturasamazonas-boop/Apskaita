@@ -23,7 +23,7 @@ export async function seedDemo(pool, config) {
     address='Gedimino pr. 1, LT-01103 Vilnius', onboarding_done=true WHERE id=1`);
   await pool.query(`INSERT INTO bank_accounts(iban, name, bank_name, ledger_account) VALUES ('LT977044060000000001','Pagrindinė (DEMO)','Pavyzdžio bankas','2710') ON CONFLICT DO NOTHING`);
   await pool.query(`INSERT INTO bank_accounts(iban, name, bank_name, ledger_account) VALUES ('LT037300010000000002','Taupomoji (DEMO)','Pavyzdžio bankas','2711') ON CONFLICT DO NOTHING`);
-  const storage = createStorage(config.storageDir);
+  const storage = createStorage(config.storageDir, {backend: config.storageBackend, pool});
   const user = {...admin, role: 'admin', active: true};
   const inv = path.join(ROOT, 'fixtures', 'invoices');
   const files = [];

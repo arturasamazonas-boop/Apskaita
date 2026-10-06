@@ -39,7 +39,14 @@ export async function verify({databaseUrl, storageDir}) {
     const problems = [];
     for (const r of rows) {
       const f = path.join(storageDir, 'objects', r.storage_key);
-      try { if (await sha(f) !== r.sha256) problems.push(`Failas #${r.id}: kontrolinė suma nesutampa`); } catch { problems.push(`Failas #${r.id}: nerastas`); }
+      let digest = null;
+      try { digest = await sha(f); } catch {
+        // STORAGE_BACKEND=postgres: the file lives in the database (included in the dump).
+        const blob = (await client.query(`SELECT data FROM file_blobs WHERE storage_key=$1`, [r.storage_key]).catch(() => ({rows: []}))).rows[0];
+        if (blob) digest = crypto.createHash('sha256').update(blob.data).digest('hex');
+      }
+      if (digest === null) problems.push(`Failas #${r.id}: nerastas`);
+      else if (digest !== r.sha256) problems.push(`Failas #${r.id}: kontrolinė suma nesutampa`);
     }
     const unbalanced = (await client.query(`SELECT entry_id FROM journal_lines GROUP BY entry_id HAVING sum(debit) <> sum(credit)`)).rows;
     if (unbalanced.length) problems.push(`Nesubalansuoti įrašai: ${unbalanced.map((x) => x.entry_id).join(', ')}`);

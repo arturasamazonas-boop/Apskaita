@@ -9,7 +9,7 @@ export async function enqueue(db, type, payload = {}, {idempotencyKey = null, ru
   return {id: ex.rows[0]?.id, created: false};
 }
 
-export function createWorker({pool, handlers, onDead = {}, log = console, concurrency = 2, pollMs = 500}) {
+export function createWorker({pool, handlers, onDead = {}, log = console, concurrency = 2, pollMs = 500, staleMinutes = 15}) {
   const id = `${os.hostname()}:${process.pid}`;
   let stopped = false, active = 0;
   const timers = new Set();
@@ -17,9 +17,9 @@ export function createWorker({pool, handlers, onDead = {}, log = console, concur
   async function claim() {
     const r = await pool.query(`UPDATE jobs SET status='running', locked_by=$1, locked_at=now(), attempts=attempts+1
       WHERE id = (SELECT id FROM jobs WHERE (status='queued' AND run_at <= now())
-                    OR (status='running' AND locked_at < now() - interval '15 minutes')
+                    OR (status='running' AND locked_at < now() - make_interval(mins => $2::int))
                   ORDER BY run_at, id FOR UPDATE SKIP LOCKED LIMIT 1)
-      RETURNING *`, [id]);
+      RETURNING *`, [id, staleMinutes]);
     return r.rows[0];
   }
 

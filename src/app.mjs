@@ -21,7 +21,7 @@ import {integrationJobHandlers} from './integrations/sync.mjs';
 export async function createApp(config, {pool: givenPool, log = console} = {}) {
   const pool = givenPool || createPool(config.databaseUrl);
   await migrate(pool, (m) => log.info?.(`[db] ${m}`));
-  const storage = createStorage(config.storageDir);
+  const storage = createStorage(config.storageDir, {backend: config.storageBackend, pool});
   const auth = createAuth({pool, sessionHours: config.sessionHours});
   const llm = createLlmProvider(config, pool);
   const deps = {pool, storage, config, auth, llm, log};
@@ -39,7 +39,7 @@ export async function createApp(config, {pool: givenPool, log = console} = {}) {
       await pool.query(`UPDATE documents SET processing_status='failed', processing_error=$2, updated_at=now() WHERE id=$1 AND processing_status IN ('uploaded','processing')`, [p.documentId, `Atpažinimas nepavyko: ${String(e.message).slice(0, 300)}. Galite bandyti iš naujo arba įvesti duomenis rankiniu būdu.`]);
     },
   };
-  const worker = createWorker({pool, handlers, onDead, log});
+  const worker = createWorker({pool, handlers, onDead, log, concurrency: config.jobConcurrency || 2, staleMinutes: config.jobStaleMinutes || 15});
   deps.worker = worker;
 
   async function handle(req, res) {

@@ -1,6 +1,11 @@
-# Render Blueprint: web service (Docker) + PostgreSQL 16 + persistent disk for documents, Frankfurt (EU).
-# Dashboard → New → Blueprint → choose this repository. You will be asked for BOOTSTRAP_ADMIN_EMAIL
-# and BOOTSTRAP_ADMIN_PASSWORD (first administrator, created only while there are no users).
+# Render Blueprint – FREE setup (trial / sharing with colleagues):
+#   * Render free web service, Frankfurt (EU). It sleeps after 15 min without visits; the first visit
+#     afterwards takes about a minute. 750 free instance hours per month.
+#   * No persistent disk on the free plan → uploaded files are stored in the database (STORAGE_BACKEND=postgres).
+#   * Database: Neon free PostgreSQL (0.5 GB, no expiry; choose region AWS Europe Central / Frankfurt).
+#     Render's own free database is deleted after 30 days, so it is not used here.
+# Dashboard → New → Blueprint → this repository. You will be asked for DATABASE_URL (Neon connection string),
+# BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD. See docs/DEPLOY_RENDER.md.
 services:
   - type: web
     name: apskaita
@@ -8,40 +13,38 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     region: frankfurt
-    plan: starter            # a persistent disk requires a paid instance
+    plan: free
     branch: main
-    autoDeploy: true         # every push to main is deployed automatically
+    autoDeploy: true
     healthCheckPath: /api/health
-    disk:
-      name: documents
-      mountPath: /data/storage
-      sizeGB: 5
     envVars:
       - key: NODE_ENV
         value: production
       - key: HOST
         value: 0.0.0.0
+      - key: STORAGE_BACKEND
+        value: postgres
       - key: STORAGE_DIR
-        value: /data/storage
+        value: /tmp/apskaita
       - key: SECURE_COOKIES
         value: "true"
       - key: WORKER_IN_PROCESS
         value: "true"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: apskaita-db
-          property: connectionString
+      - key: JOB_CONCURRENCY
+        value: "1"
+      - key: OCR_TIMEOUT_MS
+        value: "900000"
+      - key: JOB_STALE_MINUTES
+        value: "90"
+      - key: RECOVER_RUNNING_JOBS_ON_START
+        value: "true"
+      - key: MAX_UPLOAD_MB
+        value: "15"
       - key: APP_SECRET_KEY
         generateValue: true
+      - key: DATABASE_URL
+        sync: false
       - key: BOOTSTRAP_ADMIN_EMAIL
         sync: false
       - key: BOOTSTRAP_ADMIN_PASSWORD
         sync: false
-
-databases:
-  - name: apskaita-db
-    databaseName: apskaita
-    user: apskaita
-    plan: basic-256mb
-    region: frankfurt
-    postgresMajorVersion: "16"

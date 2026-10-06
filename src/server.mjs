@@ -15,6 +15,14 @@ const server = config.tlsCert && config.tlsKey
   : http.createServer(app.handle);
 server.requestTimeout = 120000;
 server.listen(config.port, config.host, () => console.log(`Apskaita: ${config.tlsCert ? 'https' : 'http'}://${config.host}:${config.port}`));
-if (config.runWorkerInProcess) { app.worker.start(); startScheduler(app.pool); }
+if (config.runWorkerInProcess) {
+  // Single-instance hosts that may be stopped abruptly (e.g. Render free sleeping): jobs left 'running'
+  // by the previous process are requeued immediately instead of waiting for the stale-lock timeout.
+  if (process.env.RECOVER_RUNNING_JOBS_ON_START === 'true') {
+    const r = await app.pool.query(`UPDATE jobs SET status='queued', locked_by=NULL, run_at=now() WHERE status='running'`);
+    if (r.rowCount) console.log(`[jobs] grąžinta į eilę nutrauktų užduočių: ${r.rowCount}`);
+  }
+  app.worker.start(); startScheduler(app.pool);
+}
 const stop = async () => { server.close(); await app.close(); process.exit(0); };
 process.on('SIGINT', stop); process.on('SIGTERM', stop);
