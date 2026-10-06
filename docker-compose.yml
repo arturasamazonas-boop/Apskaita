@@ -20,6 +20,7 @@ services:
     environment:
       DATABASE_URL: postgres://apskaita:${POSTGRES_PASSWORD}@db:5432/apskaita
       STORAGE_DIR: /data/storage
+      HOST: 0.0.0.0
     volumes: [files:/data/storage]
     ports: ["127.0.0.1:3100:3100"]
 volumes:
