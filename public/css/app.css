@@ -192,3 +192,9 @@ details summary { cursor: pointer; margin: .5rem 0; font-weight: 600; }
 .chart-table td.acc-actions { white-space: nowrap; } .chart-table td.acc-actions > * { margin-right: .5rem; }
 .payroll-grid { font-size: .88rem; } .payroll-grid .num-input { width: 4.6rem; }
 .chart-table td.acc-actions label.check { display: inline-flex; vertical-align: middle; margin: 0; }
+/* Company details from rekvizitai.lt */
+.actions-left { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-bottom: .75rem; }
+.howto { padding-left: 1.2rem; } .howto li { margin: .35rem 0; }
+.bookmarklet { cursor: grab; }
+.vat-check { display: inline-flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin-top: .25rem; }
+.vat-result { font-size: .85rem; }

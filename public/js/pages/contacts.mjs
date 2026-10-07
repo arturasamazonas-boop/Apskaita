@@ -1,5 +1,6 @@
 // Kontrahentai: customers and suppliers (products are in pages/products.mjs).
 import {h, clear, get, post, put, pageHeader, table, money, guard, input, field, pager, debounce, can, modal} from '../core.mjs';
+import {rekvizitaiButton, vatCheckButton} from '../lib/company-fill.mjs';
 
 export async function render(main, rest, state) {
   if (rest[0] === 'prekes') { location.replace('#/prekes'); return; }
@@ -18,16 +19,18 @@ async function counterparties(main, tabs, state) {
   };
   const edit = (c = {}) => {
     const f = {name: input({value: c.name || ''}), company_code: input({value: c.company_code || ''}), vat_code: input({value: c.vat_code || ''}), address: input({value: c.address || ''}), country: input({value: c.country || 'LT'}),
-      email: input({value: c.email || '', type: 'email'}), iban: input({value: c.iban || ''}), is_supplier: h('input', {type: 'checkbox', checked: c.is_supplier}), is_customer: h('input', {type: 'checkbox', checked: c.is_customer}), is_individual: h('input', {type: 'checkbox', checked: c.is_individual}), notes: h('textarea', {rows: 2}, c.notes || '')};
+      email: input({value: c.email || '', type: 'email'}), iban: input({value: c.iban || ''}), is_supplier: h('input', {type: 'checkbox', checked: c.is_supplier}), is_customer: h('input', {type: 'checkbox', checked: c.is_customer}), is_individual: h('input', {type: 'checkbox', checked: c.is_individual}), notes: h('textarea', {rows: 2}, c.notes || ''),
+      legal_form: input({value: c.legal_form || ''}), phone: input({value: c.phone || ''}), website: input({value: c.website || ''}), manager: input({value: c.manager || ''})};
     const m = modal(c.id ? 'Kontrahentas' : 'Naujas kontrahentas', h('form', {onsubmit: async (e) => {
       e.preventDefault();
       const body = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.type === 'checkbox' ? v.checked : v.value]));
       if (await guard(() => (c.id ? put(`/api/counterparties/${c.id}`, body) : post('/api/counterparties', body)), 'Išsaugota.')) { m.close(); load(); }
-    }}, h('div', {class: 'form-grid'}, field('Pavadinimas', f.name), field('Įmonės kodas', f.company_code), field('PVM kodas', f.vat_code), field('Adresas', f.address), field('Šalis', f.country), field('El. paštas', f.email), field('IBAN', f.iban),
+    }}, h('div', {class: 'actions-left'}, rekvizitaiButton(f)), h('div', {class: 'form-grid'}, field('Pavadinimas', f.name), field('Teisinė forma', f.legal_form), field('Įmonės kodas', f.company_code), field('PVM kodas', f.vat_code, vatCheckButton(f.vat_code)), field('Adresas', f.address), field('Šalis', f.country),
+      field('El. paštas', f.email), field('Telefonas', f.phone), field('Tinklalapis', f.website), field('Vadovas', f.manager), field('IBAN', f.iban),
       h('label', {class: 'check'}, f.is_customer, ' Pirkėjas'), h('label', {class: 'check'}, f.is_supplier, ' Tiekėjas'), h('label', {class: 'check'}, f.is_individual, ' Fizinis asmuo'), field('Pastabos', f.notes)),
     h('p', {class: 'hint'}, 'Užregistruotose sąskaitose saugoma rekvizitų kopija – jos šis pakeitimas nekeičia.'), h('div', {class: 'actions'}, h('button', {class: 'btn btn-primary'}, 'Išsaugoti'))), {wide: true});
   };
   const q = input({type: 'search', placeholder: 'Pavadinimas, kodas', oninput: debounce(() => { st.q = q.value; st.offset = 0; load(); })});
-  clear(main, pageHeader('Kontrahentai', can(state.user, 'write') ? h('button', {class: 'btn btn-primary', onclick: () => edit()}, '+ Kontrahentas') : null), tabs, h('div', {class: 'filters'}, q), box);
+  clear(main, pageHeader('Kontrahentai', can(state.user, 'write') ? h('a', {class: 'btn', href: '#/rekvizitai'}, 'Iš rekvizitai.lt') : null, can(state.user, 'write') ? h('button', {class: 'btn btn-primary', onclick: () => edit()}, '+ Kontrahentas') : null), tabs, h('div', {class: 'filters'}, q), box);
   await load();
 }

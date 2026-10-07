@@ -1,5 +1,6 @@
 // App shell: login, navigation, hash router, onboarding wizard.
 import {h, clear, get, post, put, setCsrf, toast, showError, guard, field, input, select, pageHeader, section, can} from './core.mjs';
+import {rekvizitaiButton} from './lib/company-fill.mjs';
 
 export const state = {user: null, company: null};
 // Page modules by first hash segment.
@@ -13,6 +14,7 @@ const PAGES = {
   kontaktai: ['Kontrahentai', () => import('./pages/contacts.mjs')],
   prekes: ['Prekės ir paslaugos', () => import('./pages/products.mjs')],
   saskaitos: ['Sąskaitų planas', () => import('./pages/chart.mjs')],
+  rekvizitai: ['Įmonė iš rekvizitai.lt', () => import('./pages/rekvizitai.mjs')],
   atlyginimai: ['Atlyginimai', () => import('./pages/payroll.mjs')],
   ataskaitos: ['Ataskaitos', () => import('./pages/reports.mjs')],
   integracijos: ['Integracijos', () => import('./pages/integrations.mjs')],
@@ -21,7 +23,7 @@ const PAGES = {
 
 // Top menu bar with drop-down menus. Items: [label, hash path, capability?] or '-' (separator).
 export const MENU = [
-  ['Žinynai', [['Sąskaitų planas', 'saskaitos'], ['Kontrahentai', 'kontaktai'], ['Prekės ir paslaugos', 'prekes'], ['Darbuotojai', 'atlyginimai/darbuotojai'], '-',
+  ['Žinynai', [['Sąskaitų planas', 'saskaitos'], ['Kontrahentai', 'kontaktai'], ['Įmonė iš rekvizitai.lt', 'rekvizitai'], ['Prekės ir paslaugos', 'prekes'], ['Darbuotojai', 'atlyginimai/darbuotojai'], '-',
     ['PVM kodai', 'nustatymai/pvm'], ['Dokumentų serijos', 'nustatymai/serijos'], ['Klasifikavimo taisyklės', 'nustatymai/taisykles']]],
   ['Dokumentai', [['Dokumentų dėžutė (įkėlimas)', 'deze'], ['Dokumentų archyvas', 'dokumentai'], ['Įkelti sutartį ar kitą dokumentą', 'dokumentai/naujas', 'write']]],
   ['Prekyba', [['Pardavimo sąskaitos', 'pardavimai'], ['Nauja pardavimo sąskaita', 'pardavimai/nauja', 'write'], ['Parduotuvių užsakymai', 'pardavimai/uzsakymai'], '-',
@@ -155,7 +157,7 @@ async function onboarding() {
   const seriesInputs = series.map((s) => ({code: s.code, doc_type: s.doc_type, padding: s.padding, description: s.description, next: input({value: s.next_number, inputmode: 'numeric', 'aria-label': `${s.code} kitas numeris`})}));
   const iban = input({placeholder: 'LT…'}), bankName = input({placeholder: 'Banko pavadinimas'});
   const steps = [
-    ['Įmonė', () => h('div', {class: 'form-grid'}, field('Pavadinimas', f.name), field('Teisinė forma', f.legal_form), field('Įmonės kodas', f.company_code, '7–9 skaitmenys'), field('Adresas', f.address), field('El. paštas', f.email), field('Telefonas', f.phone))],
+    ['Įmonė', () => h('div', null, h('div', {class: 'actions-left'}, rekvizitaiButton(f), h('span', {class: 'hint'}, ' – nukopijuokite savo įmonės puslapį iš rekvizitai.lt, ir laukai užsipildys')), h('div', {class: 'form-grid'}, field('Pavadinimas', f.name), field('Teisinė forma', f.legal_form), field('Įmonės kodas', f.company_code, '7–9 skaitmenys'), field('Adresas', f.address), field('El. paštas', f.email), field('Telefonas', f.phone)))],
     ['PVM', () => h('div', {class: 'form-grid'}, h('label', {class: 'check'}, f.vat_registered, ' Įmonė yra PVM mokėtoja'), field('PVM mokėtojo kodas', f.vat_code), field('PVM mokėtoja nuo', f.vat_registered_from),
       h('p', {class: 'hint'}, 'PVM tarifai ir kodai pagal VMI PVM klasifikatorių (galioja nuo 2026-01-01). Taikymą turi patikrinti buhalteris – žr. Nustatymai → PVM kodai.'))],
     ['Sąskaitos', () => h('div', null, h('p', null, 'Įdiegtas pradinis supaprastintas sąskaitų planas ir kontavimo susiejimai (pirkėjų/tiekėjų skolos, PVM, bankas, avansai, mokesčiai). Juos galite keisti Nustatymuose.'),

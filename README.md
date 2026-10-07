@@ -14,6 +14,7 @@ A working web application for one Lithuanian legal entity (EUR, Europe/Vilnius).
 | Ledger and reports | Chart of accounts from the accountant's workbook (UAB; class → group → account tree, posting only to leaf accounts, enforced in the DB) and posting roles; journal with DB-enforced balance, period lock and immutability; reversals; opening balances; manual cost-of-sales workflow. Reports: trial balance, general ledger with drill-down, P&L (flagged incomplete when cost of sales is missing), balance sheet, VAT registers, receivables and payables aging, sales (period/store/customer/product), operational order metrics, purchases, payments. CSV/XLSX export. Ledger reconciliation checks. |
 | Products and stock | Product cards: code, barcode, group, units, sale and purchase prices, VAT code, revenue and purchase accounts, supplier, manufacturer, origin, CN code, weight, location, minimum stock, notes, store mappings. Stock balances and movement history come from posted invoices plus manual opening balances, count adjustments and write-offs. Includes a low-stock filter and a weighted average cost. |
 | Payroll | Employees; monthly payroll sheets using LT 2026 MMA/NPD formula, GPM, employee and employer Sodra (dated parameters), a working-day norm with public holidays and pro-rata starts; approval posts one balanced journal entry; cancel by reversal; printable payslips. |
+| Company details | *Užpildyti iš rekvizitai.lt* fills company or counterparty fields from a rekvizitai.lt page, using a one-click "→ Apskaita" bookmarklet or a paste of the page text. Fields: name, legal form, code, VAT code, address, phone, e-mail, website, manager, IBAN. The VAT code is checked in EU VIES. See [docs/COMPANY_DATA.md](docs/COMPANY_DATA.md). |
 | Interface | Desktop-style top menu bar with drop-down menus (Žinynai, Dokumentai, Prekyba, Likučiai, Finansai, Atlyginimai, Ataskaitos, Servisas) and a quick-action toolbar. Keyboard-navigable and collapsing behind a toggle on phones. |
 | Sales | Manual invoices with series numbering assigned on approval (unique under concurrency), PDF generation, credit notes/partial returns linked to the original, manual purchases. |
 | Integrations | Saleor (GraphQL, JWS-verified webhooks, initial, incremental and reconcile syncs) and OpenCart (a bundled read-only extension, because the core API cannot list orders). Durable, resumable jobs with retries and rate limits. Out-of-order protection. Configurable status mapping and invoice mode, with protection against double issuing. Refunds become credit-note proposals; posted invoices are never changed. Demo connections are explicitly labelled. |
@@ -79,6 +80,8 @@ See [.env.example](.env.example). Secrets are read only from the environment and
 | Text layer (poppler), OCR (Tesseract), structured extraction (`rules-lt`) | Enabled, local | Nothing |
 | LLM line classification (`LLM_PROVIDER=anthropic`) | **Disabled** | Only line descriptions, units, net amounts and the list of allowed account codes/names. No party names, codes, IBANs or files. |
 | ClamAV (`CLAMSCAN_PATH`) | Disabled | Nothing (local) |
+| EU VIES VAT check (`VIES_URL`) | On request (*Tikrinti VIES* button) | Only the VAT number being checked |
+| Company details from rekvizitai.lt | On request, in the user's browser | Nothing from the server. The "→ Apskaita" bookmarklet or a paste passes the page text to this app inside the browser; the server never contacts rekvizitai.lt. |
 
 When the LLM provider is enabled, its output is validated against a strict schema and an account allowlist. It can only fill lines that have no rule, product or keyword suggestion, and its suggestions are labelled. It never creates rules, posts entries or changes permissions; see [docs/SECURITY.md](docs/SECURITY.md). With no provider configured, the workflow is complete and runs locally.
 
@@ -91,7 +94,7 @@ When the LLM provider is enabled, its output is validated against a strict schem
 ```bash
 createdb apskaita_test   # dedicated DB; tests DROP and recreate its public schema
 npm run check            # syntax of all JS and PHP files
-npm test                 # 51 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
+npm test                 # 55 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
 npm run test:browser     # Chromium UI smoke test (Playwright), screenshots in var/screenshots
 npm run perf             # 10,000-document timing (uses database apskaita_perf)
 ```
@@ -103,6 +106,7 @@ npm run perf             # 10,000-document timing (uses database apskaita_perf)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) – modules, data model, how each server invariant is enforced
 - [docs/ACCOUNTING.md](docs/ACCOUNTING.md) – chart of accounts, posting rules, rounding, settlements, cost of sales, stock
 - [docs/PAYROLL.md](docs/PAYROLL.md) – payroll parameters, calculation, workflow and limits
+- [docs/COMPANY_DATA.md](docs/COMPANY_DATA.md) – filling company details from rekvizitai.lt, VIES check
 - [docs/FORMATS.md](docs/FORMATS.md) – supported upload and bank formats, extraction behaviour and limits
 - [docs/TAX_RULES.md](docs/TAX_RULES.md) – VAT codes, sources, supported scenarios, assumptions needing accountant review
 - [docs/ISAF.md](docs/ISAF.md) – i.SAF mapping, XSD provenance, validation

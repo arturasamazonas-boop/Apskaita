@@ -42,6 +42,22 @@ export function register(r, {pool, auth, config}) {
     await pool.query('SELECT 1');
     return {ok: true};
   }, {public: true});
+  // EU VIES check of a VAT number: validity and the registered name (Lithuania does not publish addresses there).
+  r.get('/api/vat-check', async ({user, query}) => {
+    requireCap(user, 'read');
+    const code = normalizeVat(s(query.code, 20));
+    const m = /^([A-Z]{2})([0-9A-Z]{2,13})$/.exec(code);
+    if (!m) throw new AppError(400, 'bad_vat', 'Netinkamas PVM mokėtojo kodas.');
+    let r;
+    try {
+      r = await fetch(`${config.viesUrl}/ms/${m[1] === 'GR' ? 'EL' : m[1]}/vat/${m[2]}`, {signal: AbortSignal.timeout(10000), headers: {accept: 'application/json'}});
+    } catch (e) { throw new AppError(502, 'vies_unavailable', `VIES sistema nepasiekiama (${e.name === 'TimeoutError' ? 'laukimo laikas baigėsi' : 'ryšio klaida'}). Pabandykite vėliau.`); }
+    if (!r.ok) throw new AppError(502, 'vies_unavailable', `VIES sistema grąžino klaidą (${r.status}). Pabandykite vėliau.`);
+    const d = await r.json();
+    if (d.userError && !['VALID', 'INVALID'].includes(d.userError)) throw new AppError(502, 'vies_unavailable', `VIES: ${d.userError}. Pabandykite vėliau.`);
+    const clean = (v) => (v && v !== '---' && v !== 'N/A' ? String(v).trim() : '');
+    return {code, valid: !!d.isValid, name: clean(d.name), address: clean(d.address), checkedAt: d.requestDate || new Date().toISOString()};
+  });
   r.get('/api/bootstrap-status', async () => ({needsAdmin: !(await pool.query('SELECT 1 FROM users LIMIT 1')).rowCount, openAccess: !!config.openAccess}), {public: true});
 
   // ---------------------------------------------------------------- company settings
@@ -51,7 +67,9 @@ export function register(r, {pool, auth, config}) {
     const b = await readJson(req);
     const f = {name: s(b.name), legal_form: s(b.legal_form, 50), company_code: s(b.company_code, 20).replace(/\s/g, ''), vat_code: normalizeVat(s(b.vat_code, 20)),
       vat_registered: !!b.vat_registered, vat_registered_from: isDate(b.vat_registered_from) ? b.vat_registered_from : null, address: s(b.address), email: s(b.email, 200), phone: s(b.phone, 50),
-      asset_threshold: money.norm(b.asset_threshold || '500'), retention_note: s(b.retention_note, 2000), onboarding_done: b.onboarding_done === undefined ? undefined : !!b.onboarding_done};
+      asset_threshold: money.norm(b.asset_threshold || '500'), retention_note: s(b.retention_note, 2000), onboarding_done: b.onboarding_done === undefined ? undefined : !!b.onboarding_done,
+      website: b.website === undefined ? undefined : s(b.website, 200), manager: b.manager === undefined ? undefined : s(b.manager, 120),
+      iban: b.iban === undefined ? undefined : normalizeIban(s(b.iban, 40)), bank_name: b.bank_name === undefined ? undefined : s(b.bank_name, 100)};
     if (f.company_code && !/^\d{7,9}$/.test(f.company_code)) throw new AppError(400, 'bad_code', 'Įmonės kodas turi būti 7–9 skaitmenys.');
     if (f.vat_registered && !/^LT(\d{9}|\d{12})$/.test(f.vat_code)) throw new AppError(400, 'bad_vat', 'PVM mokėtojo kodas turi būti LT ir 9 arba 12 skaitmenų.');
     const keys = Object.keys(f).filter((k) => f[k] !== undefined);
@@ -282,16 +300,18 @@ export function register(r, {pool, auth, config}) {
     requireCap(user, 'write');
     const b = await readJson(req);
     if (!s(b.name)) throw new AppError(400, 'name', 'Nurodykite pavadinimą.');
-    const row = (await pool.query(`INSERT INTO counterparties(name, company_code, vat_code, address, country, email, iban, is_supplier, is_customer, is_individual, notes)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`, [s(b.name), s(b.company_code, 20), normalizeVat(s(b.vat_code, 20)), s(b.address), s(b.country || 'LT', 2).toUpperCase(), s(b.email, 200), normalizeIban(s(b.iban, 40)), !!b.is_supplier, !!b.is_customer, !!b.is_individual, s(b.notes, 2000)])).rows[0];
+    if (s(b.company_code) && (await pool.query('SELECT 1 FROM counterparties WHERE company_code=$1', [s(b.company_code, 20).replace(/\s/g, '')])).rowCount) throw new AppError(409, 'exists', `Kontrahentas su kodu ${s(b.company_code)} jau yra.`);
+    const row = (await pool.query(`INSERT INTO counterparties(name, company_code, vat_code, address, country, email, iban, is_supplier, is_customer, is_individual, notes, legal_form, phone, website, manager)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`, [...cpValues(b)])).rows[0];
     await audit(pool, {userId: user.id, action: 'counterparty.create', entityType: 'counterparty', entityId: row.id});
     return row;
   });
   r.put('/api/counterparties/:id', async ({req, user, params}) => {
     requireCap(user, 'write');
     const b = await readJson(req);
-    const row = (await pool.query(`UPDATE counterparties SET name=$2, company_code=$3, vat_code=$4, address=$5, country=$6, email=$7, iban=$8, is_supplier=$9, is_customer=$10, is_individual=$11, notes=$12 WHERE id=$1 RETURNING *`,
-      [params.id, s(b.name), s(b.company_code, 20), normalizeVat(s(b.vat_code, 20)), s(b.address), s(b.country || 'LT', 2).toUpperCase(), s(b.email, 200), normalizeIban(s(b.iban, 40)), !!b.is_supplier, !!b.is_customer, !!b.is_individual, s(b.notes, 2000)])).rows[0];
+    if (!s(b.name)) throw new AppError(400, 'name', 'Nurodykite pavadinimą.');
+    const row = (await pool.query(`UPDATE counterparties SET name=$2, company_code=$3, vat_code=$4, address=$5, country=$6, email=$7, iban=$8, is_supplier=$9, is_customer=$10, is_individual=$11, notes=$12,
+      legal_form=$13, phone=$14, website=$15, manager=$16 WHERE id=$1 RETURNING *`, [params.id, ...cpValues(b)])).rows[0];
     if (!row) throw new AppError(404, 'not_found', 'Kontrahentas nerastas.');
     await audit(pool, {userId: user.id, action: 'counterparty.update', entityType: 'counterparty', entityId: row.id, details: {note: 'Užregistruotų dokumentų rekvizitai nekeičiami (išsaugota kopija).'}});
     return row;
@@ -340,6 +360,11 @@ export async function saveRule(db, user, b) {
   [key, version, s(b.name, 200), b.register, b.counterparty_id || null, s(b.match_text, 200), Math.max(1, Math.min(10000, Number(b.priority) || 100)), b.effective_from, b.effective_to || null, b.account_code, b.line_type, b.vat_treatment, user.id, s(b.note, 500)])).rows[0];
   await audit(db, {userId: user.id, action: version > 1 ? 'rule.new_version' : 'rule.create', entityType: 'rule', entityId: key, details: {version, ruleId: row.id, signedOffBy: user.id, scope: {register: b.register, counterpartyId: b.counterparty_id || null, matchText: b.match_text || ''}, priority: row.priority, effectiveFrom: row.effective_from, effectiveTo: row.effective_to, account: row.account_code, vat: row.vat_treatment}});
   return row;
+}
+
+function cpValues(b) {
+  return [s(b.name), s(b.company_code, 20).replace(/\s/g, ''), normalizeVat(s(b.vat_code, 20)), s(b.address), s(b.country || 'LT', 2).toUpperCase(), s(b.email, 200), normalizeIban(s(b.iban, 40)),
+    !!b.is_supplier, !!b.is_customer, !!b.is_individual, s(b.notes, 2000), s(b.legal_form, 50), s(b.phone, 50), s(b.website, 200), s(b.manager, 120)];
 }
 
 export async function sourceLink(db, e) {

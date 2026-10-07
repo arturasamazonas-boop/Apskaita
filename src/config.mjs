@@ -30,6 +30,7 @@ export function loadConfig(env = process.env) {
     anthropicApiKey: env.ANTHROPIC_API_KEY || '',
     anthropicModel: env.ANTHROPIC_MODEL || '',
     publicBaseUrl: env.PUBLIC_BASE_URL || '',
+    viesUrl: (env.VIES_URL || 'https://ec.europa.eu/taxation_customs/vies/rest-api').replace(/\/$/, ''),
   };
   if (production && cfg.secretKey.length < 32) throw new Error('APP_SECRET_KEY must be set (>= 32 chars) in production');
   return cfg;
