@@ -67,6 +67,7 @@ async function entryModal(id) {
     e.source?.type === 'invoice' ? h('a', {class: 'btn btn-small', href: `#/pirkimai/s/${e.source.id}`}, 'Sąskaita') : null,
     e.source?.type === 'bank_transaction' ? h('a', {class: 'btn btn-small', href: `#/bankas/tx/${e.source.id}`}, 'Banko operacija') : null,
     e.source?.type === 'payroll' ? h('a', {class: 'btn btn-small', href: e.source.href}, 'DU žiniaraštis') : null,
+    ['depreciation', 'asset_disposal'].includes(e.source?.type) ? h('a', {class: 'btn btn-small', href: e.source.href}, e.source.label) : null,
     table([{label: 'Sąskaita', render: (l) => `${l.account_code} ${l.account_name}`}, {label: 'Debetas', num: true, render: (l) => (Number(l.debit) ? money(l.debit) : '')}, {label: 'Kreditas', num: true, render: (l) => (Number(l.credit) ? money(l.credit) : '')}, {label: 'Aprašymas', key: 'description'}], e.lines)), {wide: true});
 }
 

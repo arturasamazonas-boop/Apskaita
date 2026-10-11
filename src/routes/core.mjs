@@ -381,5 +381,13 @@ export async function sourceLink(db, e) {
     const r = (await db.query('SELECT id, period FROM payroll_runs WHERE id=$1', [e.source_id])).rows[0];
     return r ? {type: 'payroll', id: r.id, label: `DU žiniaraštis ${r.period}`, href: `#/atlyginimai/${r.id}`} : null;
   }
+  if (e.source_type === 'depreciation') {
+    const r = (await db.query('SELECT id, period FROM depreciation_runs WHERE id=$1', [e.source_id])).rows[0];
+    return r ? {type: 'depreciation', id: r.id, label: `Nusidėvėjimas ${r.period}`, href: '#/turtas/nusidevejimas'} : null;
+  }
+  if (e.source_type === 'asset_disposal') {
+    const a = (await db.query('SELECT id, inv_no, name FROM fixed_assets WHERE id=$1', [e.source_id])).rows[0];
+    return a ? {type: 'asset_disposal', id: a.id, label: `Turto nurašymas ${a.inv_no} ${a.name}`, href: `#/turtas/${a.id}`} : null;
+  }
   return {type: e.source_type, id: e.source_id, label: e.source_type};
 }

@@ -17,6 +17,7 @@ import * as salesRoutes from './routes/sales.mjs';
 import * as integrationRoutes from './routes/integrations.mjs';
 import * as productRoutes from './routes/products.mjs';
 import * as payrollRoutes from './routes/payroll.mjs';
+import * as assetRoutes from './routes/assets.mjs';
 import {renderAndStorePdf} from './sales/service.mjs';
 import {integrationJobHandlers} from './integrations/sync.mjs';
 
@@ -28,7 +29,7 @@ export async function createApp(config, {pool: givenPool, log = console} = {}) {
   const llm = createLlmProvider(config, pool);
   const deps = {pool, storage, config, auth, llm, log};
   const router = createRouter();
-  for (const m of [coreRoutes, docRoutes, bankRoutes, reportRoutes, salesRoutes, integrationRoutes, productRoutes, payrollRoutes]) m.register(router, deps);
+  for (const m of [coreRoutes, docRoutes, bankRoutes, reportRoutes, salesRoutes, integrationRoutes, productRoutes, payrollRoutes, assetRoutes]) m.register(router, deps);
 
   const handlers = {
     extract_invoice: (p) => processInvoiceDocument(deps, p.documentId, {force: !!p.force}),
