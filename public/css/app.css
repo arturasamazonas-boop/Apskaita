@@ -228,3 +228,20 @@ details summary { cursor: pointer; margin: .5rem 0; font-weight: 600; }
 @media (min-width: 821px) { .menubar > .menu:nth-last-child(-n+3) .menu-sub { left: auto; right: 100%; } }
 .fs-matrix th { white-space: normal; font-size: .78rem; vertical-align: bottom; min-width: 6rem; max-width: 8rem; } .fs-matrix td { font-size: .85rem; } .fs-matrix td:nth-child(2) { min-width: 18rem; }
 .fs-matrix tr.fs-total td { font-weight: 700; background: var(--bg); }
+/* FR0600 as in VMI EDS: official form page as background, values in its cells (sizes in % of the form width). */
+.eds-form { position: relative; max-width: 960px; margin: .5rem auto; container-type: inline-size; box-shadow: 0 1px 6px rgba(0,0,0,.25); background: #e6e6e6; user-select: none; }
+.eds-bg { display: block; width: 100%; height: auto; }
+.eds-field { position: absolute; }
+.eds-field:not(.ro):hover { outline: 1px dashed #2a5bd7; cursor: text; }
+.eds-ch { position: absolute; display: flex; align-items: center; justify-content: center; font: 1.71cqw/1 "DejaVu Sans", Arial, sans-serif; color: #00008c; pointer-events: none; }
+.eds-input { position: absolute; inset: 0; width: 100%; height: 100%; box-sizing: border-box; border: 0; padding: 0 .4em; font: 1.7cqw/1 "DejaVu Sans", Arial, sans-serif; color: #00008c; background: #fffbe6; opacity: 0; letter-spacing: .15em; }
+.eds-input.right { text-align: right; }
+.eds-input:focus { opacity: 1; outline: 2px solid #2a5bd7; z-index: 2; }
+.eds-check { position: absolute; border: 0; padding: 0; margin: 0; background: transparent; color: #00008c; font: 700 2.1cqw/1 "DejaVu Sans", Arial, sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.eds-check:hover, .eds-check:focus-visible { outline: 1px dashed #2a5bd7; }
+/* i.SAF registers preview (as in VMI i.SAF). */
+.isaf-grid th { font-size: .75rem; white-space: normal; vertical-align: bottom; background: #e8eef7; }
+.isaf-grid td { font-size: .82rem; white-space: nowrap; }
+.isaf-grid tr.isaf-cont td { border-top-color: transparent; }
+.isaf-grid tfoot td { font-weight: 700; background: var(--bg); }
+.isaf-head th { text-align: left; width: 22rem; font-weight: 600; }

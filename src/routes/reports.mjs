@@ -14,6 +14,7 @@ import {FORMS, buildStatement} from '../reports/statements.mjs';
 import {renderStatementPdf} from '../reports/statement-pdf.mjs';
 import {debtAct, renderDebtActPdf} from '../reports/debt-act.mjs';
 import {readJson} from '../http.mjs';
+import {LAYOUT as FR0600_LAYOUT, fr0600Values, applyEdits, toFFData, placements, renderFr0600Pdf} from '../reports/eds-fr0600.mjs';
 import {money} from '../lib/money.mjs';
 
 const REPORTS = {
@@ -41,7 +42,8 @@ export function register(r, {pool, storage}) {
   r.get('/api/isaf/check', async ({user, query}) => {
     requireCap(user, 'read');
     const {xml, ...rest} = await isafCheck(query);
-    return {...rest, size: xml.length, note: 'Eksportas nėra pateikimas: failą į VMI i.SAF sistemą įkelkite patys.'};
+    // preview=1 also returns the XML itself, so the page can show the registers exactly as they will be uploaded.
+    return {...rest, size: xml.length, ...(query.preview === '1' && {xml}), note: 'Eksportas nėra pateikimas: failą į VMI i.SAF sistemą įkelkite patys.'};
   });
   r.get('/api/isaf/download', async ({user, query, res}) => {
     requireCap(user, 'approve');
@@ -55,6 +57,32 @@ export function register(r, {pool, storage}) {
     });
     res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
     res.end(c.xml);
+  });
+  // ---------------------------------------------------------------- PVM deklaracija FR0600 as in VMI EDS
+  const frPeriod = (q) => {
+    q = {...q, correction: String(q.correction ?? '')};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(q.from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(q.to || '') || q.from > q.to) throw new AppError(400, 'period', 'Nurodykite mokestinį laikotarpį.');
+    return {from: q.from, to: q.to, correction: q.correction === '1' || q.correction === 'true'};
+  };
+  r.get('/api/eds/fr0600/layout', async ({user}) => { requireCap(user, 'read'); return FR0600_LAYOUT; });
+  r.get('/api/eds/fr0600', async ({user, query}) => {
+    requireCap(user, 'read');
+    const d = await fr0600Values(pool, frPeriod(query));
+    return {...d, placements: placements(d.values), page: FR0600_LAYOUT.page};
+  });
+  // The on-screen form posts the user's edits (fields the program does not fill); the file is built from the calculated values plus the edits.
+  r.post('/api/eds/fr0600/file', async ({req, user, res}) => {
+    requireCap(user, 'read');
+    const b = await readJson(req);
+    const p = frPeriod(b);
+    const d = await fr0600Values(pool, p);
+    const values = applyEdits(d.values, b.values);
+    const pdf = b.format === 'pdf';
+    const body = pdf ? await renderFr0600Pdf(values) : Buffer.from(toFFData(values, {login: user.email || 'apskaita', today: todayVilnius()}), 'utf8');
+    const name = `FR0600_${p.from}_${p.to}${p.correction ? '_patikslinta' : ''}.${pdf ? 'pdf' : 'ffdata'}`;
+    await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'fr0600', details: {format: pdf ? 'pdf' : 'ffdata', ...p, edited: Object.keys(b.values || {})}});
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': pdf ? 'application/pdf' : 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
+    res.end(body);
   });
   // ---------------------------------------------------------------- financial statements (VAS forms)
   r.get('/api/statements', async ({user}) => {

@@ -43,3 +43,5 @@ The selection rule (assumption): invoices are included by **invoice date** withi
 - The file validates with `xmllint --schema vendor/isaf/isaf_1.2.xsd`. Messages are shown in the UI.
 
 Tests in `test/06-isaf.test.mjs` generate a mixed month (B2B and B2C sales, 5 %, 12 % and 21 % rates, a credit note, an OCR'd purchase) and validate it with xmllint. They also check blocking errors and the reporting of schema violations.
+
+The page also previews the generated file the way it is uploaded: the header and the issued and received invoice registers, one row per `DocumentTotal`. See [EDS.md](EDS.md#isaf-ataskaitos--isaf-eksportas).

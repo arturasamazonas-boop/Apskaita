@@ -5,10 +5,11 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | Command | What it does |
 |---|---|
 | `npm run check` | `node --check` on all JS modules, `php -l` on the OpenCart extension |
-| `npm test` | 64 `node:test` tests across 14 files |
+| `npm test` | 68 `node:test` tests across 15 files |
 | `npm run test:browser` | Chromium (Playwright) UI smoke test of the real UI and server |
 | `node test-browser/rekvizitai.mjs [dir]` | Runs the "→ Apskaita" bookmarklet on a company page. Checks the review screen (filled fields, VIES stub), counterparty creation, and the paste dialog in the company settings. |
 | `node test-browser/statements.mjs [dir]` | Statement forms page: opens a form from the menu, shows the balance check, saves a hand-entered previous-period amount and downloads the PDF. Also checks the second-level menu by mouse, keyboard and on a phone, plus the cash flow and equity pages |
+| `node test-browser/fr0600.mjs [dir]` | FR0600 page: opens it from the menu, checks values in the form cells (E11 right-aligned in its boxes), types into field 32 and checks the recalculated 36, switches to Patikslinta, downloads .ffdata (checks fields) and PDF. Also checks the i.SAF register preview and the phone layout. |
 | `node test-browser/open-access.mjs` | With `OPEN_ACCESS=true` the app opens without the login form |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 
@@ -106,3 +107,12 @@ The tests check:
 - the statement of changes in equity over two years, with movements reconciling and row 30 equal to equity in the balance sheet, and its PDF;
 - FR0600 fields from approved invoices at 21 % and 12 % with deductible purchase VAT;
 - the debt reconciliation act and its PDF.
+
+## FR0600 as in EDS (`14-eds-fr0600`)
+
+- The layout matches the VMI template: form ID, 45 fields, cell counts, read-only 36, radio group items.
+- Values are in whole euros (8.40 → 8) and empty fields stay empty. Pirminė and Patikslinta are tested. Right-aligned cell placement is checked, and dates skip the dashes.
+- Edits: 36 is recalculated, read-only fields are ignored, and invalid amounts, percentages and unknown fields are refused.
+- The `.ffdata` download has the EDS structure and values including edits. The PDF download is also checked.
+
+The PDF and the web form were also checked visually: characters fall into the form's boxes.

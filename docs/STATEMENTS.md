@@ -229,6 +229,8 @@ Field amounts come from invoices whose VAT point falls in the period, using FR06
 
 Reverse charge, import and EU acquisitions (12, 21–24, 26, 27, 32–34) are marked as not filled automatically. The return itself is submitted in VMI EDS.
 
+The table above is the breakdown. The return itself, on the official form with an EDS upload file (.ffdata) and a PDF, is described in [EDS.md](EDS.md).
+
 ### Skolų suderinimo aktas
 
 For one counterparty on a date the act shows:

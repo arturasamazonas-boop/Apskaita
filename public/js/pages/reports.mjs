@@ -1,4 +1,5 @@
 // Ataskaitos: financial statements from the ledger, registers, aging, sales, drill-down, CSV/XLSX export, i.SAF, journal.
+import {isafView} from '../lib/isaf-view.mjs';
 import {h, clear, get, post, api, pageHeader, section, table, money, date, dateTime, guard, select, input, field, can, modal, toast, yearStart, monthStart, today} from '../core.mjs';
 
 const REPORTS = [
@@ -74,7 +75,7 @@ async function isaf(body, state) {
   const type = select([['F', 'Pilnas (F)'], ['S', 'Išrašytos sąskaitos (S)'], ['P', 'Gautos sąskaitos (P)']], 'F');
   const out = h('div');
   const check = async () => {
-    const r = await get(`/api/isaf/check?${new URLSearchParams({from: from.value, to: to.value, type: type.value})}`);
+    const r = await get(`/api/isaf/check?${new URLSearchParams({from: from.value, to: to.value, type: type.value, preview: '1'})}`);
     clear(out, h('p', {class: 'banner'}, r.note),
       h('p', null, `Pardavimai: ${r.summary.sales?.invoices ?? 0} sąsk., PVM ${money(r.summary.sales?.vat)}. Pirkimai: ${r.summary.purchase?.invoices ?? 0} sąsk., PVM ${money(r.summary.purchase?.vat)}.`),
       h('p', {class: r.xsd.valid ? 'banner' : 'banner banner-warn'}, r.xsd.valid ? '✓ Failas atitinka i.SAF 1.2 XSD schemą.' : r.xsd.valid === null ? r.xsd.messages[0] : `✗ XSD klaidos: ${r.xsd.messages.join(' ')}`),
@@ -86,7 +87,10 @@ async function isaf(body, state) {
         if (!res.ok) throw new Error((await res.json()).error);
         const blob = await res.blob(); const a = h('a', {href: URL.createObjectURL(blob), download: `isaf_${type.value}_${from.value}_${to.value}.xml`}); document.body.append(a); a.click(); a.remove();
         toast('Failas sugeneruotas ir išsaugotas dokumentuose. Pateikite jį VMI i.SAF sistemoje.', 'ok');
-      })}, 'Atsisiųsti XML') : null);
+      })}, 'Atsisiųsti XML') : null,
+      h('h2', {class: 'isaf-title'}, 'Registrų peržiūra – kaip duomenys bus matomi VMI i.SAF'),
+      h('p', {class: 'hint'}, 'Rodoma tiesiai iš sugeneruoto XML failo: kiekviena eilutė – viena DocumentTotal (PVM kodas) dalis; laukai ir jų eiliškumas pagal i.SAF 1.2 specifikaciją.'),
+      isafView(r.xml));
   };
   clear(body, h('h2', null, 'i.SAF (VMI) eksportas'), h('p', {class: 'hint'}, 'Formuojama pagal i.SAF 1.2 specifikaciją ir tikrinama pagal XSD. Eksportas nėra pateikimas – failą įkelkite į VMI i.SAF sistemą patys. Juridiniams asmenims – iki kito mėnesio 20 d.'),
     h('div', {class: 'filters'}, field('Nuo', from), field('Iki', to), field('Duomenys', type), h('button', {class: 'btn btn-primary', onclick: () => guard(check)}, 'Tikrinti')), out);

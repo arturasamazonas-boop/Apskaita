@@ -19,6 +19,7 @@ const PAGES = {
   ataskaitos: ['Ataskaitos', () => import('./pages/reports.mjs')],
   finansines: ['Finansinės ataskaitos', () => import('./pages/statements.mjs')],
   'skolu-aktas': ['Skolų suderinimo aktas', () => import('./pages/debt-act.mjs')],
+  fr0600: ['PVM deklaracija FR0600', () => import('./pages/fr0600.mjs')],
   integracijos: ['Integracijos', () => import('./pages/integrations.mjs')],
   nustatymai: ['Nustatymai', () => import('./pages/settings.mjs')],
 };
@@ -38,7 +39,7 @@ export const MENU = [
     ['Pelno (nuostolių) ataskaita (3 VAS, 1 priedas)', 'finansines/pelno-nuostoliu'], ['Trumpa pelno (nuostolių) ataskaita (2 priedas)', 'finansines/pelno-nuostoliu-trumpa'],
     ['Pinigų srautų ataskaita (5 VAS, netiesioginis būdas)', 'finansines/pinigu-srautai'], ['Pinigų srautų ataskaita (tiesioginis būdas)', 'finansines/pinigu-srautai-tiesioginis'],
     ['Nuosavo kapitalo pokyčių ataskaita (4 VAS)', 'finansines/nuosavo-kapitalo-pokyciai'], '-',
-    ['PVM deklaracijos FR0600 duomenys', 'ataskaitos/pvm-deklaracija'], ['Pardavimų PVM registras', 'ataskaitos/pvm-pardavimai'], ['Pirkimų PVM registras', 'ataskaitos/pvm-pirkimai'], ['i.SAF eksportas', 'ataskaitos/isaf'], '-',
+    ['PVM deklaracija FR0600 (EDS forma)', 'fr0600'], ['FR0600 skaičiavimo išklotinė', 'ataskaitos/pvm-deklaracija'], ['Pardavimų PVM registras', 'ataskaitos/pvm-pardavimai'], ['Pirkimų PVM registras', 'ataskaitos/pvm-pirkimai'], ['i.SAF eksportas', 'ataskaitos/isaf'], '-',
     ['Kitos ataskaitos', [['Apyvartos žiniaraštis (bandomasis balansas)', 'ataskaitos/bandomasis'], ['Didžioji knyga', 'ataskaitos/knyga'], ['Kasos knyga (272)', 'ataskaitos/knyga/272'],
       ['Pelnas (nuostoliai) pagal sąskaitas', 'ataskaitos/pelnas'], ['Balansas pagal sąskaitas', 'ataskaitos/balansas'], '-',
       ['Pirkėjų skolos', 'ataskaitos/gautinos'], ['Skolos tiekėjams', 'ataskaitos/moketinos'], ['Skolų suderinimo aktas', 'skolu-aktas'], '-',
