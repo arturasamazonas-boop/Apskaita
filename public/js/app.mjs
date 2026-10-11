@@ -17,6 +17,7 @@ const PAGES = {
   rekvizitai: ['Įmonė iš rekvizitai.lt', () => import('./pages/rekvizitai.mjs')],
   atlyginimai: ['Atlyginimai', () => import('./pages/payroll.mjs')],
   ataskaitos: ['Ataskaitos', () => import('./pages/reports.mjs')],
+  finansines: ['Finansinės ataskaitos', () => import('./pages/statements.mjs')],
   integracijos: ['Integracijos', () => import('./pages/integrations.mjs')],
   nustatymai: ['Nustatymai', () => import('./pages/settings.mjs')],
 };
@@ -32,7 +33,9 @@ export const MENU = [
   ['Finansai', [['Banko operacijos', 'bankas'], ['Banko išrašai', 'bankas/israsai'], ['Importuoti išrašą', 'bankas/importas', 'write'], ['Avansai', 'bankas/avansai'], ['Banko sąskaitos', 'bankas/saskaitos'], '-',
     ['Žurnalas ir rankiniai įrašai', 'ataskaitos/zurnalas'], ['Didžioji knyga', 'ataskaitos/knyga']]],
   ['Atlyginimai', [['Darbo užmokesčio žiniaraščiai', 'atlyginimai'], ['Naujas žiniaraštis', 'atlyginimai/naujas', 'write'], ['Darbuotojai', 'atlyginimai/darbuotojai'], ['Tarifai ir parametrai', 'atlyginimai/parametrai']]],
-  ['Ataskaitos', [['Pelno (nuostolių) ataskaita', 'ataskaitos/pelnas'], ['Balansas', 'ataskaitos/balansas'], ['Bandomasis balansas', 'ataskaitos/bandomasis'], '-',
+  ['Ataskaitos', [['Balansas (2 VAS, 1 priedas)', 'finansines/balansas'], ['Sutrumpintas balansas (2 priedas)', 'finansines/balansas-sutrumpintas'], ['Labai mažų įmonių balansas (3 priedas)', 'finansines/balansas-trumpas'],
+    ['Pelno (nuostolių) ataskaita (3 VAS, 1 priedas)', 'finansines/pelno-nuostoliu'], ['Trumpa pelno (nuostolių) ataskaita (2 priedas)', 'finansines/pelno-nuostoliu-trumpa'], '-',
+    ['Pelnas pagal sąskaitas', 'ataskaitos/pelnas'], ['Balansas pagal sąskaitas', 'ataskaitos/balansas'], ['Bandomasis balansas', 'ataskaitos/bandomasis'], '-',
     ['Pardavimų PVM registras', 'ataskaitos/pvm-pardavimai'], ['Pirkimų PVM registras', 'ataskaitos/pvm-pirkimai'], ['i.SAF eksportas', 'ataskaitos/isaf'], '-',
     ['Pirkėjų skolos', 'ataskaitos/gautinos'], ['Skolos tiekėjams', 'ataskaitos/moketinos'], ['Pardavimai', 'ataskaitos/pardavimai'], ['Užsakymų rodikliai', 'ataskaitos/operaciniai'],
     ['Pirkimai ir sąnaudos', 'ataskaitos/pirkimai'], ['Mokėjimų suvestinė', 'ataskaitos/mokejimai']]],

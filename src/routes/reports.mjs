@@ -10,6 +10,10 @@ import {buildIsaf, validateXsd} from '../isaf/isaf.mjs';
 import {createDocument, addFile} from '../vault/documents.mjs';
 import {tx} from '../db.mjs';
 import path from 'node:path';
+import {FORMS, buildStatement} from '../reports/statements.mjs';
+import {renderStatementPdf} from '../reports/statement-pdf.mjs';
+import {readJson} from '../http.mjs';
+import {money} from '../lib/money.mjs';
 
 const REPORTS = {
   'trial-balance': (db, q) => R.trialBalance(db, q),
@@ -49,6 +53,52 @@ export function register(r, {pool, storage}) {
     });
     res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
     res.end(c.xml);
+  });
+  // ---------------------------------------------------------------- financial statements (VAS forms)
+  r.get('/api/statements', async ({user}) => {
+    requireCap(user, 'read');
+    return Object.entries(FORMS).map(([key, f]) => ({key, name: f.name, kind: f.kind, standard: f.standard, annex: f.annex, who: f.who}));
+  });
+  r.get('/api/statements/:key', async ({user, params, query}) => {
+    requireCap(user, 'read');
+    const st = await buildStatement(pool, params.key, {...query, today: todayVilnius()});
+    if (!st) throw new AppError(404, 'not_found', 'Ataskaitos forma nerasta.');
+    return st;
+  });
+  r.get('/api/statements/:key/pdf', async ({user, params, query, res}) => {
+    requireCap(user, 'read');
+    const st = await buildStatement(pool, params.key, {...query, today: todayVilnius()});
+    if (!st) throw new AppError(404, 'not_found', 'Ataskaitos forma nerasta.');
+    const c = (await pool.query('SELECT * FROM company_settings WHERE id=1')).rows[0];
+    const str = (v, n = 120) => String(v ?? '').trim().slice(0, n);
+    const header = {compiled: /^\d{4}-\d{2}-\d{2}$/.test(query.compiled || '') ? query.compiled : todayVilnius(), number: str(query.number, 20), status: str(query.status, 200),
+      managerTitle: str(query.managerTitle) || c.manager_title, managerName: str(query.managerName) || c.manager, accountantTitle: str(query.accountantTitle) || c.accountant_title, accountantName: str(query.accountantName) || c.accountant_name};
+    const pdf = await renderStatementPdf(st, header);
+    await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: params.key, details: {format: 'pdf', period: st.period, precision: st.precision}});
+    const name = `${params.key}_${st.period.to}.pdf`;
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/pdf', 'Content-Disposition': `${query.inline ? 'inline' : 'attachment'}; filename="${name}"`, 'Cache-Control': 'no-store'});
+    res.end(pdf);
+  });
+  r.put('/api/statements/:key/prior', async ({req, user, params}) => {
+    requireCap(user, 'approve');
+    const form = FORMS[params.key];
+    if (!form) throw new AppError(404, 'not_found', 'Ataskaitos forma nerasta.');
+    const b = await readJson(req);
+    const periodEnd = /^\d{4}-\d{2}-\d{2}$/.test(b.periodEnd || '') ? b.periodEnd : null;
+    if (!periodEnd) throw new AppError(400, 'period', 'Nurodykite praėjusio laikotarpio pabaigos datą.');
+    const leafIds = new Set(form.lines.filter(([, , , s]) => !s.h && !s.sum).map(([id]) => id));
+    return tx(pool, async (db) => {
+      for (const [id, v] of Object.entries(b.values || {})) {
+        if (!leafIds.has(id)) throw new AppError(400, 'line', `Eilutės ${id} redaguoti negalima (suma skaičiuojama).`);
+        const raw = v === null || v === undefined ? '' : String(v).trim().replace(/\s/g, '').replace(',', '.');
+        if (raw === '') { await db.query('DELETE FROM fs_prior_values WHERE form_key=$1 AND period_end=$2 AND line_id=$3', [params.key, periodEnd, id]); continue; }
+        if (!/^-?\d+(\.\d{1,2})?$/.test(raw)) throw new AppError(400, 'amount', `Netinkama suma eilutėje ${id}.`);
+        await db.query(`INSERT INTO fs_prior_values(form_key, period_end, line_id, amount, updated_by) VALUES ($1,$2,$3,$4,$5)
+          ON CONFLICT (form_key, period_end, line_id) DO UPDATE SET amount=EXCLUDED.amount, updated_by=EXCLUDED.updated_by, updated_at=now()`, [params.key, periodEnd, id, money.norm(raw), user.id]);
+      }
+      await audit(db, {userId: user.id, action: 'statement.prior_values', entityType: 'report', entityId: params.key, details: {periodEnd, values: b.values}});
+      return {ok: true};
+    });
   });
   r.get('/api/dashboard', async ({user, query}) => { requireCap(user, 'read'); return R.dashboard(pool, {...query, today: todayVilnius()}); });
   r.get('/api/reports/:name', async ({user, params, query, res}) => {

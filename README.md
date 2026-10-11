@@ -14,6 +14,7 @@ A working web application for one Lithuanian legal entity (EUR, Europe/Vilnius).
 | Ledger and reports | Chart of accounts from the accountant's workbook (UAB; class → group → account tree, posting only to leaf accounts, enforced in the DB) and posting roles; journal with DB-enforced balance, period lock and immutability; reversals; opening balances; manual cost-of-sales workflow. Reports: trial balance, general ledger with drill-down, P&L (flagged incomplete when cost of sales is missing), balance sheet, VAT registers, receivables and payables aging, sales (period/store/customer/product), operational order metrics, purchases, payments. CSV/XLSX export. Ledger reconciliation checks. |
 | Products and stock | Product cards: code, barcode, group, units, sale and purchase prices, VAT code, revenue and purchase accounts, supplier, manufacturer, origin, CN code, weight, location, minimum stock, notes, store mappings. Stock balances and movement history come from posted invoices plus manual opening balances, count adjustments and write-offs. Includes a low-stock filter and a weighted average cost. |
 | Payroll | Employees; monthly payroll sheets using LT 2026 MMA/NPD formula, GPM, employee and employer Sodra (dated parameters), a working-day norm with public holidays and pro-rata starts; approval posts one balanced journal entry; cancel by reversal; printable payslips. |
+| Financial statements | Balance sheet (2 VAS annexes 1, 2, 3) and profit (loss) statement (3 VAS annexes 1, 2) in the official forms. Each form has the header and signature block, a previous-period column (from the ledger or entered by hand), whole-euro or cent precision, and checks for unmapped accounts and balance equality. PDF download laid out like the form. See [docs/STATEMENTS.md](docs/STATEMENTS.md). |
 | Company details | *Užpildyti iš rekvizitai.lt* fills company or counterparty fields from a rekvizitai.lt page, using a one-click "→ Apskaita" bookmarklet or a paste of the page text. Fields: name, legal form, code, VAT code, address, phone, e-mail, website, manager, IBAN. The VAT code is checked in EU VIES. See [docs/COMPANY_DATA.md](docs/COMPANY_DATA.md). |
 | Interface | Desktop-style top menu bar with drop-down menus (Žinynai, Dokumentai, Prekyba, Likučiai, Finansai, Atlyginimai, Ataskaitos, Servisas) and a quick-action toolbar. Keyboard-navigable and collapsing behind a toggle on phones. |
 | Sales | Manual invoices with series numbering assigned on approval (unique under concurrency), PDF generation, credit notes/partial returns linked to the original, manual purchases. |
@@ -94,7 +95,7 @@ When the LLM provider is enabled, its output is validated against a strict schem
 ```bash
 createdb apskaita_test   # dedicated DB; tests DROP and recreate its public schema
 npm run check            # syntax of all JS and PHP files
-npm test                 # 55 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
+npm test                 # 60 tests: units, the 14 acceptance scenarios, integrations, i.SAF, backup, deployment bootstrap
 npm run test:browser     # Chromium UI smoke test (Playwright), screenshots in var/screenshots
 npm run perf             # 10,000-document timing (uses database apskaita_perf)
 ```
@@ -106,6 +107,7 @@ npm run perf             # 10,000-document timing (uses database apskaita_perf)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) – modules, data model, how each server invariant is enforced
 - [docs/ACCOUNTING.md](docs/ACCOUNTING.md) – chart of accounts, posting rules, rounding, settlements, cost of sales, stock
 - [docs/PAYROLL.md](docs/PAYROLL.md) – payroll parameters, calculation, workflow and limits
+- [docs/STATEMENTS.md](docs/STATEMENTS.md) – financial statements in the VAS forms: mapping, previous period, PDF
 - [docs/COMPANY_DATA.md](docs/COMPANY_DATA.md) – filling company details from rekvizitai.lt, VIES check
 - [docs/FORMATS.md](docs/FORMATS.md) – supported upload and bank formats, extraction behaviour and limits
 - [docs/TAX_RULES.md](docs/TAX_RULES.md) – VAT codes, sources, supported scenarios, assumptions needing accountant review

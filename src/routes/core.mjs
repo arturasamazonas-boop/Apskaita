@@ -69,7 +69,8 @@ export function register(r, {pool, auth, config}) {
       vat_registered: !!b.vat_registered, vat_registered_from: isDate(b.vat_registered_from) ? b.vat_registered_from : null, address: s(b.address), email: s(b.email, 200), phone: s(b.phone, 50),
       asset_threshold: money.norm(b.asset_threshold || '500'), retention_note: s(b.retention_note, 2000), onboarding_done: b.onboarding_done === undefined ? undefined : !!b.onboarding_done,
       website: b.website === undefined ? undefined : s(b.website, 200), manager: b.manager === undefined ? undefined : s(b.manager, 120),
-      iban: b.iban === undefined ? undefined : normalizeIban(s(b.iban, 40)), bank_name: b.bank_name === undefined ? undefined : s(b.bank_name, 100)};
+      iban: b.iban === undefined ? undefined : normalizeIban(s(b.iban, 40)), bank_name: b.bank_name === undefined ? undefined : s(b.bank_name, 100),
+      manager_title: b.manager_title === undefined ? undefined : s(b.manager_title, 120), accountant_title: b.accountant_title === undefined ? undefined : s(b.accountant_title, 200), accountant_name: b.accountant_name === undefined ? undefined : s(b.accountant_name, 120)};
     if (f.company_code && !/^\d{7,9}$/.test(f.company_code)) throw new AppError(400, 'bad_code', 'Įmonės kodas turi būti 7–9 skaitmenys.');
     if (f.vat_registered && !/^LT(\d{9}|\d{12})$/.test(f.vat_code)) throw new AppError(400, 'bad_vat', 'PVM mokėtojo kodas turi būti LT ir 9 arba 12 skaitmenų.');
     const keys = Object.keys(f).filter((k) => f[k] !== undefined);

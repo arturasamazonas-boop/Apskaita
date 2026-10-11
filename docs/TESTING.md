@@ -5,9 +5,10 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | Command | What it does |
 |---|---|
 | `npm run check` | `node --check` on all JS modules, `php -l` on the OpenCart extension |
-| `npm test` | 55 `node:test` tests across 12 files |
+| `npm test` | 60 `node:test` tests across 13 files |
 | `npm run test:browser` | Chromium (Playwright) UI smoke test of the real UI and server |
 | `node test-browser/rekvizitai.mjs [dir]` | Runs the "→ Apskaita" bookmarklet on a company page. Checks the review screen (filled fields, VIES stub), counterparty creation, and the paste dialog in the company settings. |
+| `node test-browser/statements.mjs [dir]` | Statement forms page: opens a form from the menu, shows the balance check, saves a hand-entered previous-period amount and downloads the PDF |
 | `node test-browser/open-access.mjs` | With `OPEN_ACCESS=true` the app opens without the login form |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 
@@ -73,3 +74,17 @@ The tests cover:
 The real VIES service was called once manually from this environment and returned a valid result with the name.
 
 The rekvizitai.lt page layout itself could not be fetched here because of Cloudflare. The parser therefore relies on the usual labels plus format checks (9-digit code, `LT` + 9/12-digit VAT code, LT IBAN). Check it on a real page.
+
+## Financial statements (`12-statements`)
+
+The tests post sample entries for 2025–2026 and check:
+
+- the full balance sheet item values, including the year result, the previous-years result and the previous-year column;
+- that total assets equal total equity and liabilities;
+- the abbreviated and very small balance sheets, with whole-euro rounding;
+- that the full and short P&L give the same net result;
+- for the short P&L, that bought stock plus the change in stock equals the cost of goods sold;
+- hand-entered previous-period amounts: totals cannot be set directly, read-only users are refused, values can be cleared;
+- the PDF download.
+
+The PDF layout was also checked visually by rendering pages to images.

@@ -198,3 +198,17 @@ details summary { cursor: pointer; margin: .5rem 0; font-weight: 600; }
 .bookmarklet { cursor: grab; }
 .vat-check { display: inline-flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin-top: .25rem; }
 .vat-result { font-size: .85rem; }
+/* Financial statement forms */
+.fs-sheet { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; margin: .75rem 0; }
+.fs-standard { text-align: right; font-size: .78rem; color: var(--muted); margin: 0 0 .5rem; }
+.fs-company { text-align: center; font-weight: 700; margin: 0; } .fs-line { text-align: center; margin: .5rem 0 0; white-space: pre-wrap; }
+.fs-caption { text-align: center; font-size: .72rem; color: var(--muted); border-top: 1px solid var(--border); margin: .1rem auto .35rem; max-width: 34rem; }
+.fs-title { text-align: center; margin: 1rem 0 .25rem; }
+.fs-table td.fs-no { text-align: center; white-space: nowrap; width: 4.2rem; } .fs-table td.fs-note { width: 4rem; }
+.fs-table tr.fs-heading td, .fs-table tr.fs-total td { font-weight: 700; } .fs-table tr.fs-grand td { font-weight: 700; background: var(--bg); }
+.fs-table td.fs-manual { font-style: italic; text-decoration: underline dotted; }
+.fs-signs { margin-top: 1rem; font-size: .9rem; } .fs-signs p { margin: .3rem 0; }
+.fs-header-fields { margin: .5rem 0 .75rem; } .fs-header-fields summary { cursor: pointer; color: var(--primary); }
+.issue-ok { color: var(--ok); }
+.fs-table th:nth-child(3), .fs-table td:nth-child(3) { width: 5.5rem; text-align: center; }
+.fs-table th:nth-child(4), .fs-table th:nth-child(5), .fs-table td:nth-child(4), .fs-table td:nth-child(5) { width: 10rem; white-space: normal; }

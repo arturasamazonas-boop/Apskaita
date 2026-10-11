@@ -2,7 +2,7 @@
 import {h, clear, get, post, api, pageHeader, section, table, money, date, dateTime, guard, select, input, field, can, modal, toast, yearStart, monthStart, today} from '../core.mjs';
 
 const REPORTS = [
-  ['pelnas', 'profit-loss', 'Pelno (nuostolių) ataskaita', 'period'], ['balansas', 'balance-sheet', 'Balansas', 'asOf'], ['bandomasis', 'trial-balance', 'Bandomasis balansas', 'period'],
+  ['pelnas', 'profit-loss', 'Pelnas (nuostoliai) pagal sąskaitas', 'period'], ['balansas', 'balance-sheet', 'Balansas pagal sąskaitas', 'asOf'], ['bandomasis', 'trial-balance', 'Bandomasis balansas', 'period'],
   ['knyga', 'ledger', 'Didžioji knyga', 'ledger'], ['pvm-pardavimai', 'vat-sales', 'Pardavimų PVM registras', 'period'], ['pvm-pirkimai', 'vat-purchases', 'Pirkimų PVM registras', 'period'],
   ['gautinos', 'receivables', 'Pirkėjų skolos', 'asOf'], ['moketinos', 'payables', 'Skolos tiekėjams', 'asOf'], ['pardavimai', 'sales', 'Pardavimai', 'sales'],
   ['operaciniai', 'sales-operational', 'Užsakymų rodikliai (operaciniai)', 'period'], ['pirkimai', 'purchases', 'Pirkimai ir sąnaudos', 'purchases'], ['mokejimai', 'payments', 'Mokėjimų suvestinė', 'period'],
