@@ -14,6 +14,7 @@ import {FORMS, buildStatement} from '../reports/statements.mjs';
 import {renderStatementPdf} from '../reports/statement-pdf.mjs';
 import {debtAct, renderDebtActPdf} from '../reports/debt-act.mjs';
 import {readJson} from '../http.mjs';
+import {buildRcPackage, renderRcPackagePdf, rcRows} from '../reports/rc-package.mjs';
 import {LAYOUT as FR0600_LAYOUT, fr0600Values, applyEdits, toFFData, placements, renderFr0600Pdf} from '../reports/eds-fr0600.mjs';
 import {money} from '../lib/money.mjs';
 
@@ -82,6 +83,33 @@ export function register(r, {pool, storage}) {
     const name = `FR0600_${p.from}_${p.to}${p.correction ? '_patikslinta' : ''}.${pdf ? 'pdf' : 'ffdata'}`;
     await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'fr0600', details: {format: pdf ? 'pdf' : 'ffdata', ...p, edited: Object.keys(b.values || {})}});
     res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': pdf ? 'application/pdf' : 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
+    res.end(body);
+  });
+  // ---------------------------------------------------------------- annual set for Registrų centras
+  const rcPkg = (q) => {
+    const year = Number(q.year);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) throw new AppError(400, 'year', 'Nurodykite finansinius metus.');
+    return buildRcPackage(pool, {year, category: q.category, forms: q.forms ? String(q.forms).split(',') : null, today: todayVilnius(), precision: q.precision === 'cents' ? 'cents' : 'eur'});
+  };
+  r.get('/api/rc-package', async ({user, query}) => { requireCap(user, 'read'); return rcPkg(query); });
+  r.get('/api/rc-package/file', async ({user, query, res}) => {
+    requireCap(user, 'read');
+    const pkg = await rcPkg(query);
+    let body, type, ext;
+    if (query.format === 'pdf') {
+      const c = (await pool.query('SELECT * FROM company_settings WHERE id=1')).rows[0];
+      const str = (v, n = 120) => String(v ?? '').trim().slice(0, n);
+      body = await renderRcPackagePdf(pkg, {compiled: /^\d{4}-\d{2}-\d{2}$/.test(query.compiled || '') ? query.compiled : todayVilnius(), number: str(query.number, 20),
+        managerTitle: c.manager_title, managerName: c.manager, accountantTitle: c.accountant_title, accountantName: c.accountant_name});
+      type = 'application/pdf'; ext = 'pdf';
+    } else {
+      const rep = {title: `Finansinių ataskaitų rinkinys ${pkg.year}`, definition: `${pkg.categoryName}. Sumos eurais, eilutės pagal VAS formas – Registrų centro el. formos pildymui.`,
+        columns: [['form', 'Forma'], ['no', 'Eil. Nr.'], ['label', 'Straipsnis'], ['current', 'Finansiniai metai', 'money'], ['previous', 'Praėję finansiniai metai', 'money']], rows: rcRows(pkg)};
+      if (query.format === 'xlsx') { body = await R.toXlsx(rep); type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; ext = 'xlsx'; }
+      else { body = Buffer.from(R.toCsv(rep), 'utf8'); type = 'text/csv; charset=utf-8'; ext = 'csv'; }
+    }
+    await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'rc-package', details: {format: ext, year: pkg.year, category: pkg.category, forms: pkg.forms}});
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': type, 'Content-Disposition': `attachment; filename="FA_rinkinys_${pkg.year}.${ext}"`, 'Cache-Control': 'no-store'});
     res.end(body);
   });
   // ---------------------------------------------------------------- financial statements (VAS forms)

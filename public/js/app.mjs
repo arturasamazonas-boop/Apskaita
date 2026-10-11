@@ -20,6 +20,7 @@ const PAGES = {
   finansines: ['Finansinės ataskaitos', () => import('./pages/statements.mjs')],
   'skolu-aktas': ['Skolų suderinimo aktas', () => import('./pages/debt-act.mjs')],
   fr0600: ['PVM deklaracija FR0600', () => import('./pages/fr0600.mjs')],
+  'rc-rinkinys': ['Rinkinys Registrų centrui', () => import('./pages/rc-package.mjs')],
   integracijos: ['Integracijos', () => import('./pages/integrations.mjs')],
   nustatymai: ['Nustatymai', () => import('./pages/settings.mjs')],
 };
@@ -38,7 +39,7 @@ export const MENU = [
   ['Ataskaitos', [['Balansas (2 VAS, 1 priedas)', 'finansines/balansas'], ['Sutrumpintas balansas (2 priedas)', 'finansines/balansas-sutrumpintas'], ['Labai mažų įmonių balansas (3 priedas)', 'finansines/balansas-trumpas'],
     ['Pelno (nuostolių) ataskaita (3 VAS, 1 priedas)', 'finansines/pelno-nuostoliu'], ['Trumpa pelno (nuostolių) ataskaita (2 priedas)', 'finansines/pelno-nuostoliu-trumpa'],
     ['Pinigų srautų ataskaita (5 VAS, netiesioginis būdas)', 'finansines/pinigu-srautai'], ['Pinigų srautų ataskaita (tiesioginis būdas)', 'finansines/pinigu-srautai-tiesioginis'],
-    ['Nuosavo kapitalo pokyčių ataskaita (4 VAS)', 'finansines/nuosavo-kapitalo-pokyciai'], '-',
+    ['Nuosavo kapitalo pokyčių ataskaita (4 VAS)', 'finansines/nuosavo-kapitalo-pokyciai'], ['Metinis rinkinys Registrų centrui', 'rc-rinkinys'], '-',
     ['PVM deklaracija FR0600 (EDS forma)', 'fr0600'], ['FR0600 skaičiavimo išklotinė', 'ataskaitos/pvm-deklaracija'], ['Pardavimų PVM registras', 'ataskaitos/pvm-pardavimai'], ['Pirkimų PVM registras', 'ataskaitos/pvm-pirkimai'], ['i.SAF eksportas', 'ataskaitos/isaf'], '-',
     ['Kitos ataskaitos', [['Apyvartos žiniaraštis (bandomasis balansas)', 'ataskaitos/bandomasis'], ['Didžioji knyga', 'ataskaitos/knyga'], ['Kasos knyga (272)', 'ataskaitos/knyga/272'],
       ['Pelnas (nuostoliai) pagal sąskaitas', 'ataskaitos/pelnas'], ['Balansas pagal sąskaitas', 'ataskaitos/balansas'], '-',

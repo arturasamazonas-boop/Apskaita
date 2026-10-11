@@ -245,3 +245,7 @@ details summary { cursor: pointer; margin: .5rem 0; font-weight: 600; }
 .isaf-grid tr.isaf-cont td { border-top-color: transparent; }
 .isaf-grid tfoot td { font-weight: 700; background: var(--bg); }
 .isaf-head th { text-align: left; width: 22rem; font-weight: 600; }
+/* Annual set for Registrų centras. */
+.rc-forms { display: flex; flex-direction: column; gap: .3rem; margin: .5rem 0; }
+.rc-copy { cursor: copy; } .rc-copy:hover { background: var(--info-bg); }
+.rc-steps li { margin: .3rem 0; }
