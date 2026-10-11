@@ -47,6 +47,26 @@ Any editable field can be typed into by clicking it. Amounts must be whole numbe
 
 The previous table (*FR0600 skaičiavimo išklotinė*) remains as a breakdown by VAT code.
 
+## GPM313 (*Atlyginimai → GPM313 deklaracija*)
+
+This is the monthly income tax return, version 01 (VMI order VA-121). The page shows it on the official form page, landscape, the same as EDS. The template is `GPM313.mxfd` from the EDS form list, extracted to `assets/forms/gpm313-v1.*`.
+
+**Which month.** The return is filed for the month in which pay was paid out, by the 15th of the next month. Approved payroll sheets are taken by their payment date.
+
+| Field | Source |
+|---|---|
+| 1, 2 | Company code and name (2 rows of 29 cells) |
+| 3, 4 | Year, month |
+| 5 | Gross pay (A class, employment) of sheets paid in the month |
+| 6 | GPM withheld from pay paid up to the 15th |
+| 7 | GPM withheld from pay paid after the 15th |
+| 8–12 | Non-employment A class and B class payouts (royalties, rent and so on): typed in on the form |
+
+- Amounts have 2 decimals with a comma. The comma is printed on the form between the cells, so the cells hold digits only.
+- Advances are treated as paid together with the sheet. If an advance was paid in another month or the other half of the month, correct fields 5–7 on the form. The page says so.
+- The FFData file and PDF work the same way as for FR0600. Both forms share `src/reports/eds-forms.mjs` and `public/js/lib/eds-form.mjs`.
+- **Not tested:** uploading the file to the real EDS (it needs a login).
+
 ## i.SAF (*Ataskaitos → i.SAF eksportas*)
 
 After *Tikrinti* the page shows the registers taken directly from the generated XML file:

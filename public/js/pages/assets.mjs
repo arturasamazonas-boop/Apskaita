@@ -4,6 +4,7 @@ import {h, clear, get, post, put, del, pageHeader, section, table, money, date, 
 const STATUS = {active: ['Naudojamas', 'done'], disposed: ['Nurašytas', 'muted']};
 const RUN = {posted: ['Kontuota', 'done'], cancelled: ['Atšaukta', 'muted']};
 const tabs = (cur) => h('div', {class: 'tabs'}, [['', 'Turto sąrašas'], ['nusidevejimas', 'Nusidėvėjimo skaičiavimas']].map(([k, t]) => h('a', {class: ['tab', cur === k && 'active'], href: `#/turtas${k ? '/' + k : ''}`}, t)));
+const months = (list) => { const m = [...new Set(list)].sort(); return m.length > 3 ? `${m[0]} – ${m.at(-1)} (${m.length} mėn.)` : m.join(', '); };
 const prevMonth = () => { const [y, m] = today().split('-').map(Number); return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7); };
 
 export async function render(main, rest, state) {
@@ -25,7 +26,7 @@ async function list(main, state) {
     const bad = d.reconciliation.filter((r) => Number(r.diff) !== 0);
     clear(out,
       h('div', {class: 'cards'}, [['Įsigijimo savikaina', d.totals.cost], ['Sukauptas nusidėvėjimas', d.totals.accumulated], ['Likutinė vertė', d.totals.nbv]].map(([t, v]) => h('div', {class: 'card stat'}, h('div', {class: 'stat-title'}, t), h('div', {class: 'stat-value'}, `${money(v)} €`)))),
-      items.some((i) => i.missing.length) ? h('p', {class: 'issue issue-warning'}, `Nepaskaičiuotas nusidėvėjimas už ${[...new Set(items.flatMap((i) => i.missing))].sort().join(', ')} – žr. „Nusidėvėjimo skaičiavimas“.`) : null,
+      items.some((i) => i.missing.length) ? h('p', {class: 'issue issue-warning'}, `Nepaskaičiuotas nusidėvėjimas už ${months(items.flatMap((i) => i.missing))} – žr. „Nusidėvėjimo skaičiavimas“.`) : null,
       table([{label: 'Inv. Nr.', key: 'inv_no'}, {label: 'Pavadinimas', key: 'name'}, {label: 'Sąskaita', render: (i) => i.cost_account}, {label: 'Įsigyta', render: (i) => date(i.acquisition_date)},
         {label: 'Tarnavimo laikas, mėn.', num: true, key: 'useful_life_months'}, {label: 'Savikaina', num: true, render: (i) => money(i.cost)}, {label: 'Sukauptas nusidėvėjimas', num: true, render: (i) => money(i.accumulated)},
         {label: 'Likutinė vertė', num: true, render: (i) => money(i.nbv)}, {label: 'Mėn. nusidėvėjimas', num: true, render: (i) => (Number(i.monthly) ? money(i.monthly) : '—')}, {label: 'Būsena', render: (i) => badge(STATUS, i.disposedAtDate ? 'disposed' : 'active')}],
@@ -86,7 +87,7 @@ async function card(main, id, state) {
   clear(main, pageHeader(a ? `${a.inv_no} ${a.name}` : 'Nauja ilgalaikio turto kortelė', ...actions), tabs(''),
     a ? h('div', {class: 'cards'}, [['Savikaina', a.cost], ['Sukauptas nusidėvėjimas', a.accumulated], ['Likutinė vertė', a.nbv], ['Mėnesio nusidėvėjimas', a.monthly]].map(([t, v]) => h('div', {class: 'card stat'}, h('div', {class: 'stat-title'}, t), h('div', {class: 'stat-value'}, `${money(v)} €`)))) : null,
     a?.status === 'disposed' ? h('p', {class: 'banner'}, `Turtas ${a.disposal_kind === 'sale' ? 'parduotas' : 'nurašytas'} ${a.disposed_on}. ${a.disposal_note || ''}`) : null,
-    a?.missing?.length ? h('p', {class: 'issue issue-warning'}, `Nepaskaičiuotas nusidėvėjimas už ${a.missing.join(', ')}.`) : null,
+    a?.missing?.length ? h('p', {class: 'issue issue-warning'}, `Nepaskaičiuotas nusidėvėjimas už ${months(a.missing)}.`) : null,
     fromInvoice,
     section('Kortelė', h('form', {onsubmit: save},
       h('div', {class: 'form-grid'}, field('Inventorinis Nr.', f.inv_no), field('Pavadinimas', f.name), field('Turto sąskaita', f.cost_account), field('Įsigijimo (naudojimo pradžios) data', f.acquisition_date),
@@ -114,11 +115,14 @@ async function runs(main, state) {
         await post(`/api/depreciation/runs/${r.id}/cancel`, {reason}); toast('Atšaukta atvirkštiniu įrašu.', 'ok'); loadHist(); preview();
       })}, 'Atšaukti') : r.cancel_reason || '')}], rows, {empty: 'Nusidėvėjimas dar neskaičiuotas.'}));
   };
+  let seq = 0;
   const preview = async () => {
+    const my = ++seq;
     const p = await get(`/api/depreciation/preview?period=${period.value}`);
+    if (my !== seq) return; // a newer month was chosen meanwhile
     clear(out,
       p.alreadyPosted ? h('p', {class: 'banner'}, `Už ${p.period} nusidėvėjimas jau paskaičiuotas.`) : null,
-      p.blocked.length ? h('p', {class: 'issue issue-error'}, `Pirmiausia paskaičiuokite ankstesnius mėnesius: ${[...new Set(p.blocked.flatMap((b) => b.missing))].sort().join(', ')}.`) : null,
+      p.blocked.length ? h('p', {class: 'issue issue-error'}, `Pirmiausia paskaičiuokite ankstesnius mėnesius: ${months(p.blocked.flatMap((b) => b.missing))}.`) : null,
       table([{label: 'Inv. Nr.', key: 'inv_no'}, {label: 'Pavadinimas', key: 'name'}, {label: 'D', key: 'expense_account'}, {label: 'K', key: 'depreciation_account'}, {label: 'Nusidėvėjimas', num: true, render: (l) => money(l.amount)},
         {label: 'Sukauptas po', num: true, render: (l) => money(l.accumulatedAfter)}], p.lines, {empty: p.alreadyPosted ? '—' : 'Šį mėnesį nudėvimo turto nėra.'}),
       p.lines.length ? h('p', null, h('strong', null, `Iš viso: ${money(p.total)} €`)) : null,

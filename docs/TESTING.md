@@ -5,11 +5,13 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | Command | What it does |
 |---|---|
 | `npm run check` | `node --check` on all JS modules, `php -l` on the OpenCart extension |
-| `npm test` | 68 `node:test` tests across 15 files |
+| `npm test` | 83 `node:test` tests across 20 files |
 | `npm run test:browser` | Chromium (Playwright) UI smoke test of the real UI and server |
 | `node test-browser/rekvizitai.mjs [dir]` | Runs the "→ Apskaita" bookmarklet on a company page. Checks the review screen (filled fields, VIES stub), counterparty creation, and the paste dialog in the company settings. |
 | `node test-browser/statements.mjs [dir]` | Statement forms page: opens a form from the menu, shows the balance check, saves a hand-entered previous-period amount and downloads the PDF. Also checks the second-level menu by mouse, keyboard and on a phone, plus the cash flow and equity pages |
 | `node test-browser/fr0600.mjs [dir]` | FR0600 page: opens it from the menu, checks values in the form cells (E11 right-aligned in its boxes), types into field 32 and checks the recalculated 36, switches to Patikslinta, downloads .ffdata (checks fields) and PDF. Also checks the i.SAF register preview and the phone layout. |
+| `node test-browser/rc-package.mjs [dir]` | Annual set for RC: from the menu, size cards, required forms, copyable amounts, switching the category, set PDF |
+| `node test-browser/new-modules.mjs [dir]` | Fixed asset card from the menu, depreciation run, register with reconciliation, year-end closing, SEPA file for a supplier invoice, GPM313 form and .ffdata |
 | `node test-browser/open-access.mjs` | With `OPEN_ACCESS=true` the app opens without the login form |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 
@@ -116,3 +118,34 @@ The tests check:
 - The `.ffdata` download has the EDS structure and values including edits. The PDF download is also checked.
 
 The PDF and the web form were also checked visually: characters fall into the form's boxes.
+
+## RC set, fixed assets, year-end, SEPA, GPM313, regressions (`15`–`19`)
+
+- **`15-rc-package`:**
+  - Size category and forms.
+  - Cross-checks between the forms.
+  - Year-end closing into 341 keeps the P&L equal to the balance sheet result; after the transfer to 342, 341 counts as prior-year.
+  - The set PDF (pages) and CSV/XLSX.
+- **`16-fixed-assets`:**
+  - Monthly amount and last-month remainder, plus the opening accumulated depreciation.
+  - Runs must go in order and cannot repeat a month; the posted entry is checked.
+  - Financial fields are frozen after posting.
+  - Only the latest run can be cancelled.
+  - Disposal needs the disposal month posted, and its entry is checked.
+  - The register reconciles with the ledger.
+- **`17-regressions`:**
+  - A credit note takes a pro-rata share of the line discount.
+  - A negative line gets negative VAT.
+  - FR0600 field 25 holds all purchase VAT and field 35 the deductible VAT.
+  - An hourly rate with 4 decimals.
+  - 32 % GPM and the VSD ceiling above 60 VDU.
+  - Bad input returns 400 or 404, never 500.
+- **`18-sepa-payments`:**
+  - Transliteration.
+  - Amount and IBAN checks.
+  - The invoice and payroll files validate against the ISO 20022 XSD.
+- **`19-eds-gpm313`:**
+  - The template layout.
+  - The split at the 15th by payment date.
+  - Decimal cells.
+  - Edits, FFData and PDF.

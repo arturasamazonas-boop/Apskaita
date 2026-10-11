@@ -209,6 +209,38 @@ VAT in the same entry as a customer or supplier is shown with them ("su PVM"). T
 
 Each column is checked: start + movements = end balance. Row 30 equals equity in the balance sheet. The PDF is printed in landscape.
 
+## Annual set for Registrų centras (*Ataskaitos → Metinis rinkinys Registrų centrui*)
+
+**Size category.** The company's size is worked out from the ledger: total assets and sales at year end, and employees on the employee list. The thresholds are those of the Financial Statements Act, art. 5, as amended in 2024: not exceeding two of the three.
+- Very small (labai maža): 450 000 € assets, 900 000 € revenue, 10 staff.
+- Small (maža): 5 000 000 €, 10 000 000 €, 50.
+- Medium (vidutinė): 25 000 000 €, 50 000 000 €, 250.
+
+The category can be chosen by hand.
+
+**Forms in the set.**
+- Very small: short balance sheet (annex 3) and short P&L (annex 2).
+- Small: abridged balance sheet (annex 2) and P&L.
+- Medium or large: full balance sheet, P&L, cash flow statement and statement of changes in equity.
+
+The fuller form of the same statement can be chosen instead. The documents to attach are listed on the page.
+
+**Checks, as on the RC e-form:**
+- Assets equal equity and liabilities in each balance sheet.
+- Net profit in the P&L equals the balance sheet's "current-year profit (loss)".
+- Cash at the end in the cash flow statement equals the balance sheet.
+- Closing equity in the statement of changes in equity equals the balance sheet.
+- Manually entered prior-year figures are flagged: RC loads last year's set itself.
+- Precision must be whole euros.
+
+**Output.**
+- The whole set as one PDF, for approval, signing and attaching.
+- The line data (form, line number, item, current year, prior year) as XLSX or CSV. On the page, clicking an amount copies it.
+
+**Deadlines.** The general meeting approves the set within 4 months after the year end (by 30 April), and the set is filed with RC within 30 days of approval.
+
+The RC e-form itself (registrucentras.lt) was not reachable from the development environment. The line numbering follows the VAS annexes the e-form uses. No data-file import for small companies was found in public sources.
+
 ## Other reports
 
 ### PVM deklaracijos FR0600 duomenys

@@ -43,9 +43,12 @@ export async function render(main) {
             h('tbody', null, st.lines.filter((l) => !l.heading).map((l) => h('tr', {class: l.total ? 'fs-total' : ''}, h('td', {class: 'fs-no'}, l.no), h('td', null, l.label),
               [l.current, l.previous].map((v) => h('td', {class: 'num rc-copy', title: 'Spustelėkite – nukopijuoti', onclick: () => copy(plain(v))}, plain(v)))))))))));
   };
+  let seq = 0;
   const load = async () => {
     history.replaceState(null, '', `#/rc-rinkinys?${qs()}`);
-    draw(await get(`/api/rc-package?${qs()}`));
+    const my = ++seq;
+    const p = await get(`/api/rc-package?${qs()}`);
+    if (my === seq) draw(p); // ignore an answer for an older choice
   };
   const dl = (format) => { location.href = `/api/rc-package/file?${qs({format, number: number.value, compiled: today()})}`; };
   year.addEventListener('change', () => { chosen = null; guard(load); });

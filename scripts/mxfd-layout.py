@@ -31,7 +31,8 @@ for m in re.finditer(r'<FieldDataDef FieldName="([^"]+)"[^>]*DataType="(\w+)"[^>
         cells = re.search(r'<Cells>(.*?)</Cells>', items[ref][1], flags=re.S)
         if cells: f['cells'] = [rect(c) for c in re.findall(r'<Rect [^>]*/>', cells.group(1))]
         hint = re.search(r'<HintText>.*?<Text>([^<]*)</Text>', items[ref][1], flags=re.S)
-        if hint and hint.group(1).strip(): f['printed'] = hint.group(1).strip()
+        # Decimal fields carry their separator as a hint; only real text is printed on the form.
+        if hint and hint.group(1).strip() and hint.group(1).strip() not in ',.': f['printed'] = hint.group(1).strip()
     fields.append(f)
 size = re.search(r'<Size><Width>(\d+)</Width><Height>(\d+)</Height></Size>', t)
 code = re.search(r'<ListPage>([^<]+)</ListPage>', t).group(1)

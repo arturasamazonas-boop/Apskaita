@@ -4,8 +4,11 @@ import {h, clear, get, post, pageHeader, section, table, money, guard, input, fi
 export async function render(main, rest, state) {
   const year = input({type: 'number', min: 2000, max: 2100, value: String(Number(today().slice(0, 4)) - 1), style: {maxWidth: '8rem'}});
   const out = h('div');
+  let seq = 0;
   const load = async () => {
+    const my = ++seq;
     const s = await get(`/api/year-end?year=${year.value}`);
+    if (my !== seq) return; // a newer period was chosen meanwhile
     const profit = Number(s.result) >= 0;
     clear(out,
       h('div', {class: 'cards'}, h('div', {class: 'card stat'}, h('div', {class: 'stat-title'}, `${s.year} m. ${profit ? 'pelnas' : 'nuostoliai'}`), h('div', {class: 'stat-value'}, `${money(Math.abs(Number(s.result)))} €`)),

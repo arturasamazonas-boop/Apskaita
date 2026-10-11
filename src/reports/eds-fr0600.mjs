@@ -1,16 +1,11 @@
 // PVM deklaracija FR0600 (versija 03, nuo 2026-01-01) exactly as in VMI EDS: the official form layout
 // (assets/forms/fr0600-v3.*, extracted from the VMI .mxfd template by scripts/mxfd-layout.py),
 // field values per the VMI filling rules (VA-129, 2025-12-22), an FFData file for upload to EDS and a PDF on the form background.
-import fs from 'node:fs';
-import path from 'node:path';
-import {PDFDocument, rgb} from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
-import {ROOT} from '../config.mjs';
+import {edsLayout, toFFData as toFFDataFor, placements as placementsFor, renderEdsPdf} from './eds-forms.mjs';
 import {money, toUnits, divRound} from '../lib/money.mjs';
 import {AppError} from '../db.mjs';
 
-export const LAYOUT = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/forms/fr0600-v3.json'), 'utf8'));
-const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+export const LAYOUT = edsLayout('FR0600');
 // Aprašo 11.4 p.: sums in whole euros, 49 cents and less dropped, 50 and more rounded up (half away from zero for negatives).
 const eur = (v) => divRound(toUnits(v, 2), 100n);
 
@@ -98,73 +93,6 @@ export function applyEdits(values, edits = {}) {
   return recompute36(v);
 }
 
-/** FFData XML for upload to EDS („Pildyti formą“ → „Įkelti failą“). */
-export function toFFData(values, {login = 'apskaita', today}) {
-  const f = LAYOUT.fields;
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<FFData Version="1" CreatedByApp="Apskaita" CreatedByLogin="${xmlEsc(login)}" CreatedOn="${today}">
-<Form FormDefId="${LAYOUT.formDefId}">
-<DocumentPages>
-<Group Name="${xmlEsc(LAYOUT.group)}">
-<ListPages>
-<ListPage>${LAYOUT.formCode}</ListPage>
-</ListPages>
-</Group>
-</DocumentPages>
-<Pages Count="1">
-<Page PageDefName="${LAYOUT.formCode}" PageNumber="1">
-<Fields Count="${f.length}">
-${f.map((x) => `<Field Name="${xmlEsc(x.name)}">${xmlEsc(values[x.name] ?? '')}</Field>`).join('\n')}
-</Fields>
-</Page>
-</Pages>
-</Form>
-</FFData>
-`;
-}
-
-/** Characters to draw per field: [{name, chars: [[cellRect, char]], mark: rect}] in template units (300 dpi). */
-export function placements(values) {
-  const out = [];
-  for (const f of LAYOUT.fields) {
-    const v = values[f.name] ?? '';
-    if (f.type === 'Checkmark') { if (v === '1') out.push({name: f.name, mark: f.rect}); continue; }
-    if (!f.cells || v === '' || ['B_FormNr', 'B_FormVerNr', 'LT'].includes(f.name)) continue; // printed on the form
-    let s = String(v);
-    if (f.type === 'Date') { out.push({name: f.name, chars: [...s].map((ch, i) => [f.cells[i], ch]).filter(([c, ch]) => c && ch !== '-')}); continue; }
-    if (f.type === 'Text') s = s.toUpperCase();
-    s = s.slice(0, f.cells.length);
-    const start = f.align === 'RightJustified' ? f.cells.length - s.length : 0;
-    out.push({name: f.name, chars: [...s].map((ch, i) => [f.cells[start + i], ch])});
-  }
-  return out;
-}
-
-// Form page within assets/forms/fr0600-v3.pdf (points, PDF origin bottom-left), measured from a 300 dpi render.
-const BG_BOX = {left: 28.32, right: 567.12, bottom: 841.89 - 801.84, top: 841.89 - 40.08};
-
-export async function renderFr0600Pdf(values) {
-  const bg = await PDFDocument.load(fs.readFileSync(path.join(ROOT, 'assets/forms/fr0600-v3.pdf')));
-  const doc = await PDFDocument.create();
-  doc.registerFontkit(fontkit);
-  doc.setTitle('FR0600 PVM deklaracija'); doc.setProducer('Apskaita');
-  const font = await doc.embedFont(fs.readFileSync(path.join(ROOT, 'assets/fonts/DejaVuSans.ttf')), {subset: true});
-  // The converted background has the form page (grey area) shrunk inside white margins; crop it to the form page and stretch it to A4.
-  const W = 595.28, H = 841.89;
-  const page = doc.addPage([W, H]);
-  const [embedded] = await doc.embedPages([bg.getPage(0)], [BG_BOX]);
-  page.drawPage(embedded, {x: 0, y: 0, width: W, height: H});
-  const k = W / LAYOUT.page.width;
-  for (const p of placements(values)) {
-    if (p.mark) {
-      const [l, t, r, b] = p.mark, size = (b - t) * k * 0.95;
-      page.drawText('X', {x: (l + r) / 2 * k - font.widthOfTextAtSize('X', size) / 2, y: H - b * k + (b - t) * k * 0.15, size, font, color: rgb(0, 0, 0.55)});
-      continue;
-    }
-    for (const [[l, t, r, b], ch] of p.chars) {
-      const size = (b - t) * k * 0.72;
-      page.drawText(ch, {x: (l + r) / 2 * k - font.widthOfTextAtSize(ch, size) / 2, y: H - b * k + (b - t) * k * 0.2, size, font, color: rgb(0, 0, 0.55)});
-    }
-  }
-  return Buffer.from(await doc.save());
-}
+export const toFFData = (values, opts) => toFFDataFor(LAYOUT, values, opts);
+export const placements = (values) => placementsFor(LAYOUT, values);
+export const renderFr0600Pdf = (values) => renderEdsPdf('FR0600', values, {title: 'FR0600 PVM deklaracija'});

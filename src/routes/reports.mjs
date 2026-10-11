@@ -14,6 +14,8 @@ import {FORMS, buildStatement} from '../reports/statements.mjs';
 import {renderStatementPdf} from '../reports/statement-pdf.mjs';
 import {debtAct, renderDebtActPdf} from '../reports/debt-act.mjs';
 import {readJson} from '../http.mjs';
+import {GPM313, gpm313Values, applyGpm313Edits} from '../reports/eds-gpm313.mjs';
+import {toFFData as edsFFData, placements as edsPlacements, renderEdsPdf} from '../reports/eds-forms.mjs';
 import {buildRcPackage, renderRcPackagePdf, rcRows} from '../reports/rc-package.mjs';
 import {LAYOUT as FR0600_LAYOUT, fr0600Values, applyEdits, toFFData, placements, renderFr0600Pdf} from '../reports/eds-fr0600.mjs';
 import {money} from '../lib/money.mjs';
@@ -82,6 +84,30 @@ export function register(r, {pool, storage}) {
     const body = pdf ? await renderFr0600Pdf(values) : Buffer.from(toFFData(values, {login: user.email || 'apskaita', today: todayVilnius()}), 'utf8');
     const name = `FR0600_${p.from}_${p.to}${p.correction ? '_patikslinta' : ''}.${pdf ? 'pdf' : 'ffdata'}`;
     await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'fr0600', details: {format: pdf ? 'pdf' : 'ffdata', ...p, edited: Object.keys(b.values || {})}});
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': pdf ? 'application/pdf' : 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
+    res.end(body);
+  });
+  // ---------------------------------------------------------------- GPM313 as in VMI EDS
+  const ymOf = (q) => {
+    const year = Number(q.year), month = Number(q.month);
+    if (!Number.isInteger(year) || year < 2018 || year > 2100 || !Number.isInteger(month) || month < 1 || month > 12) throw new AppError(400, 'period', 'Nurodykite metus ir mėnesį.');
+    return {year, month};
+  };
+  r.get('/api/eds/gpm313/layout', async ({user}) => { requireCap(user, 'read'); return GPM313; });
+  r.get('/api/eds/gpm313', async ({user, query}) => {
+    requireCap(user, 'read');
+    const d = await gpm313Values(pool, ymOf(query));
+    return {...d, placements: edsPlacements(GPM313, d.values)};
+  });
+  r.post('/api/eds/gpm313/file', async ({req, user, res}) => {
+    requireCap(user, 'read');
+    const b = await readJson(req);
+    const p = ymOf(b);
+    const values = applyGpm313Edits((await gpm313Values(pool, p)).values, b.values);
+    const pdf = b.format === 'pdf';
+    const body = pdf ? await renderEdsPdf('GPM313', values, {title: 'GPM313 mėnesinė pajamų mokesčio deklaracija'}) : Buffer.from(edsFFData(GPM313, values, {login: user.email || 'apskaita', today: todayVilnius()}), 'utf8');
+    const name = `GPM313_${p.year}-${String(p.month).padStart(2, '0')}.${pdf ? 'pdf' : 'ffdata'}`;
+    await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'gpm313', details: {format: pdf ? 'pdf' : 'ffdata', ...p, edited: Object.keys(b.values || {})}});
     res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': pdf ? 'application/pdf' : 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
     res.end(body);
   });
