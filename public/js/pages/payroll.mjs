@@ -156,7 +156,7 @@ async function employeeCard(main, id, state) {
 async function params(main, state) {
   const rows = await get('/api/payroll/params');
   const latest = rows[0] || {};
-  const keys = [['effective_from', 'Galioja nuo', 'date'], ['mma', 'MMA, €'], ['vdu', 'VDU, €'], ['npd_max', 'NPD maks., €'], ['npd_coef', 'NPD koeficientas'], ['gpm_rate', 'GPM, %'], ['vsd_rate', 'Darbuotojo VSD, %'],
+  const keys = [['effective_from', 'Galioja nuo', 'date'], ['mma', 'MMA, €'], ['vdu', 'VDU, €'], ['npd_max', 'NPD maks., €'], ['npd_coef', 'NPD koeficientas'], ['gpm_rate', 'GPM, %'], ['gpm_rate_high', 'GPM virš 60 VDU, %'], ['vsd_rate', 'Darbuotojo VSD, %'],
     ['psd_rate', 'Darbuotojo PSD, %'], ['pension_extra_rate', 'Papild. kaupimas, %'], ['employer_rate', 'Darbdavio Sodra, %'], ['employer_rate_fixed', 'Darbdavio Sodra (terminuota), %']];
   const f = Object.fromEntries(keys.map(([k, , t]) => [k, input({type: t || 'text', inputmode: t ? null : 'decimal', value: t ? '' : latest[k] ?? ''})]));
   const note = input();

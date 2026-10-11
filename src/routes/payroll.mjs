@@ -63,8 +63,11 @@ async function loadRun(db, id, lock = false) {
 }
 
 async function recalcLine(db, run, line, emp, inp, params) {
+  // Gross earlier in the same year (for the 60 VDU threshold and the VSD ceiling).
+  const ytd = (await db.query(`SELECT coalesce(sum(l.gross),0) AS g FROM payroll_lines l JOIN payroll_runs r ON r.id=l.run_id
+    WHERE l.employee_id=$1 AND r.period >= $2 AND r.period < $3`, [emp.id, `${run.period.slice(0, 4)}-01`, run.period])).rows[0].g;
   const c = calcLine(emp, params, {workedDays: inp.worked_days, normDays: run.norm_days, workedHours: inp.worked_hours, base: inp.base_manual ? inp.base : null,
-    bonus: inp.bonus, vacation_pay: inp.vacation_pay, sick_pay: inp.sick_pay, other_pay: inp.other_pay, advance: inp.advance});
+    bonus: inp.bonus, vacation_pay: inp.vacation_pay, sick_pay: inp.sick_pay, other_pay: inp.other_pay, advance: inp.advance}, {ytdGross: ytd});
   await db.query(`UPDATE payroll_lines SET worked_days=$2, worked_hours=$3, ${AMOUNTS.map((k, i) => `${k}=$${i + 4}`).join(', ')}, note=$${AMOUNTS.length + 4} WHERE id=$1`,
     [line.id, inp.worked_days || 0, inp.worked_hours || 0, ...AMOUNTS.map((k) => c[k]), s(inp.note, 300)]);
 }
@@ -92,8 +95,8 @@ export function register(r, {pool}) {
     requireCap(user, 'settings');
     const b = await readJson(req);
     if (!isDate(b.effective_from)) throw new AppError(400, 'date', 'Nurodykite galiojimo pradžią.');
-    const keys = ['mma', 'vdu', 'npd_max', 'npd_coef', 'gpm_rate', 'vsd_rate', 'psd_rate', 'pension_extra_rate', 'employer_rate', 'employer_rate_fixed'];
-    const vals = keys.map((k) => num(b[k]));
+    const keys = ['mma', 'vdu', 'npd_max', 'npd_coef', 'gpm_rate', 'gpm_rate_high', 'vsd_rate', 'psd_rate', 'pension_extra_rate', 'employer_rate', 'employer_rate_fixed'];
+    const vals = keys.map((k) => num(b[k]) ?? (k === 'gpm_rate_high' ? '32' : null));
     keys.forEach((k, i) => { if ((vals[i] === null && k !== 'vdu') || (vals[i] !== null && !isNum(vals[i]))) throw new AppError(400, k, `Netinkama reikšmė: ${k}.`); });
     const row = (await pool.query(`INSERT INTO payroll_params(effective_from, ${keys.join(', ')}, note) VALUES ($1, ${keys.map((_, i) => `$${i + 2}`).join(', ')}, $${keys.length + 2})
       ON CONFLICT (effective_from) DO UPDATE SET ${keys.map((k) => `${k}=EXCLUDED.${k}`).join(', ')}, note=EXCLUDED.note RETURNING *`, [b.effective_from, ...vals, s(b.note, 500)])).rows[0];

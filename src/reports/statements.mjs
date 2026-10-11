@@ -2,6 +2,7 @@
 //   2-asis VAS „Balansas“ (VAS-41): 1 priedas – balansas, 2 priedas – sutrumpintas balansas, 3 priedas – labai mažų įmonių trumpas balansas;
 //   3-iasis VAS „Pelno (nuostolių) ataskaita“ (VAS-40): 1 priedas – pelno (nuostolių) ataskaita, 2 priedas – labai mažų įmonių trumpa.
 // Lines are mapped to the chart of accounts (migration 009) by account-code prefix. Amounts come only from posted journal lines.
+import {NOT_CLOSING} from '../ledger/closing.mjs';
 import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
 import {CF_INDIRECT, CF_DIRECT, cashFlowColumn} from './cashflow.mjs';
 import {buildEquity, EQ_COLS, EQ_ROWS} from './equity.mjs';
@@ -214,7 +215,8 @@ async function accountData(db, kind, {from, to}) {
     const fy = `${to.slice(0, 4)}-01-01`;
     const r = await db.query(`SELECT l.account_code AS code,
         coalesce(sum(l.debit - l.credit),0) AS bal,
-        coalesce(sum(l.debit - l.credit) FILTER (WHERE e.entry_date >= $2),0) AS bal_year
+        coalesce(sum(l.debit - l.credit) FILTER (WHERE e.entry_date >= $2),0) AS bal_year,
+        coalesce(sum(l.debit - l.credit) FILTER (WHERE e.entry_date >= $2 AND ${NOT_CLOSING}),0) AS bal_year_result
       FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE e.entry_date <= $1 GROUP BY 1`, [to, fy]);
     return r.rows;
   }
@@ -223,7 +225,7 @@ async function accountData(db, kind, {from, to}) {
       coalesce(sum(l.debit) FILTER (WHERE e.entry_date BETWEEN $1 AND $2),0) AS debit,
       coalesce(sum(l.debit - l.credit) FILTER (WHERE e.entry_date < $1),0) AS opening,
       coalesce(sum(l.debit - l.credit) FILTER (WHERE e.entry_date <= $2),0) AS closing
-    FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE e.entry_date <= $2 GROUP BY 1`, [from, to]);
+    FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE e.entry_date <= $2 AND ${NOT_CLOSING} GROUP BY 1`, [from, to]);
   return r.rows;
 }
 
@@ -239,8 +241,11 @@ function computeColumn(form, rows, {cents, wageAccounts = []}) {
       // Undistributed result: 341/342/390 balances plus income and expense accounts not yet closed.
       for (const r of rows) {
         const c = r.code;
-        const cur = isPL(c) ? r.bal_year : c.startsWith('341') ? r.bal : '0';
-        const prior = isPL(c) ? money.sub(r.bal, r.bal_year) : (c.startsWith('342') || c.startsWith('390') || c.startsWith('34') && !c.startsWith('341')) ? r.bal : '0';
+        // This year's result = income and expense of the year without closing entries (so closing into 341 and moving 341 → 342
+        // change nothing); everything else in 5/6, 34x and 390 is undistributed result of earlier years.
+        const inResult = isPL(c) || c.startsWith('34') || c.startsWith('390');
+        const cur = isPL(c) ? r.bal_year_result : '0';
+        const prior = inResult ? money.sub(r.bal, cur) : '0';
         const take = spec.result === 'current' ? cur : spec.result === 'prior' ? prior : money.add(cur, prior);
         if (!money.isZero(take)) v = money.add(v, money.neg(take));
         if (isPL(c) || c.startsWith('34') || c.startsWith('390')) used.add(c);
@@ -296,7 +301,7 @@ export function periodsFor(form, q) {
 
 /** Build a statement: lines with current and previous amounts, header data, checks. */
 export async function buildStatement(db, key, q) {
-  const form = FORMS[key];
+  const form = Object.hasOwn(FORMS, key) ? FORMS[key] : null;
   if (!form) return null;
   const cents = q.precision === 'cents';
   const {cur, prev} = periodsFor(form, q);

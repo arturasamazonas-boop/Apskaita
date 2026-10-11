@@ -376,7 +376,7 @@ async function correctionDelta(db, invoiceId, next) {
   for (const e of oldEntries) signed.set(`${e.account_code}|${e.counterparty_id || ''}`, money.neg(e.amt));
   for (const e of next.entryLines) { const k = `${e.account}|${e.counterpartyId || ''}`; signed.set(k, money.add(signed.get(k) || '0', money.sub(e.debit, e.credit))); }
   const entryLines = [...signed].filter(([, a]) => !money.isZero(a)).map(([k, a]) => { const [account, cp] = k.split('|'); const pos = money.sign(a) > 0; return {account, debit: pos ? money.norm(a) : '0', credit: pos ? '0' : money.abs(a), counterpartyId: cp || null, description: 'Koregavimas'}; });
-  return {lines, vatRows: [...vatMap.values()].filter((v) => !money.isZero(v.taxable) || !money.isZero(v.vat)),
+  return {lines, vatRows: [...vatMap.values()].filter((v) => !money.isZero(v.taxable) || !money.isZero(v.vat) || !money.isZero(v.deductible)),
     totals: {net: money.sub(next.totals.net, oldTotals.net), vat: money.sub(next.totals.vat, oldTotals.vat), gross: money.sub(next.totals.gross, oldTotals.gross), deductible: money.sub(next.totals.deductible, oldTotals.ded)}, entryLines};
 }
 

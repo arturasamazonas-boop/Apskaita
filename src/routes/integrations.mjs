@@ -77,7 +77,7 @@ export function register(r, deps) {
   r.get('/api/stores/:id/runs', async ({user, params}) => { requireCap(user, 'read'); return (await pool.query('SELECT * FROM sync_runs WHERE store_id=$1 ORDER BY id DESC LIMIT 50', [params.id])).rows; });
   r.get('/api/orders', async ({user, query}) => {
     requireCap(user, 'read');
-    const limit = Math.min(Number(query.limit) || 50, 200), offset = Math.max(Number(query.offset) || 0, 0);
+    const limit = Math.min(Math.max(Math.trunc(Number(query.limit)) || 50, 1), 200), offset = Math.max(Math.trunc(Number(query.offset)) || 0, 0);
     const rows = (await pool.query(`SELECT o.id, o.store_id, s.name AS store_name, s.is_demo, o.external_id, o.order_number, o.external_status, o.currency, o.state, o.state_note, o.invoice_id,
         o.external_updated_at, o.data->'totals'->>'gross' AS gross, o.data->'customer'->>'name' AS customer, p.id AS proposal_id, p.blocking
       FROM external_orders o JOIN stores s ON s.id=o.store_id LEFT JOIN proposals p ON p.external_order_id=o.id AND p.status='open'

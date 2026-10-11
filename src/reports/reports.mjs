@@ -1,5 +1,6 @@
 // Reports. Financial statements derive from posted journal lines only; register/operational
 // reports state their source and are reconciled against the ledger where applicable.
+import {NOT_CLOSING} from '../ledger/closing.mjs';
 import {money} from '../lib/money.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
 
@@ -25,6 +26,9 @@ export async function trialBalance(db, {from, to, today}) {
     rows, {filters: {from, to}, totals, balanced: money.eq(totals.debit, totals.credit) && money.isZero(totals.closing), drill: {column: 'code', to: 'ledger'}});
 }
 
+/** Non-negative integer from a query value, with a default and an upper bound. */
+const clampInt = (v, def, max) => { const n = Math.trunc(Number(v)); return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : def; };
+
 export async function generalLedger(db, {account, from, to, today, limit = 500, offset = 0}) {
   from = D(from, yearStart(today)); to = D(to, today);
   const acc = (await db.query('SELECT * FROM accounts WHERE code=$1', [account])).rows[0];
@@ -32,7 +36,7 @@ export async function generalLedger(db, {account, from, to, today, limit = 500, 
   const rows = (await db.query(`SELECT e.id AS entry_id, e.entry_date, e.description, e.source_type, e.source_id, l.debit, l.credit, l.description AS line_description, c.name AS counterparty,
       i.document_id
     FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id LEFT JOIN counterparties c ON c.id=l.counterparty_id LEFT JOIN invoices i ON i.journal_entry_id = e.id
-    WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3 ORDER BY e.entry_date, e.id, l.id LIMIT ${Number(limit)} OFFSET ${Number(offset)}`, [account, from, to])).rows;
+    WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3 ORDER BY e.entry_date, e.id, l.id LIMIT ${clampInt(limit, 500, 5000)} OFFSET ${clampInt(offset, 0, 1e9)}`, [account, from, to])).rows;
   let bal = opening;
   for (const r of rows) { bal = money.add(bal, money.sub(r.debit, r.credit)); r.balance = bal; }
   const sums = (await db.query(`SELECT coalesce(sum(l.debit),0) AS d, coalesce(sum(l.credit),0) AS c FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3`, [account, from, to])).rows[0];
@@ -53,7 +57,7 @@ export async function profitAndLoss(db, {from, to, today}) {
   from = D(from, yearStart(today)); to = D(to, today);
   const rows = (await db.query(`SELECT a.code, a.name, a.type, coalesce(sum(l.credit - l.debit),0) AS amount
     FROM accounts a JOIN journal_lines l ON l.account_code=a.code JOIN journal_entries e ON e.id=l.entry_id
-    WHERE a.type IN ('revenue','expense') AND e.entry_date BETWEEN $1 AND $2 GROUP BY a.code, a.name, a.type ORDER BY a.type DESC, a.code`, [from, to])).rows;
+    WHERE a.type IN ('revenue','expense') AND e.entry_date BETWEEN $1 AND $2 AND ${NOT_CLOSING} GROUP BY a.code, a.name, a.type ORDER BY a.type DESC, a.code`, [from, to])).rows;
   const revenue = money.sum(rows.filter((r) => r.type === 'revenue').map((r) => r.amount));
   const expenses = money.sum(rows.filter((r) => r.type === 'expense').map((r) => r.amount));
   const gaps = await cogsGaps(db, from, to);
@@ -84,7 +88,7 @@ export async function balanceSheet(db, {asOf, today}) {
 
 export async function vatRegister(db, {register = 'sales', from, to, today}) {
   from = D(from, `${today.slice(0, 7)}-01`); to = D(to, today);
-  const rows = (await db.query(`SELECT i.id, i.issue_date, i.series, i.number, i.doc_type, i.counterparty_snapshot->>'name' AS counterparty, i.counterparty_snapshot->>'vatCode' AS counterparty_vat,
+  const rows = (await db.query(`SELECT i.id, i.issue_date, NULLIF(i.vat_point_date, i.issue_date) AS vat_point_date, i.series, i.number, i.doc_type, i.counterparty_snapshot->>'name' AS counterparty, i.counterparty_snapshot->>'vatCode' AS counterparty_vat,
       v.tax_code, v.rate, v.taxable, v.vat, v.deductible_vat, i.document_id, i.related_invoice_id
     FROM invoices i JOIN invoice_vat_rows v ON v.invoice_id=i.id WHERE i.register=$1 AND i.issue_date BETWEEN $2 AND $3 ORDER BY i.issue_date, i.id, v.tax_code`, [register, from, to])).rows;
   const byCode = {};
@@ -96,8 +100,8 @@ export async function vatRegister(db, {register = 'sales', from, to, today}) {
     FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id JOIN accounts a ON a.code=l.account_code AND a.system_role=$1
     WHERE e.source_type='invoice' AND e.entry_date BETWEEN $2 AND $3`, [role, from, to])).rows[0].v;
   return report(register === 'purchase' ? 'Pirkimų PVM registras' : 'Pardavimų PVM registras',
-    `Užregistruotos sąskaitos pagal išrašymo datą ${from}–${to}, suskirstytos pagal PVM kodą. ${register === 'purchase' ? 'Atskaitomas PVM – tik eilutės, pažymėtos kaip atskaitomos.' : ''} Koregavimai rodomi atskiromis eilutėmis.`,
-    [['issue_date', 'Data', 'date'], ['series', 'Serija'], ['number', 'Nr.'], ['doc_type', 'Tipas'], ['counterparty', 'Kontrahentas'], ['counterparty_vat', 'PVM kodas'], ['tax_code', 'PVM kodas (VMI)'], ['rate', 'Tarifas %'], ['taxable', 'Apmokestinama vertė', 'money'], ['vat', 'PVM', 'money'], ...(register === 'purchase' ? [['deductible_vat', 'Atskaitomas PVM', 'money']] : [])],
+    `Užregistruotos sąskaitos pagal išrašymo datą ${from}–${to}, suskirstytos pagal PVM kodą. ${register === 'purchase' ? 'Atskaitomas PVM – tik eilutės, pažymėtos kaip atskaitomos.' : ''} Koregavimai rodomi atskiromis eilutėmis. PVM deklaracija (FR0600) formuojama pagal PVM apmokestinimo momentą – jei jis kitame mėnesyje nei sąskaitos data, sąskaita deklaruojama tame mėnesyje (stulpelis „PVM momentas“).`,
+    [['issue_date', 'Data', 'date'], ['vat_point_date', 'PVM momentas (jei kitas)', 'date'], ['series', 'Serija'], ['number', 'Nr.'], ['doc_type', 'Tipas'], ['counterparty', 'Kontrahentas'], ['counterparty_vat', 'PVM kodas'], ['tax_code', 'PVM kodas (VMI)'], ['rate', 'Tarifas %'], ['taxable', 'Apmokestinama vertė', 'money'], ['vat', 'PVM', 'money'], ...(register === 'purchase' ? [['deductible_vat', 'Atskaitomas PVM', 'money']] : [])],
     rows, {filters: {register, from, to}, totals: {byCode, vat: vatTotal}, reconciliation: {ledger, register: vatTotal, ok: money.eq(ledger, vatTotal), note: `Palyginta su ${register === 'purchase' ? 'gautino' : 'mokėtino'} PVM sąskaitos apyvarta iš sąskaitų įrašų.`}, drill: {column: 'id', to: 'invoice'}});
 }
 
@@ -233,23 +237,23 @@ export async function vatReturn(db, {from, to, today}) {
   f['17'] = sum(S(['PVM12']), 'taxable');
   f['18'] = sum(S(['PVM13']), 'taxable');
   f['19'] = sum((r) => r.register === 'sales' && !['PVM1', 'PVM2', 'PVM3', 'PVM58', 'PVM5', 'PVM12', 'PVM13'].includes(r.tax_code), 'taxable');
-  f['25'] = sum((r) => r.register === 'purchase', 'deductible');
+  f['25'] = sum((r) => r.register === 'purchase', 'vat'); // all purchase VAT (Aprašo 45 p.); non-deductible VAT stays out of 35 (59 p.)
   f['29'] = sum(S(['PVM1']), 'vat');
   f['29A'] = sum(S(['PVM58']), 'vat');
   f['30'] = sum(S(['PVM2']), 'vat');
   f['31'] = sum(S(['PVM3']), 'vat');
-  f['35'] = f['25'];
+  f['35'] = sum((r) => r.register === 'purchase', 'deductible');
   f['36'] = money.sub(money.sum([f['29'], f['29A'], f['30'], f['31']]), f['35']);
   const L = [
     ['I', 'Prekių tiekimo ir paslaugų teikimo sandoriai (apmokestinamoji vertė)'],
     ['11', 'PVM apmokestinami sandoriai'], ['12', 'PVM apmokestinami sandoriai, kai PVM išskaito pirkėjas (96 str.) – nepildoma automatiškai'], ['13', 'PVM neapmokestinami sandoriai'],
     ['17', 'Prekių eksportas (0 proc.)'], ['18', 'ES PVM mokėtojams patiektos prekės (0 proc.)'], ['19', 'Kiti PVM apmokestinami sandoriai (0 proc.)'],
     ['II', 'Prekių ir paslaugų įsigijimo sandoriai (21–24) – atvirkštinis apmokestinimas automatiškai nepildomas'],
-    ['III', 'Pirkimo ir importo PVM'], ['25', 'Įsigytų prekių ir paslaugų pirkimo PVM (atskaitomas)'], ['26', 'Sumokėtas importo PVM – nepildoma automatiškai'], ['27', 'Importo PVM, kurio įskaitymą kontroliuoja VMI – nepildoma automatiškai'],
+    ['III', 'Pirkimo ir importo PVM'], ['25', 'Įsigytų prekių ir paslaugų pirkimo PVM (visas, įskaitant neatskaitomą)'], ['26', 'Sumokėtas importo PVM – nepildoma automatiškai'], ['27', 'Importo PVM, kurio įskaitymą kontroliuoja VMI – nepildoma automatiškai'],
     ['V', 'Pardavimo PVM, PVM atskaita, mokėtinas (grąžintinas) PVM'],
     ['29', 'Standartinio tarifo (21 proc.) pardavimo PVM'], ['29A', '12 proc. tarifo pardavimo PVM'], ['30', '9 proc. tarifo pardavimo PVM'], ['31', '5 proc. tarifo pardavimo PVM'],
     ['32', 'Pardavimo PVM (95 str.) – nepildoma automatiškai'], ['33', 'Pardavimo PVM (96 str.) – nepildoma automatiškai'], ['34', 'Iš ES įsigytų prekių pardavimo PVM – nepildoma automatiškai'],
-    ['35', 'Atskaitomas PVM (25 + 26 + 27)'], ['36', 'Mokėtinas į biudžetą arba grąžintinas iš biudžeto (–) PVM'],
+    ['35', 'Atskaitomas PVM (be PVMĮ 62 str. neatskaitomo)'], ['36', 'Mokėtinas į biudžetą arba grąžintinas iš biudžeto (–) PVM'],
   ];
   const out = L.map(([field, label]) => ({field, label, amount: /^[IV]+$/.test(field) ? null : f[field] ?? '0.00'}));
   return report('PVM deklaracijos FR0600 duomenys', `Užregistruotos pardavimo ir pirkimo sąskaitos, kurių PVM momentas ${from}–${to}. Deklaraciją pateikite VMI EDS patys; laukus, pažymėtus „nepildoma automatiškai“, užpildykite pagal savo duomenis.`,

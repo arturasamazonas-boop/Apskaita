@@ -11,7 +11,7 @@ Parameters are stored in `payroll_params` with an effective date. Each sheet use
 | 2025-01-01 | 1038 € | 747 − 0.49 × (DU − 1038) | 20 % | VSD 12.52 % + PSD 6.98 % | 3 % | 1.77 % (fixed-term 2.49 %) |
 | 2026-01-01 | 1153 € | 747 − 0.49 × (DU − 1153) | 20 % | VSD 12.52 % + PSD 6.98 % | 3 % | 1.77 % (fixed-term 2.49 %) |
 
-2026 progressive GPM (25 % above 36 VDU, 32 % above 60 VDU of yearly income) is settled annually. Employers withhold 20 % monthly unless the employee asks otherwise, so the higher rates are not applied automatically. The 2026 VDU of 2312.15 € is stored for reference.
+Above 60 VDU of employment income in a calendar year at this employer (2026: 60 × 2312.15 = 138 729 €), GPM on the part above is withheld at 32 % (`gpm_rate_high`) and the employee's VSD is no longer charged on it (the 60 VDU contribution ceiling); PSD has no ceiling. The year-to-date gross comes from the employee's earlier payroll sheets of the same year. The 25 % rate for 36–60 VDU is settled in the annual return and is not withheld monthly. Hourly rates keep 4 decimals: rate × hours is rounded once, to cents.
 
 ## Calculation (per employee, per month)
 

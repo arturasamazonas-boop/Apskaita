@@ -42,10 +42,10 @@ const sum2 = (st, id) => st?.lines.find((l) => l.id === id);
 /** Build the set: statements, RC checks, deadlines. */
 export async function buildRcPackage(db, {year, category, forms: chosen, today, precision = 'eur'}) {
   const size = await sizeIndicators(db, year);
-  const cat = CATEGORIES[category] ? category : size.category;
+  const cat = Object.hasOwn(CATEGORIES, category || '') ? category : size.category;
   const def = CATEGORIES[cat];
   const allowed = (k) => def.forms.includes(k) || Object.values(def.alt).some((a) => a.includes(k));
-  const formKeys = Array.isArray(chosen) && chosen.length ? chosen.filter((k) => FORMS[k] && allowed(k)) : def.forms;
+  const formKeys = Array.isArray(chosen) && chosen.length ? chosen.filter((k) => Object.hasOwn(FORMS, k) && allowed(k)) : def.forms;
   const from = `${year}-01-01`, to = `${year}-12-31`;
   const statements = [];
   for (const k of formKeys) statements.push(await buildStatement(db, k, {from, to, today, precision}));

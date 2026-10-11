@@ -151,7 +151,7 @@ export function register(r, {pool, storage}) {
   });
   r.put('/api/statements/:key/prior', async ({req, user, params}) => {
     requireCap(user, 'approve');
-    const form = FORMS[params.key];
+    const form = Object.hasOwn(FORMS, params.key) ? FORMS[params.key] : null;
     if (!form) throw new AppError(404, 'not_found', 'Ataskaitos forma nerasta.');
     const b = await readJson(req);
     const periodEnd = /^\d{4}-\d{2}-\d{2}$/.test(b.periodEnd || '') ? b.periodEnd : null;
@@ -173,7 +173,7 @@ export function register(r, {pool, storage}) {
   r.get('/api/dashboard', async ({user, query}) => { requireCap(user, 'read'); return R.dashboard(pool, {...query, today: todayVilnius()}); });
   r.get('/api/reports/:name', async ({user, params, query, res}) => {
     requireCap(user, 'read');
-    const fn = REPORTS[params.name];
+    const fn = Object.hasOwn(REPORTS, params.name) ? REPORTS[params.name] : null;
     if (!fn) throw new AppError(404, 'not_found', 'Ataskaita nerasta.');
     const rep = await fn(pool, {...query, today: todayVilnius()});
     if (query.format === 'csv' || query.format === 'xlsx') {
@@ -188,7 +188,7 @@ export function register(r, {pool, storage}) {
   });
   r.get('/api/invoices', async ({user, query}) => {
     requireCap(user, 'read');
-    const limit = Math.min(Number(query.limit) || 50, 200), offset = Math.max(Number(query.offset) || 0, 0);
+    const limit = Math.min(Math.max(Math.trunc(Number(query.limit)) || 50, 1), 200), offset = Math.max(Math.trunc(Number(query.offset)) || 0, 0);
     const params = [];
     const where = [];
     const add = (sql, v) => { params.push(v); where.push(sql.replace('?', `$${params.length}`)); };

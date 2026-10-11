@@ -5,7 +5,7 @@ import {AppError, tx} from '../db.mjs';
 import {audit} from '../audit.mjs';
 import {requireCap} from '../auth/auth.mjs';
 import {ROOT} from '../config.mjs';
-import {money} from '../lib/money.mjs';
+import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
 import {createDocument, addFile, loadDocumentForUser} from '../vault/documents.mjs';
 import {createProposalVersion} from '../invoices/service.mjs';
 import {applyClassification} from '../invoices/engine.mjs';
@@ -75,16 +75,20 @@ export async function createCreditNote(pool, user, invoiceId, b) {
     if (!inv) throw new AppError(404, 'not_found', 'Sąskaita nerasta.');
     if (inv.register !== 'sales' || !['vat_invoice', 'invoice'].includes(inv.doc_type)) throw new AppError(422, 'not_sales', 'Kreditinę sąskaitą galima išrašyti tik pardavimo sąskaitai. Tiekėjų kreditines įkelkite į dokumentų dėžutę.');
     const orig = (await db.query('SELECT * FROM invoice_lines WHERE invoice_id=$1 ORDER BY line_no', [inv.id])).rows;
-    const credited = (await db.query(`SELECT l.description, l.sku, sum(l.quantity) AS q FROM invoices c JOIN invoice_lines l ON l.invoice_id=c.id WHERE c.related_invoice_id=$1 AND c.doc_type='credit_note' GROUP BY 1,2`, [inv.id])).rows;
+    const credited = (await db.query(`SELECT l.description, l.sku, sum(l.quantity) AS q, sum(l.discount) AS d FROM invoices c JOIN invoice_lines l ON l.invoice_id=c.id WHERE c.related_invoice_id=$1 AND c.doc_type='credit_note' GROUP BY 1,2`, [inv.id])).rows;
     const lines = [];
     for (const req of b.lines || []) {
       const o = orig.find((x) => String(x.line_no) === String(req.lineNo));
       if (!o) throw new AppError(400, 'bad_line', `Eilutė ${req.lineNo} nerasta.`);
       const q = amt(req.quantity);
       if (!/^\d+(\.\d{1,4})?$/.test(q) || Number(q) <= 0) throw new AppError(400, 'bad_qty', 'Kiekis turi būti teigiamas.');
-      const already = Math.abs(Number(credited.find((c) => c.description === o.description && c.sku === o.sku)?.q || 0));
+      const prev = credited.find((c) => c.description === o.description && c.sku === o.sku);
+      const already = Math.abs(Number(prev?.q || 0));
       if (Number(q) + already > Number(o.quantity) + 1e-9) throw new AppError(422, 'too_much', `Eilutė ${o.line_no}: kredituojama ${q}, jau kredituota ${already}, parduota ${Number(o.quantity)}.`);
-      lines.push({description: o.description, sku: o.sku, quantity: `-${q}`, unit: o.unit, unitPrice: o.unit_price, discount: '0', sourceNet: '', vatRate: o.vat_rate, taxCode: o.tax_code,
+      // The original line discount is credited pro rata (the last credit takes the rest), so the credit note reverses exactly the net invoiced.
+      const last = Math.abs(Number(q) + already - Number(o.quantity)) < 1e-9;
+      const share = last ? money.add(o.discount || '0', prev?.d || '0') : fromUnits(divRound(toUnits(o.discount || '0', 2) * toUnits(q, 4), toUnits(o.quantity, 4)), 2);
+      lines.push({description: o.description, sku: o.sku, quantity: `-${q}`, unit: o.unit, unitPrice: o.unit_price, discount: money.neg(share), sourceNet: '', vatRate: o.vat_rate, taxCode: o.tax_code,
         accountCode: o.account_code, lineType: o.line_type, vatTreatment: 'output', productId: o.product_id, userClassified: true, suggestion: {source: 'original', explanation: `Kopija iš sąskaitos ${inv.series} ${inv.number} eilutės ${o.line_no}.`}, sourceRef: null});
     }
     if (!lines.length) throw new AppError(400, 'lines', 'Pasirinkite kredituojamas eilutes.');

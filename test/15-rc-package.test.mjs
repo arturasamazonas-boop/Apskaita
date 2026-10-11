@@ -39,11 +39,26 @@ test('size category, required forms and RC checks', async () => {
   assert.equal((await ro.get('/api/rc-package?year=abc')).status, 400);
 });
 
-test('result closed into 341 before the year end is flagged', async () => {
-  await post('2025-12-31', 'Rezultato uždarymas', [{account: '5001', debit: '1000'}, {account: '6300', credit: '400'}, {account: '341', credit: '600'}]);
+test('year-end closing into 341 keeps the P&L and the balance consistent; transfer to 342', async () => {
+  const st = (await ro.get('/api/year-end?year=2025')).body;
+  assert.deepEqual([st.result, st.open, st.accounts.length], ['600.00', true, 2]);
+  const c = await acc.post('/api/year-end/close', {year: 2025});
+  assert.equal(c.status, 200, JSON.stringify(c.body));
+  assert.equal((await acc.post('/api/year-end/close', {year: 2025})).status, 409);
+  const e = (await ro.get(`/api/journal/${c.body.entryId}`)).body;
+  assert.deepEqual(e.lines.map((l) => [l.account_code, l.debit, l.credit]).sort(), [['341', '0.00', '600.00'], ['5001', '1000.00', '0.00'], ['6300', '0.00', '400.00']]);
+  // The statements still show the year's result: closing entries are not income or expense.
   const p = (await ro.get('/api/rc-package?year=2025&category=maza')).body;
-  assert.ok(p.checks.some((c) => c.level === 'error' && /nesutampa su balanso „Ataskaitinių metų pelnas/.test(c.message)), JSON.stringify(p.checks));
-  await post('2025-12-31', 'Uždarymo atšaukimas', [{account: '5001', credit: '1000'}, {account: '6300', debit: '400'}, {account: '341', debit: '600'}]);
+  assert.ok(p.checks.some((x) => x.level === 'ok' && /Grynasis pelnas \(600\.00\)/.test(x.message)), JSON.stringify(p.checks));
+  assert.ok(!p.checks.some((x) => x.level === 'error'), JSON.stringify(p.checks));
+  const pl = (await ro.get('/api/reports/profit-loss?from=2025-01-01&to=2025-12-31')).body;
+  assert.equal(pl.totals.result, '600.00');
+  // 2026: the 341 balance is a prior-year result (balance D5.2), not this year's (D5.1).
+  const t = await acc.post('/api/year-end/transfer', {year: 2025});
+  assert.equal(t.status, 200, JSON.stringify(t.body));
+  const bal = (await ro.get('/api/statements/balansas?to=2026-12-31&precision=cents')).body;
+  const line = (id) => bal.lines.find((l) => l.id === id).current;
+  assert.deepEqual([line('D5.1'), line('D5.2')], ['0.00', '600.00']);
 });
 
 test('set as one PDF and line data for the RC e-form', async () => {

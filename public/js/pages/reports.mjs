@@ -104,7 +104,7 @@ async function journal(body, state) {
     const d = await get('/api/journal?limit=100');
     clear(list, table([{label: 'Data', render: (e) => date(e.entry_date)}, {label: '#', key: 'id'}, {label: 'Aprašymas', key: 'description'}, {label: 'Šaltinis', key: 'source_type'}, {label: 'Suma', num: true, render: (e) => money(e.amount)},
       {label: 'Eilutės', render: (e) => (e.lines || []).map((l) => `${l.account} ${Number(l.debit) ? 'D ' + l.debit : 'K ' + l.credit}`).join('; ')}, {label: 'Atšauktas', render: (e) => (e.reversed_by ? `#${e.reversed_by}` : '')},
-      {label: '', render: (e) => (can(state.user, 'approve') && ['manual', 'opening', 'cogs', 'adjustment'].includes(e.source_type) && !e.reversed_by ? h('button', {class: 'btn btn-small', onclick: () => guard(() => post(`/api/journal/${e.id}/reverse`, {date: today(), reason: 'Atšaukta'}), 'Atšaukta atvirkštiniu įrašu.').then(load)}, 'Atšaukti') : '')}],
+      {label: '', render: (e) => (can(state.user, 'approve') && ['manual', 'opening', 'cogs', 'adjustment', 'year_close', 'year_transfer'].includes(e.source_type) && !e.reversed_by ? h('button', {class: 'btn btn-small', onclick: () => guard(() => post(`/api/journal/${e.id}/reverse`, {date: today(), reason: 'Atšaukta'}), 'Atšaukta atvirkštiniu įrašu.').then(load)}, 'Atšaukti') : '')}],
     d.items, {onRow: (e) => entryModal(e.id)}));
   };
   const lines = [];

@@ -18,20 +18,35 @@ export function npdFor(gross, p, {apply = true, fixed = null} = {}) {
 
 /** Base pay for the month: monthly salary pro rata worked days, or hourly rate × hours. */
 export function basePay(emp, {workedDays, normDays, workedHours}) {
-  if (emp.pay_type === 'hourly') return mulDiv(String(emp.hourly_rate), String(workedHours || 0), '1');
+  // Hourly rate has 4 decimals (numeric(18,4)): rate × hours rounded once, to cents.
+  if (emp.pay_type === 'hourly') return fromUnits(divRound(toUnits(String(emp.hourly_rate), 4) * toUnits(String(workedHours || 0), 4), 1000000n), 2);
   if (!Number(normDays)) return '0.00';
   if (Number(workedDays) >= Number(normDays)) return money.norm(emp.base_salary);
   return mulDiv(emp.base_salary, String(workedDays || 0), String(normDays));
 }
 
-/** One employee's payroll line. Inputs are decimal strings; returns all amounts as strings with 2 decimals. */
-export function calcLine(emp, p, inp) {
+/**
+ * One employee's payroll line. Inputs are decimal strings; returns all amounts as strings with 2 decimals.
+ * `ytdGross` – the employee's gross pay earlier in the same calendar year at this employer. When the year's
+ * employment income passes 60 VDU (p.vdu), GPM on the part above is withheld at 32 % (GPMĮ 6 str.) and
+ * the employee's VSD is no longer charged on it (the 60 VDU contribution ceiling). PSD has no ceiling.
+ */
+export function calcLine(emp, p, inp, {ytdGross = '0'} = {}) {
   const base = inp.base !== undefined && inp.base !== null && inp.base !== '' ? money.norm(inp.base) : basePay(emp, inp);
   const extra = ['bonus', 'vacation_pay', 'sick_pay', 'other_pay'].map((k) => money.norm(inp[k] || '0'));
   const gross = money.sum([base, ...extra]);
   const npd = npdFor(gross, p, {apply: emp.apply_npd, fixed: emp.npd_fixed});
-  const gpm = money.max(pct(money.sub(gross, npd), p.gpm_rate), '0');
-  const vsd = pct(gross, p.vsd_rate), psd = pct(gross, p.psd_rate);
+  let above = '0.00', vsdBase = gross;
+  if (p.vdu && Number(p.vdu) > 0) {
+    const limit = pct(p.vdu, '6000'); // 60 × VDU
+    const before = money.norm(ytdGross || '0');
+    const room = money.max(money.sub(limit, before), '0');
+    above = money.max(money.sub(gross, room), '0');
+    vsdBase = money.min(gross, room);
+  }
+  const gpmBase = money.max(money.sub(money.sub(gross, npd), above), '0');
+  const gpm = money.add(pct(gpmBase, p.gpm_rate), pct(above, p.gpm_rate_high ?? '32'));
+  const vsd = pct(vsdBase, p.vsd_rate), psd = pct(gross, p.psd_rate);
   const pension = emp.pension_extra ? pct(gross, p.pension_extra_rate) : '0.00';
   const net = money.sub(gross, money.sum([gpm, vsd, psd, pension]));
   const advance = money.norm(inp.advance || '0');

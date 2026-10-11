@@ -122,7 +122,7 @@ export function register(r, deps) {
   // ------------------------------------------------------------ inbox
   r.get('/api/inbox', async ({user, query}) => {
     requireCap(user, 'read');
-    const limit = Math.min(Number(query.limit) || 50, 200), offset = Math.max(Number(query.offset) || 0, 0);
+    const limit = Math.min(Math.max(Math.trunc(Number(query.limit)) || 50, 1), 200), offset = Math.max(Math.trunc(Number(query.offset)) || 0, 0);
     const where = [`d.workflow='invoice'`, visibilitySql(user)];
     const params = [];
     const add = (sql, v) => { params.push(v); where.push(sql.replace('?', `$${params.length}`)); };

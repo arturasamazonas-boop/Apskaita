@@ -47,6 +47,9 @@ export function translateDbError(e) {
   if (msg.includes('PERIOD_LOCKED')) return new AppError(409, 'period_locked', 'Laikotarpis užrakintas: įrašų data patenka į užrakintą laikotarpį.', {db: msg});
   if (msg.includes('UNBALANCED')) return new AppError(422, 'unbalanced', 'Įrašas nesubalansuotas: debetas turi būti lygus kreditui.', {db: msg});
   if (msg.includes('IMMUTABLE')) return new AppError(409, 'immutable', 'Patvirtintų įrašų keisti ar trinti negalima. Naudokite koregavimą.', {db: msg});
+  // Bad input that reached SQL (non-numeric id, out-of-range number, negative LIMIT, missing referenced row): a client error, not a 500.
+  if (e.code === '22P02' || e.code === '22003' || e.code === '22007' || e.code === '22008' || e.code === '2201W' || e.code === '2201X') return new AppError(400, 'bad_input', 'Netinkama reikšmė užklausoje.', {db: e.code});
+  if (e.code === '23503') return new AppError(400, 'bad_reference', 'Nurodytas susijęs įrašas nerastas.', {db: e.code});
   return e;
 }
 

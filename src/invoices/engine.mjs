@@ -266,10 +266,16 @@ export function computeProposal(data, ctx) {
       warn('sourceTotals.vat', 'vat_not_printed', `PVM ${Number(g.rate)} % suma dokumente nerasta arba neperskaityta – naudojama apskaičiuota ${computed}.`);
     }
     vatGroups.push({taxCode: g.taxCode, isafCode: g.isafCode, rate: g.rate, taxable: g.taxable, vatComputed: computed, vatSource: src?.amount ?? null, vat: used, note});
-    // Allocate group VAT to lines proportionally (exact sum).
-    const shares = money.allocate(used, g.lines.map((l) => money.abs(l.net)));
-    const sign = money.sign(used) < 0 ? -1 : 1;
-    g.lines.forEach((l, k) => { l.vat = sign < 0 ? shares[k] : shares[k]; });
+    // VAT per line from its own (signed) net, so a negative line gets negative VAT; the rounding difference
+    // to the group VAT goes to the line with the largest amount, so lines sum exactly to the group.
+    const lineVat = g.lines.map((l) => (g.rate === null || g.taxCode === 'BE_PVM' ? '0.00' : money.vat(l.net, g.rate)));
+    const rest = money.sub(used, money.sum(lineVat));
+    if (!money.isZero(rest) && g.lines.length) {
+      let k = 0;
+      g.lines.forEach((l, i) => { if (money.cmp(money.abs(l.net), money.abs(g.lines[k].net)) > 0) k = i; });
+      lineVat[k] = money.add(lineVat[k], rest);
+    }
+    g.lines.forEach((l, k) => { l.vat = lineVat[k]; });
   }
   const net = money.sum(lines.filter((l) => l.net !== null).map((l) => l.net));
   const vat = money.sum(vatGroups.map((g) => g.vat));

@@ -21,6 +21,7 @@ const PAGES = {
   'skolu-aktas': ['Skolų suderinimo aktas', () => import('./pages/debt-act.mjs')],
   fr0600: ['PVM deklaracija FR0600', () => import('./pages/fr0600.mjs')],
   turtas: ['Ilgalaikis turtas', () => import('./pages/assets.mjs')],
+  'metu-uzdarymas': ['Metų uždarymas', () => import('./pages/year-end.mjs')],
   'rc-rinkinys': ['Rinkinys Registrų centrui', () => import('./pages/rc-package.mjs')],
   integracijos: ['Integracijos', () => import('./pages/integrations.mjs')],
   nustatymai: ['Nustatymai', () => import('./pages/settings.mjs')],
@@ -47,7 +48,7 @@ export const MENU = [
       ['Pelnas (nuostoliai) pagal sąskaitas', 'ataskaitos/pelnas'], ['Balansas pagal sąskaitas', 'ataskaitos/balansas'], '-',
       ['Pirkėjų skolos', 'ataskaitos/gautinos'], ['Skolos tiekėjams', 'ataskaitos/moketinos'], ['Skolų suderinimo aktas', 'skolu-aktas'], '-',
       ['Pardavimai', 'ataskaitos/pardavimai'], ['Užsakymų rodikliai', 'ataskaitos/operaciniai'], ['Pirkimai ir sąnaudos', 'ataskaitos/pirkimai'], ['Mokėjimų suvestinė', 'ataskaitos/mokejimai']]]]],
-  ['Servisas', [['Įmonės duomenys', 'nustatymai/imone'], ['Kontavimo susiejimai', 'nustatymai/kontavimas'], ['Laikotarpių užrakinimas', 'nustatymai/laikotarpiai'], ['Integracijos (e. parduotuvės)', 'integracijos'], '-',
+  ['Servisas', [['Įmonės duomenys', 'nustatymai/imone'], ['Kontavimo susiejimai', 'nustatymai/kontavimas'], ['Laikotarpių užrakinimas', 'nustatymai/laikotarpiai'], ['Metų uždarymas', 'metu-uzdarymas'], ['Integracijos (e. parduotuvės)', 'integracijos'], '-',
     ['Naudotojai', 'nustatymai/naudotojai'], ['Audito žurnalas', 'nustatymai/auditas'], ['Foninės užduotys', 'nustatymai/uzduotys']]],
 ];
 // Quick actions under the menu bar (like a desktop toolbar).

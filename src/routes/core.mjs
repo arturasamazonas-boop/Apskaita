@@ -277,7 +277,7 @@ export function register(r, {pool, auth, config}) {
     return tx(pool, async (db) => {
       const e = (await db.query('SELECT * FROM journal_entries WHERE id=$1', [params.id])).rows[0];
       if (!e) throw new AppError(404, 'not_found', 'Įrašas nerastas.');
-      if (!['manual', 'opening', 'cogs', 'adjustment'].includes(e.source_type)) throw new AppError(409, 'linked', 'Dokumento ar mokėjimo įrašą atšaukite per kreditinę sąskaitą arba koregavimą.');
+      if (!['manual', 'opening', 'cogs', 'adjustment', 'year_close', 'year_transfer'].includes(e.source_type)) throw new AppError(409, 'linked', 'Dokumento ar mokėjimo įrašą atšaukite per kreditinę sąskaitą arba koregavimą.');
       const r2 = await reverseEntry(db, {entryId: e.id, date: b.date, reason: s(b.reason, 200) || e.description, userId: user.id});
       await audit(db, {userId: user.id, action: 'journal.reverse', entityType: 'journal_entry', entityId: e.id, details: {reversal: r2.id, reason: s(b.reason, 200)}});
       return r2;
