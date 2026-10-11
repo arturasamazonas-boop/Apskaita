@@ -18,6 +18,7 @@ const PAGES = {
   atlyginimai: ['Atlyginimai', () => import('./pages/payroll.mjs')],
   ataskaitos: ['Ataskaitos', () => import('./pages/reports.mjs')],
   finansines: ['Finansinės ataskaitos', () => import('./pages/statements.mjs')],
+  'skolu-aktas': ['Skolų suderinimo aktas', () => import('./pages/debt-act.mjs')],
   integracijos: ['Integracijos', () => import('./pages/integrations.mjs')],
   nustatymai: ['Nustatymai', () => import('./pages/settings.mjs')],
 };
@@ -34,11 +35,14 @@ export const MENU = [
     ['Žurnalas ir rankiniai įrašai', 'ataskaitos/zurnalas'], ['Didžioji knyga', 'ataskaitos/knyga']]],
   ['Atlyginimai', [['Darbo užmokesčio žiniaraščiai', 'atlyginimai'], ['Naujas žiniaraštis', 'atlyginimai/naujas', 'write'], ['Darbuotojai', 'atlyginimai/darbuotojai'], ['Tarifai ir parametrai', 'atlyginimai/parametrai']]],
   ['Ataskaitos', [['Balansas (2 VAS, 1 priedas)', 'finansines/balansas'], ['Sutrumpintas balansas (2 priedas)', 'finansines/balansas-sutrumpintas'], ['Labai mažų įmonių balansas (3 priedas)', 'finansines/balansas-trumpas'],
-    ['Pelno (nuostolių) ataskaita (3 VAS, 1 priedas)', 'finansines/pelno-nuostoliu'], ['Trumpa pelno (nuostolių) ataskaita (2 priedas)', 'finansines/pelno-nuostoliu-trumpa'], '-',
-    ['Pelnas pagal sąskaitas', 'ataskaitos/pelnas'], ['Balansas pagal sąskaitas', 'ataskaitos/balansas'], ['Bandomasis balansas', 'ataskaitos/bandomasis'], '-',
-    ['Pardavimų PVM registras', 'ataskaitos/pvm-pardavimai'], ['Pirkimų PVM registras', 'ataskaitos/pvm-pirkimai'], ['i.SAF eksportas', 'ataskaitos/isaf'], '-',
-    ['Pirkėjų skolos', 'ataskaitos/gautinos'], ['Skolos tiekėjams', 'ataskaitos/moketinos'], ['Pardavimai', 'ataskaitos/pardavimai'], ['Užsakymų rodikliai', 'ataskaitos/operaciniai'],
-    ['Pirkimai ir sąnaudos', 'ataskaitos/pirkimai'], ['Mokėjimų suvestinė', 'ataskaitos/mokejimai']]],
+    ['Pelno (nuostolių) ataskaita (3 VAS, 1 priedas)', 'finansines/pelno-nuostoliu'], ['Trumpa pelno (nuostolių) ataskaita (2 priedas)', 'finansines/pelno-nuostoliu-trumpa'],
+    ['Pinigų srautų ataskaita (5 VAS, netiesioginis būdas)', 'finansines/pinigu-srautai'], ['Pinigų srautų ataskaita (tiesioginis būdas)', 'finansines/pinigu-srautai-tiesioginis'],
+    ['Nuosavo kapitalo pokyčių ataskaita (4 VAS)', 'finansines/nuosavo-kapitalo-pokyciai'], '-',
+    ['PVM deklaracijos FR0600 duomenys', 'ataskaitos/pvm-deklaracija'], ['Pardavimų PVM registras', 'ataskaitos/pvm-pardavimai'], ['Pirkimų PVM registras', 'ataskaitos/pvm-pirkimai'], ['i.SAF eksportas', 'ataskaitos/isaf'], '-',
+    ['Kitos ataskaitos', [['Apyvartos žiniaraštis (bandomasis balansas)', 'ataskaitos/bandomasis'], ['Didžioji knyga', 'ataskaitos/knyga'], ['Kasos knyga (272)', 'ataskaitos/knyga/272'],
+      ['Pelnas (nuostoliai) pagal sąskaitas', 'ataskaitos/pelnas'], ['Balansas pagal sąskaitas', 'ataskaitos/balansas'], '-',
+      ['Pirkėjų skolos', 'ataskaitos/gautinos'], ['Skolos tiekėjams', 'ataskaitos/moketinos'], ['Skolų suderinimo aktas', 'skolu-aktas'], '-',
+      ['Pardavimai', 'ataskaitos/pardavimai'], ['Užsakymų rodikliai', 'ataskaitos/operaciniai'], ['Pirkimai ir sąnaudos', 'ataskaitos/pirkimai'], ['Mokėjimų suvestinė', 'ataskaitos/mokejimai']]]]],
   ['Servisas', [['Įmonės duomenys', 'nustatymai/imone'], ['Kontavimo susiejimai', 'nustatymai/kontavimas'], ['Laikotarpių užrakinimas', 'nustatymai/laikotarpiai'], ['Integracijos (e. parduotuvės)', 'integracijos'], '-',
     ['Naudotojai', 'nustatymai/naudotojai'], ['Audito žurnalas', 'nustatymai/auditas'], ['Foninės užduotys', 'nustatymai/uzduotys']]],
 ];
@@ -50,16 +54,32 @@ let main, menubar;
 
 function closeMenus(except) {
   menubar?.querySelectorAll('.menu-top[aria-expanded="true"]').forEach((b) => { if (b !== except) b.setAttribute('aria-expanded', 'false'); });
+  menubar?.querySelectorAll('.menu-subtoggle[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
 }
 
 function menuBar() {
   const allowed = (it) => it === '-' || !it[2] || can(state.user, it[2]);
   const tops = [];
+  const closeSubs = (root) => root.querySelectorAll('.menu-subtoggle[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+  const link = (it) => h('li', {role: 'none'}, h('a', {role: 'menuitem', href: `#/${it[1]}`, 'data-path': it[1], tabindex: '-1', onclick: () => closeMenus()}, it[0]));
+  // Items: [label, path, cap?], '-' separator, or [label, [items…]] – a submenu opening to the side (▸).
+  const entries = (items) => items.filter(allowed).map((it) => {
+    if (it === '-') return h('li', {class: 'menu-sep', role: 'separator'});
+    if (!Array.isArray(it[1])) return link(it);
+    const sub = h('ul', {class: 'menu-list menu-sub', role: 'menu', 'aria-label': it[0]}, entries(it[1]));
+    const tog = h('button', {class: 'menu-subtoggle', type: 'button', role: 'menuitem', 'aria-haspopup': 'true', 'aria-expanded': 'false', tabindex: '-1',
+      onclick: (e) => { e.stopPropagation(); const open = tog.getAttribute('aria-expanded') !== 'true'; closeSubs(tog.closest('.menu-list')); tog.setAttribute('aria-expanded', String(open)); },
+      onkeydown: (e) => { if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); tog.setAttribute('aria-expanded', 'true'); sub.querySelector('a, button')?.focus(); } }}, h('span', null, it[0]), h('span', {class: 'menu-arrow', 'aria-hidden': 'true'}, '▸'));
+    sub.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); tog.setAttribute('aria-expanded', 'false'); tog.focus(); } });
+    const li = h('li', {role: 'none', class: 'menu-hassub'}, tog, sub);
+    li.addEventListener('mouseenter', () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches) { closeSubs(li.parentElement); tog.setAttribute('aria-expanded', 'true'); } });
+    li.addEventListener('mouseleave', () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches) tog.setAttribute('aria-expanded', 'false'); });
+    return li;
+  });
   const bar = h('ul', {class: 'menubar', role: 'menubar', 'aria-label': 'Pagrindinis meniu'}, MENU.map(([label, items], i) => {
-    const list = h('ul', {class: 'menu-list', role: 'menu', 'aria-label': label}, items.filter(allowed).map((it) => (it === '-'
-      ? h('li', {class: 'menu-sep', role: 'separator'})
-      : h('li', {role: 'none'}, h('a', {role: 'menuitem', href: `#/${it[1]}`, 'data-path': it[1], tabindex: '-1', onclick: () => closeMenus()}, it[0])))));
-    const items$ = () => [...list.querySelectorAll('a')];
+    const list = h('ul', {class: 'menu-list', role: 'menu', 'aria-label': label}, entries(items));
+    // Keyboard order: the visible items of this level (links and submenu toggles, not the items inside closed submenus).
+    const items$ = (ul = list) => [...ul.children].map((li) => li.querySelector(':scope > a, :scope > button')).filter(Boolean);
     const btn = h('button', {class: 'menu-top', type: 'button', role: 'menuitem', 'aria-haspopup': 'true', 'aria-expanded': 'false', tabindex: i ? '-1' : '0',
       onclick: () => { const open = btn.getAttribute('aria-expanded') !== 'true'; closeMenus(btn); btn.setAttribute('aria-expanded', String(open)); },
       onmouseenter: () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches && menubar.querySelector('.menu-top[aria-expanded="true"]')) { closeMenus(btn); btn.setAttribute('aria-expanded', 'true'); } },
@@ -70,11 +90,12 @@ function menuBar() {
         else if (k === 'Escape') closeMenus();
       }}, label);
     list.addEventListener('keydown', (e) => {
-      const its = items$(); const at = its.indexOf(document.activeElement);
-      if (e.key === 'ArrowDown') { e.preventDefault(); its[(at + 1) % its.length].focus(); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); its[(at - 1 + its.length) % its.length].focus(); }
+      const ul = document.activeElement.closest('ul.menu-list');
+      const its = items$(ul); const at = its.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); its[(at + 1) % its.length]?.focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); its[(at - 1 + its.length) % its.length]?.focus(); }
       else if (e.key === 'Escape') { e.preventDefault(); closeMenus(); btn.focus(); }
-      else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); btn.dispatchEvent(new KeyboardEvent('keydown', {key: e.key})); }
+      else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && ul === list) { e.preventDefault(); btn.dispatchEvent(new KeyboardEvent('keydown', {key: e.key})); }
       else if (e.key === 'Tab') closeMenus();
     });
     tops.push(btn);

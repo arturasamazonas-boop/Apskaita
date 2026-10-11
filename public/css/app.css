@@ -212,3 +212,19 @@ details summary { cursor: pointer; margin: .5rem 0; font-weight: 600; }
 .issue-ok { color: var(--ok); }
 .fs-table th:nth-child(3), .fs-table td:nth-child(3) { width: 5.5rem; text-align: center; }
 .fs-table th:nth-child(4), .fs-table th:nth-child(5), .fs-table td:nth-child(4), .fs-table td:nth-child(5) { width: 10rem; white-space: normal; }
+/* Second-level menus (e.g. Ataskaitos → Kitos ataskaitos ▸) */
+.menu-hassub { position: relative; }
+.menu-subtoggle { display: flex; width: 100%; justify-content: space-between; gap: 1.5rem; align-items: center; padding: .45rem 1rem; background: none; border: 0; font: inherit; color: var(--text); cursor: pointer; text-align: left; white-space: nowrap; }
+.menu-subtoggle:hover, .menu-subtoggle:focus, .menu-subtoggle[aria-expanded="true"] { background: var(--primary); color: var(--primary-ink); outline: none; }
+.menu-arrow { font-size: .8em; }
+.menu-sub { top: -.3rem; left: 100%; border-radius: var(--radius); }
+.menu-subtoggle[aria-expanded="true"] + .menu-sub { display: block; }
+.menu-hassub:has(a[aria-current="page"]) > .menu-subtoggle { font-weight: 600; }
+@media (max-width: 820px) {
+  .menu-sub { position: static; padding-left: .75rem; background: var(--surface); }
+  .menu-subtoggle { padding: .6rem 1.6rem; }
+  .menu-arrow { transform: rotate(90deg); }
+}
+@media (min-width: 821px) { .menubar > .menu:nth-last-child(-n+3) .menu-sub { left: auto; right: 100%; } }
+.fs-matrix th { white-space: normal; font-size: .78rem; vertical-align: bottom; min-width: 6rem; max-width: 8rem; } .fs-matrix td { font-size: .85rem; } .fs-matrix td:nth-child(2) { min-width: 18rem; }
+.fs-matrix tr.fs-total td { font-weight: 700; background: var(--bg); }

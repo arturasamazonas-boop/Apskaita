@@ -14,13 +14,15 @@ export function fmtAmount(v, cents) {
 }
 
 export function renderStatementPdf(st, header = {}) {
-  const doc = new PDFDocument({size: 'A4', margins: {top: 36, bottom: 10, left: 42, right: 40}, info: {Title: `${st.form.name} ${st.period.to}`, Producer: 'Apskaita'}});
+  const wide = !!st.matrix;
+  const doc = new PDFDocument({size: 'A4', layout: wide ? 'landscape' : 'portrait', margins: {top: 36, bottom: 10, left: 42, right: 40}, info: {Title: `${st.form.name} ${st.period.to}`, Producer: 'Apskaita'}});
   doc.registerFont('r', path.join(ROOT, 'assets/fonts/DejaVuSans.ttf'));
   doc.registerFont('b', path.join(ROOT, 'assets/fonts/DejaVuSans-Bold.ttf'));
   const chunks = [];
   doc.on('data', (c) => chunks.push(c));
   const done = new Promise((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
-  const L = 42, W = 595 - 42 - 40, cents = st.precision === 'cents';
+  const PW = wide ? 842 : 595, PH = wide ? 595 : 842;
+  const L = 42, W = PW - 42 - 40, cents = st.precision === 'cents';
 
   // Standard reference, top right.
   doc.font('r').fontSize(8).text(`${st.form.standard}\n${st.form.annex}`, L + W - 210, 36, {width: 210, align: 'left'});
@@ -56,25 +58,38 @@ export function renderStatementPdf(st, header = {}) {
   y = doc.y + 8;
 
   // Table.
-  const cols = [['Eil. Nr.', 44, 'center'], ['Straipsniai', W - 44 - 46 - 84 - 84, 'left'], ['Pastabos Nr.', 46, 'center'], ['Ataskaitinis laikotarpis', 84, 'right'], ['Praėjęs ataskaitinis laikotarpis', 84, 'right']];
+  const ct = st.form.colTitles || ['Ataskaitinis laikotarpis', 'Praėjęs ataskaitinis laikotarpis'];
+  const cols = wide ? [['Eil. Nr.', 30, 'center'], ['Straipsniai', 200, 'left'], ...st.matrix.cols.map((c) => [c.label, (W - 230) / st.matrix.cols.length, 'right'])]
+    : [['Eil. Nr.', 44, 'center'], ['Straipsniai', W - 44 - 46 - 84 - 84, 'left'], ['Pastabos Nr.', 46, 'center'], [ct[0], 84, 'right'], [ct[1], 84, 'right']];
   const xs = []; let x = L; for (const col of cols) { xs.push(x); x += col[1]; }
   const cell = (i, text, yy, h, {bold = false, size = 8} = {}) => {
     doc.font(bold ? 'b' : 'r').fontSize(size).text(text, xs[i] + 3, yy + 2.5, {width: cols[i][1] - 6, align: cols[i][2], lineGap: 0});
   };
-  const BOTTOM = 842 - 42;
+  const BOTTOM = PH - 42;
   const rowBox = (yy, h, fill) => {
     if (fill) doc.rect(L, yy, W, h).fill(fill).fillColor('black');
     for (let i = 0; i <= cols.length; i++) { const xx = i < cols.length ? xs[i] : L + W; doc.moveTo(xx, yy).lineTo(xx, yy + h).lineWidth(0.5).stroke(); }
     doc.moveTo(L, yy).lineTo(L + W, yy).stroke(); doc.moveTo(L, yy + h).lineTo(L + W, yy + h).stroke();
   };
   const headerRow = () => {
-    const h = 30;
+    const h = wide ? Math.max(30, ...cols.map((c) => { doc.font('b').fontSize(6.5); return doc.heightOfString(c[0], {width: c[1] - 6}) + 6; })) : 30;
     rowBox(y, h, '#eeeeee');
-    cols.forEach((col, i) => cell(i, col[0].replace('Pastabos Nr.', 'Pasta-\nbos Nr.'), y, h, {bold: true, size: 7.5}));
+    cols.forEach((col, i) => cell(i, col[0].replace('Pastabos Nr.', 'Pasta-\nbos Nr.'), y, h, {bold: true, size: wide ? 6.5 : 7.5}));
     y += h;
   };
   headerRow();
-  for (const ln of st.lines) {
+  if (wide) {
+    for (const r of st.matrix.rows) {
+      doc.font(r.strong ? 'b' : 'r').fontSize(7.5);
+      const h = Math.max(12.5, doc.heightOfString(r.label, {width: cols[1][1] - 6}) + 5);
+      if (y + h > BOTTOM) { doc.addPage(); y = 40; headerRow(); }
+      rowBox(y, h, r.strong ? '#f2f2f2' : null);
+      cell(0, `${r.no}.`, y, h, {bold: r.strong, size: 7.5}); cell(1, r.label, y, h, {bold: r.strong, size: 7.5});
+      st.matrix.cols.forEach((c, i) => cell(i + 2, fmtAmount(st.matrix.cells[r.no][c.key], cents), y, h, {bold: r.strong, size: 7.5}));
+      y += h;
+    }
+  }
+  for (const ln of wide ? [] : st.lines) {
     const bold = ln.heading || ln.total || /^[A-H]\.$/.test(ln.no) || (ln.label === ln.label.toUpperCase() && /[A-ZĄČĘĖĮŠŲŪŽ]/.test(ln.label));
     doc.font(bold ? 'b' : 'r').fontSize(8);
     const h = Math.max(12.5, doc.heightOfString(ln.label, {width: cols[1][1] - 6, lineGap: 0}) + 5);

@@ -9,6 +9,9 @@ Menu: *Ataskaitos*. Every form can be viewed on screen, downloaded as a PDF laid
 | Labai mažų įmonių trumpas balansas | 2 VAS, 3 priedas | Very small companies |
 | Pelno (nuostolių) ataskaita | 3 VAS „Pelno (nuostolių) ataskaita“ (VAS-40), 1 priedas | All companies except very small ones that choose the short form |
 | Trumpa pelno (nuostolių) ataskaita | 3 VAS, 2 priedas | Very small companies that choose the short form |
+| Pinigų srautų ataskaita (netiesioginis būdas) | 5 VAS „Pinigų srautų ataskaita“ (VAS-14), 2 priedas | Medium and large companies (voluntary for small ones) |
+| Pinigų srautų ataskaita (tiesioginis būdas) | 5 VAS, 1 priedas | Same; choose one method |
+| Nuosavo kapitalo pokyčių ataskaita | 4 VAS „Nuosavo kapitalo pokyčių ataskaita“ (VAS-6), 1 priedas | Medium and large companies (voluntary for small ones) |
 
 **Sources:**
 
@@ -130,9 +133,123 @@ The previous-period column is calculated from the ledger:
 
 For the year before the company started using the program, the amounts can be entered by hand with *Įvesti praėjusio laikotarpio sumas ranka*. This needs the `approve` capability. Only items without sub-items can be entered; totals are recalculated. Manually entered amounts are shown in italics, and every change is written to the audit log.
 
+## Cash flow statement (5 VAS)
+
+**Sources and form.** The line items were taken from the VAS-14 text in the Register of Legal Acts (e-seimas). That text is the 2010 approval, in force since 2011. Check the current consolidated text before filing; the standard was later amended for periods from 2016. The columns are *Finansiniai metai* and *Praėję finansiniai metai*.
+
+**What counts as a movement.** Every journal line of the period counts, except two kinds of entry:
+
+- *Opening-balance entries* count as the opening balance.
+- *Year-end closing entries*, which contain only income/expense accounts and 34x, are ignored.
+
+Every account is assigned to exactly one line, so V (net change) always equals the change in cash (accounts 27). VI and VII are the cash balances at the start and end. A mismatch would be reported as an error.
+
+**Indirect method (annex 2):**
+
+| Lines | Calculation |
+|---|---|
+| I.1 | Net result: income and expense of the period |
+| I.2 | Depreciation and amortisation expense (6201, 6306, 6307) |
+| I.3–I.16 | Changes in the balance-sheet groups named in each line, with the sign as on the form (an asset increase is negative, a liability increase positive) |
+| I.17 | Gain or loss on disposal of fixed assets (5400, 6400), moved to II.2 |
+| I.18 | Interest and investment income and costs, moved to II.7 and III.2.2.3 |
+| I.19 | Impairment (6309, 67), revaluation (32, 1xx1) and deferred tax (171) |
+| II.1 | Debit turnover of fixed-asset cost accounts (11x/12x), net of new lease liabilities |
+| II.2 | The rest of the fixed-asset movement (disposal proceeds) |
+| II.3–II.6 | Investments and loans granted, gross: debits are acquisitions or loans given, credits are disposals or repayments |
+| III.1.1–III.1.3 | Capital accounts |
+| III.1.4 | Dividends paid: 33, 34x, 390, 4490, 4491, 4495 together, so declared but unpaid dividends and reserve transfers net out |
+| III.2.1 / III.2.2 | Borrowings, gross (422, 441, 4214, 4403, 4404; bonds 4210, 4400; lease repayments 4211, 4401) |
+| IV | 0, because all postings are in EUR |
+
+**Direct method (annex 1).** Each entry with cash lines is split over its other lines, and the counter-account decides the line:
+
+| Counter-account | Line |
+|---|---|
+| Customers and income | I.1.1 |
+| Suppliers and expenses | I.2.1 |
+| Salaries and payroll taxes (448) | I.2.2 |
+| VAT and other taxes paid to the budget | I.2.3 |
+| Fixed assets, investments, loans granted, interest income | II |
+| Capital, dividends, borrowings, interest paid | III |
+| Anything else | I.1.2 (receipts) / I.2.4 (payments) |
+
+VAT in the same entry as a customer or supplier is shown with them ("su PVM"). Transfers between own cash accounts are not flows.
+
+## Statement of changes in equity (4 VAS)
+
+**Sources and form.** The rows and columns were taken from the VAS-6 text (2015, in force from 2016). The statement covers two years, with rows 1–30.
+
+**Columns:**
+
+| Column | Accounts |
+|---|---|
+| Paid-up capital | 301, 302, 305, 308, 309 |
+| Share premium | 304 |
+| Own shares | 303 |
+| Revaluation reserve, fixed assets | 321 |
+| Revaluation reserve, financial assets | 322 |
+| Legal reserves | 331, 332 |
+| Other reserves | 333 |
+| Undistributed result | 34x, 390, plus income and expenses not yet closed |
+| Total | Sum of the columns |
+
+**Rows:**
+
+- **Balance rows (1, 17, 30):** balances at the end of the year before last, of the previous year and of the reporting period. Opening-balance entries dated inside a year belong to that year's opening row.
+- **Net result (9, 22):** from income and expenses; closing entries are ignored.
+- **Other movements:** classified by the other side of the entry:
+  - reserves formed or used → 12/25 and 13/26;
+  - dividends payable (4490) → 10/23;
+  - capital accounts → 14/27, or 16/29 for 308/309;
+  - revaluation → 5/18 (fixed assets) or 8/21 (financial assets);
+  - own shares → 7/20;
+  - anything else in the undistributed result → 11/24.
+- **Rows 2, 3 and 6 (2, 3 also in the second year):** accounting policy changes, error corrections and hedging are not recorded separately and stay 0.
+
+Each column is checked: start + movements = end balance. Row 30 equals equity in the balance sheet. The PDF is printed in landscape.
+
+## Other reports
+
+### PVM deklaracijos FR0600 duomenys
+
+Field amounts come from invoices whose VAT point falls in the period, using FR0600 version 3 (2026, with field 29A for the 12 % rate).
+
+| Field | Source |
+|---|---|
+| 11 | Taxable value of sales at 21 %, 12 %, 9 % and 5 % |
+| 13 | Exempt sales (PVM5) |
+| 17 | Export (PVM12) |
+| 18 | Supplies of goods to EU VAT payers (PVM13) |
+| 19 | Other 0 % sales |
+| 25 | Deductible purchase VAT |
+| 29 / 29A / 30 / 31 | Output VAT at 21 / 12 / 9 / 5 % |
+| 35 | Deductible VAT (= 25) |
+| 36 | Payable (29 + 29A + 30 + 31 − 35) |
+
+Reverse charge, import and EU acquisitions (12, 21–24, 26, 27, 32–34) are marked as not filled automatically. The return itself is submitted in VMI EDS.
+
+### Skolų suderinimo aktas
+
+For one counterparty on a date the act shows:
+
+- *Jūsų skola mums (+)*: receivable and advances paid;
+- *Mūsų skola jums (–)*: payable and advances received;
+- the balance and the list of open invoices.
+
+Amounts come from ledger lines with that counterparty. The PDF has signature blocks and a confirmation section for the counterparty.
+
+### Kitos ataskaitos
+
+*Ataskaitos → Kitos ataskaitos ▸* collects the analytical reports:
+
+- apyvartos žiniaraštis (trial balance), didžioji knyga, kasos knyga (account 272);
+- profit and balance sheet by account;
+- receivables and payables, the debt reconciliation act;
+- sales, orders, purchases and payments.
+
 ## Not included
 
-- Cash flow statement and statement of changes in equity (required from medium and large companies).
 - Explanatory notes.
 - MB, VšĮ and farmer forms.
 - Direct filing to Registrų centras: download the PDF and submit it through the JAR e-services.

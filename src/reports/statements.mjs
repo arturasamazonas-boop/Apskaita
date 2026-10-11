@@ -3,6 +3,8 @@
 //   3-iasis VAS „Pelno (nuostolių) ataskaita“ (VAS-40): 1 priedas – pelno (nuostolių) ataskaita, 2 priedas – labai mažų įmonių trumpa.
 // Lines are mapped to the chart of accounts (migration 009) by account-code prefix. Amounts come only from posted journal lines.
 import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
+import {CF_INDIRECT, CF_DIRECT, cashFlowColumn} from './cashflow.mjs';
+import {buildEquity, EQ_COLS, EQ_ROWS} from './equity.mjs';
 
 // Line spec: [id, no, label, spec]. spec: {h: true} heading without amount; {acc: [prefixes], ex: [prefixes]} balance of accounts;
 // {sum: [ids]} total of lines; {result: 'current'|'prior'|'all'} undistributed result; {turnover: [prefixes]} debit turnover (expense, shown negative);
@@ -192,6 +194,12 @@ export const FORMS = {
     who: 'Labai mažos įmonės, pasirinkusios trumpą balansą.'},
   'pelno-nuostoliu': {kind: 'pl', title: 'PELNO (NUOSTOLIŲ) ATASKAITA', name: 'Pelno (nuostolių) ataskaita', standard: '3-iojo verslo apskaitos standarto „Pelno (nuostolių) ataskaita“', annex: '1 priedas', lines: PL_FULL,
     who: 'Visos įmonės, išskyrus labai mažas, pasirinkusias trumpą ataskaitą.'},
+  'pinigu-srautai': {kind: 'cf', method: 'indirect', title: 'PINIGŲ SRAUTŲ ATASKAITA', name: 'Pinigų srautų ataskaita (netiesioginis būdas)', standard: '5-ojo verslo apskaitos standarto „Pinigų srautų ataskaita“', annex: '2 priedas', lines: CF_INDIRECT,
+    who: 'Vidutinės ir didelės įmonės (mažoms – savanoriškai). Netiesioginis būdas: nuo grynojo pelno per balanso straipsnių pokyčius.', colTitles: ['Finansiniai metai', 'Praėję finansiniai metai']},
+  'pinigu-srautai-tiesioginis': {kind: 'cf', method: 'direct', title: 'PINIGŲ SRAUTŲ ATASKAITA', name: 'Pinigų srautų ataskaita (tiesioginis būdas)', standard: '5-ojo verslo apskaitos standarto „Pinigų srautų ataskaita“', annex: '1 priedas', lines: CF_DIRECT,
+    who: 'Vidutinės ir didelės įmonės (mažoms – savanoriškai). Tiesioginis būdas: banko ir kasos įplaukos bei išmokos pagal korespondenciją.', colTitles: ['Finansiniai metai', 'Praėję finansiniai metai']},
+  'nuosavo-kapitalo-pokyciai': {kind: 'equity', title: 'NUOSAVO KAPITALO POKYČIŲ ATASKAITA', name: 'Nuosavo kapitalo pokyčių ataskaita', standard: '4-ojo verslo apskaitos standarto „Nuosavo kapitalo pokyčių ataskaita“', annex: '1 priedas', lines: [],
+    who: 'Vidutinės ir didelės įmonės (mažoms – savanoriškai).'},
   'pelno-nuostoliu-trumpa': {kind: 'pl', title: 'PELNO (NUOSTOLIŲ) ATASKAITA', name: 'Labai mažų įmonių trumpa pelno (nuostolių) ataskaita', standard: '3-iojo verslo apskaitos standarto „Pelno (nuostolių) ataskaita“', annex: '2 priedas', lines: PL_MICRO,
     who: 'Labai mažos įmonės, pasirinkusios trumpą pelno (nuostolių) ataskaitą.'},
 };
@@ -250,6 +258,17 @@ function computeColumn(form, rows, {cents, wageAccounts = []}) {
     }
     leaf.set(id, cents ? money.norm(v) : roundEur(v));
   }
+  return {...finishColumn(form, leaf), unmapped: unmappedOf(form, rows, used)};
+}
+
+function unmappedOf(form, rows, used) {
+  const isPL = (c) => c[0] === '5' || c[0] === '6';
+  const scope = form.kind === 'balance' ? (c) => !isPL(c) : (c) => isPL(c);
+  return rows.filter((r) => scope(r.code) && !used.has(r.code) && !money.isZero(r.bal) && !(form.kind === 'pl' && form.lines.some(([, , , s]) => s.delta && starts(r.code, s.delta)))).map((r) => ({code: r.code, amount: money.norm(r.bal)}));
+}
+
+/** Leaf values (already rounded) → all line values with totals. */
+function finishColumn(form, leaf) {
   const val = new Map(leaf);
   const get = (id) => {
     if (val.has(id)) return val.get(id);
@@ -259,10 +278,7 @@ function computeColumn(form, rows, {cents, wageAccounts = []}) {
     return v;
   };
   for (const [id, , , spec] of form.lines) if (!spec.h) get(id);
-  // Accounts with a balance that no line covers – shown as a warning so nothing disappears silently.
-  const scope = form.kind === 'balance' ? (c) => !isPL(c) : (c) => isPL(c);
-  const unmapped = rows.filter((r) => scope(r.code) && !used.has(r.code) && !money.isZero(r.bal) && !(form.kind === 'pl' && form.lines.some(([, , , s]) => s.delta && starts(r.code, s.delta)))).map((r) => ({code: r.code, amount: money.norm(r.bal)}));
-  return {val, unmapped};
+  return {val};
 }
 
 export function periodsFor(form, q) {
@@ -285,8 +301,34 @@ export async function buildStatement(db, key, q) {
   const cents = q.precision === 'cents';
   const {cur, prev} = periodsFor(form, q);
   const wageAccounts = (await db.query(`SELECT DISTINCT expense_account AS c FROM employees UNION SELECT code FROM accounts WHERE system_role='payroll_expense'`).catch(() => ({rows: []}))).rows.map((r) => r.c);
-  const [a, b] = await Promise.all([accountData(db, form.kind, cur), accountData(db, form.kind, prev)]);
-  const c1 = computeColumn(form, a, {cents, wageAccounts}), c2 = computeColumn(form, b, {cents, wageAccounts});
+  const company = (await db.query('SELECT * FROM company_settings WHERE id=1')).rows[0];
+  const companyInfo = {legal_form: company.legal_form, name: company.name, code: company.company_code, address: company.address, manager: company.manager};
+  const formInfo = {name: form.name, title: form.title, standard: form.standard, annex: form.annex, kind: form.kind, who: form.who, colTitles: form.colTitles || ['Ataskaitinis laikotarpis', 'Praėjęs ataskaitinis laikotarpis']};
+  if (form.kind === 'equity') {
+    const eq = await buildEquity(db, {to: cur.to});
+    const r = (v) => (cents ? money.norm(v) : roundEur(v));
+    const cells = Object.fromEntries(Object.entries(eq.cells).map(([row, cs]) => [row, Object.fromEntries(Object.entries(cs).map(([c, v]) => [c, r(v)]))]));
+    return {key, form: formInfo, period: eq.period, previousPeriod: eq.previousPeriod, precision: cents ? 'cents' : 'eur', company: companyInfo, lines: [],
+      matrix: {cols: [...EQ_COLS.map(([k, label]) => ({key: k, label})), {key: 'c10', label: 'Iš viso'}], rows: EQ_ROWS.map(([no, label]) => ({no, label, strong: ['1', '4', '17', '30'].includes(no)})), cells}, checks: eq.checks};
+  }
+  let c1, c2;
+  const cfChecks = [];
+  if (form.kind === 'cf') {
+    const leafIds = form.lines.filter(([, , , s]) => !s.h && !s.sum).map(([id]) => id);
+    const col = async (p, label) => {
+      const r = await cashFlowColumn(db, form.method, p);
+      cfChecks.push(...r.checks);
+      const out = finishColumn(form, new Map(leafIds.map((id) => [id, cents ? money.norm(r.v.get(id) || '0') : roundEur(r.v.get(id) || '0')])));
+      const d = money.sub(out.val.get('VII'), cents ? money.norm(r.cashClosing) : roundEur(r.cashClosing));
+      if (!money.isZero(d)) cfChecks.push({level: 'warning', message: `Apvalinimo skirtumas ${label} laikotarpio pinigų likutyje: ${d} EUR.`});
+      return {...out, unmapped: []};
+    };
+    c1 = await col(cur, 'ataskaitinio');
+    c2 = await col(prev, 'praėjusio');
+  } else {
+    const [a, b] = await Promise.all([accountData(db, form.kind, cur), accountData(db, form.kind, prev)]);
+    c1 = computeColumn(form, a, {cents, wageAccounts}); c2 = computeColumn(form, b, {cents, wageAccounts});
+  }
   // Manually entered previous-period figures (e.g. the year before the company started using this program).
   const ov = new Map((await db.query('SELECT line_id, amount FROM fs_prior_values WHERE form_key=$1 AND period_end=$2', [key, prev.to])).rows.map((r) => [r.line_id, money.norm(r.amount)]));
   if (ov.size) {
@@ -296,8 +338,7 @@ export async function buildStatement(db, key, q) {
   }
   const lines = form.lines.filter(([, , , s]) => !s.hidden).map(([id, no, label, spec]) => ({id, no, label, heading: !!spec.h, total: !!(spec.sum || spec.total), grand: !!spec.grand,
     editablePrior: !spec.h && !spec.sum, priorOverridden: ov.has(id), current: spec.h ? null : c1.val.get(id), previous: spec.h ? null : c2.val.get(id)}));
-  const company = (await db.query('SELECT * FROM company_settings WHERE id=1')).rows[0];
-  const checks = [];
+  const checks = [...cfChecks];
   if (form.kind === 'balance') {
     for (const [col, c] of [['current', c1], ['previous', c2]]) {
       const diff = money.sub(c.val.get('TA'), c.val.get('TL'));
@@ -305,6 +346,5 @@ export async function buildStatement(db, key, q) {
     }
   }
   if (c1.unmapped.length) checks.push({level: 'error', message: `Sąskaitos su likučiais, nepriskirtos jokiai formos eilutei: ${c1.unmapped.map((u) => `${u.code} (${u.amount})`).join(', ')}.`});
-  return {key, form: {name: form.name, title: form.title, standard: form.standard, annex: form.annex, kind: form.kind, who: form.who}, period: cur, previousPeriod: prev, precision: cents ? 'cents' : 'eur',
-    company: {legal_form: company.legal_form, name: company.name, code: company.company_code, address: company.address, manager: company.manager}, lines, checks};
+  return {key, form: formInfo, period: cur, previousPeriod: prev, precision: cents ? 'cents' : 'eur', company: companyInfo, lines, checks};
 }

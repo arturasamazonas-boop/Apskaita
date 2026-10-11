@@ -216,3 +216,42 @@ export async function toXlsx(rep) {
   if (rep.incomplete) ws.addRow([`DĖMESIO: ${rep.incomplete.reason}`]);
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
+
+/**
+ * PVM deklaracijos FR0600 laukų suvestinė iš užregistruotų sąskaitų (PVM momentas – sąskaitos data).
+ * Fields follow FR0600 (version 3, from 2026: 29A – 12 %). Reverse-charge, import and EU acquisition fields are not filled automatically.
+ */
+export async function vatReturn(db, {from, to, today}) {
+  from = D(from, `${today.slice(0, 7)}-01`); to = D(to, today);
+  const rows = (await db.query(`SELECT i.register, v.tax_code, v.rate, coalesce(sum(v.taxable),0) AS taxable, coalesce(sum(v.vat),0) AS vat, coalesce(sum(v.deductible_vat),0) AS deductible
+    FROM invoices i JOIN invoice_vat_rows v ON v.invoice_id=i.id WHERE coalesce(i.vat_point_date, i.issue_date) BETWEEN $1 AND $2 GROUP BY 1, 2, 3`, [from, to])).rows;
+  const sum = (pred, k) => money.sum(rows.filter(pred).map((r) => r[k]));
+  const S = (codes) => (r) => r.register === 'sales' && codes.includes(r.tax_code);
+  const f = {};
+  f['11'] = sum(S(['PVM1', 'PVM2', 'PVM3', 'PVM58']), 'taxable');
+  f['13'] = sum(S(['PVM5']), 'taxable');
+  f['17'] = sum(S(['PVM12']), 'taxable');
+  f['18'] = sum(S(['PVM13']), 'taxable');
+  f['19'] = sum((r) => r.register === 'sales' && !['PVM1', 'PVM2', 'PVM3', 'PVM58', 'PVM5', 'PVM12', 'PVM13'].includes(r.tax_code), 'taxable');
+  f['25'] = sum((r) => r.register === 'purchase', 'deductible');
+  f['29'] = sum(S(['PVM1']), 'vat');
+  f['29A'] = sum(S(['PVM58']), 'vat');
+  f['30'] = sum(S(['PVM2']), 'vat');
+  f['31'] = sum(S(['PVM3']), 'vat');
+  f['35'] = f['25'];
+  f['36'] = money.sub(money.sum([f['29'], f['29A'], f['30'], f['31']]), f['35']);
+  const L = [
+    ['I', 'Prekių tiekimo ir paslaugų teikimo sandoriai (apmokestinamoji vertė)'],
+    ['11', 'PVM apmokestinami sandoriai'], ['12', 'PVM apmokestinami sandoriai, kai PVM išskaito pirkėjas (96 str.) – nepildoma automatiškai'], ['13', 'PVM neapmokestinami sandoriai'],
+    ['17', 'Prekių eksportas (0 proc.)'], ['18', 'ES PVM mokėtojams patiektos prekės (0 proc.)'], ['19', 'Kiti PVM apmokestinami sandoriai (0 proc.)'],
+    ['II', 'Prekių ir paslaugų įsigijimo sandoriai (21–24) – atvirkštinis apmokestinimas automatiškai nepildomas'],
+    ['III', 'Pirkimo ir importo PVM'], ['25', 'Įsigytų prekių ir paslaugų pirkimo PVM (atskaitomas)'], ['26', 'Sumokėtas importo PVM – nepildoma automatiškai'], ['27', 'Importo PVM, kurio įskaitymą kontroliuoja VMI – nepildoma automatiškai'],
+    ['V', 'Pardavimo PVM, PVM atskaita, mokėtinas (grąžintinas) PVM'],
+    ['29', 'Standartinio tarifo (21 proc.) pardavimo PVM'], ['29A', '12 proc. tarifo pardavimo PVM'], ['30', '9 proc. tarifo pardavimo PVM'], ['31', '5 proc. tarifo pardavimo PVM'],
+    ['32', 'Pardavimo PVM (95 str.) – nepildoma automatiškai'], ['33', 'Pardavimo PVM (96 str.) – nepildoma automatiškai'], ['34', 'Iš ES įsigytų prekių pardavimo PVM – nepildoma automatiškai'],
+    ['35', 'Atskaitomas PVM (25 + 26 + 27)'], ['36', 'Mokėtinas į biudžetą arba grąžintinas iš biudžeto (–) PVM'],
+  ];
+  const out = L.map(([field, label]) => ({field, label, amount: /^[IV]+$/.test(field) ? null : f[field] ?? '0.00'}));
+  return report('PVM deklaracijos FR0600 duomenys', `Užregistruotos pardavimo ir pirkimo sąskaitos, kurių PVM momentas ${from}–${to}. Deklaraciją pateikite VMI EDS patys; laukus, pažymėtus „nepildoma automatiškai“, užpildykite pagal savo duomenis.`,
+    [['field', 'Laukelis'], ['label', 'Aprašymas'], ['amount', 'Suma, EUR', 'money']], out, {filters: {from, to}, totals: {payable: f['36']}});
+}

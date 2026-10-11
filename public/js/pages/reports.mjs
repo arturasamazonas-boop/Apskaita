@@ -5,7 +5,7 @@ const REPORTS = [
   ['pelnas', 'profit-loss', 'Pelnas (nuostoliai) pagal sąskaitas', 'period'], ['balansas', 'balance-sheet', 'Balansas pagal sąskaitas', 'asOf'], ['bandomasis', 'trial-balance', 'Bandomasis balansas', 'period'],
   ['knyga', 'ledger', 'Didžioji knyga', 'ledger'], ['pvm-pardavimai', 'vat-sales', 'Pardavimų PVM registras', 'period'], ['pvm-pirkimai', 'vat-purchases', 'Pirkimų PVM registras', 'period'],
   ['gautinos', 'receivables', 'Pirkėjų skolos', 'asOf'], ['moketinos', 'payables', 'Skolos tiekėjams', 'asOf'], ['pardavimai', 'sales', 'Pardavimai', 'sales'],
-  ['operaciniai', 'sales-operational', 'Užsakymų rodikliai (operaciniai)', 'period'], ['pirkimai', 'purchases', 'Pirkimai ir sąnaudos', 'purchases'], ['mokejimai', 'payments', 'Mokėjimų suvestinė', 'period'],
+  ['operaciniai', 'sales-operational', 'Užsakymų rodikliai (operaciniai)', 'period'], ['pirkimai', 'purchases', 'Pirkimai ir sąnaudos', 'purchases'], ['mokejimai', 'payments', 'Mokėjimų suvestinė', 'period'], ['pvm-deklaracija', 'vat-return', 'PVM deklaracijos FR0600 duomenys', 'period'],
 ];
 const EXTRA = [['isaf', 'i.SAF eksportas'], ['zurnalas', 'Žurnalas ir rankiniai įrašai'], ['savikaina', 'Savikaina (COGS)']];
 

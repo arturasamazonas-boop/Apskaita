@@ -33,5 +33,31 @@ try {
   await page.goto(t.base + '/#/finansines/pelno-nuostoliu-trumpa?from=2026-01-01&to=2026-12-31');
   await page.waitForFunction(() => document.querySelector('.fs-title')?.textContent.includes('PELNO'));
   if (out) await page.screenshot({path: `${out}/2-pn-trumpa.png`, fullPage: true});
+  // Second-level menu: Ataskaitos → Kitos ataskaitos ▸ → Skolų suderinimo aktas (mouse), and keyboard navigation into it.
+  await page.click('.menu-top:text("Ataskaitos")');
+  await page.hover('.menu-subtoggle:has-text("Kitos ataskaitos")');
+  await page.getByRole('menuitem', {name: 'Apyvartos žiniaraštis (bandomasis balansas)'}).waitFor();
+  if (out) await page.screenshot({path: `${out}/3-submenu.png`});
+  await page.getByRole('menuitem', {name: 'Skolų suderinimo aktas'}).click();
+  await page.waitForSelector('h1:text("Skolų suderinimo aktas")');
+  await page.focus('.menu-top:text("Ataskaitos")'); await page.keyboard.press('ArrowDown');
+  for (let i = 0; i < 20 && !(await page.evaluate(() => document.activeElement.classList.contains('menu-subtoggle'))); i++) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Apyvartos žiniaraštis (bandomasis balansas)');
+  await page.keyboard.press('ArrowLeft');
+  assert.match(await page.evaluate(() => document.activeElement.textContent), /Kitos ataskaitos/);
+  await page.keyboard.press('Escape');
+  await page.goto(t.base + '/#/finansines/pinigu-srautai?from=2026-01-01&to=2026-12-31');
+  await page.waitForFunction(() => document.querySelector('.fs-title')?.textContent.includes('PINIGŲ'));
+  assert.match(await page.textContent('.issue-ok'), /Pinigų srautų suma/);
+  if (out) await page.screenshot({path: `${out}/4-pinigu-srautai.png`, fullPage: true});
+  await page.goto(t.base + '/#/finansines/nuosavo-kapitalo-pokyciai?to=2026-12-31');
+  await page.waitForSelector('.fs-matrix');
+  if (out) await page.screenshot({path: `${out}/5-nuosavas-kapitalas.png`, fullPage: true});
+  const m = await browser.newPage({viewport: {width: 390, height: 800}});
+  await m.goto(t.base + '/#/apzvalga'); await m.click('.nav-toggle'); await m.click('.menu-top:text("Ataskaitos")'); await m.click('.menu-subtoggle');
+  await m.getByRole('menuitem', {name: 'Kasos knyga (272)'}).waitFor();
+  assert.equal(await m.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
+  if (out) await m.screenshot({path: `${out}/6-mobile-submenu.png`});
   console.log('statements UI: OK');
 } finally { await browser.close(); await t.close(); console.log('errors:', JSON.stringify(errors)); }

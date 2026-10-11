@@ -5,10 +5,10 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | Command | What it does |
 |---|---|
 | `npm run check` | `node --check` on all JS modules, `php -l` on the OpenCart extension |
-| `npm test` | 60 `node:test` tests across 13 files |
+| `npm test` | 64 `node:test` tests across 14 files |
 | `npm run test:browser` | Chromium (Playwright) UI smoke test of the real UI and server |
 | `node test-browser/rekvizitai.mjs [dir]` | Runs the "→ Apskaita" bookmarklet on a company page. Checks the review screen (filled fields, VIES stub), counterparty creation, and the paste dialog in the company settings. |
-| `node test-browser/statements.mjs [dir]` | Statement forms page: opens a form from the menu, shows the balance check, saves a hand-entered previous-period amount and downloads the PDF |
+| `node test-browser/statements.mjs [dir]` | Statement forms page: opens a form from the menu, shows the balance check, saves a hand-entered previous-period amount and downloads the PDF. Also checks the second-level menu by mouse, keyboard and on a phone, plus the cash flow and equity pages |
 | `node test-browser/open-access.mjs` | With `OPEN_ACCESS=true` the app opens without the login form |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 
@@ -88,3 +88,21 @@ The tests post sample entries for 2025–2026 and check:
 - the PDF download.
 
 The PDF layout was also checked visually by rendering pages to images.
+
+## Cash flow, equity, FR0600, debt act (`13-cashflow-equity`)
+
+The sample year 2026 includes:
+
+- customer and supplier payments, a cash sale and cost of sales;
+- salaries accrued and paid, interest;
+- a bank loan received and partly repaid;
+- dividends declared and paid, a legal reserve;
+- equipment bought and sold at a gain.
+
+The tests check:
+
+- the indirect method line by line: net result, working-capital changes, eliminations, investing, financing, and V = VII − VI;
+- the direct method by counter-account, giving the same net change;
+- the statement of changes in equity over two years, with movements reconciling and row 30 equal to equity in the balance sheet, and its PDF;
+- FR0600 fields from approved invoices at 21 % and 12 % with deductible purchase VAT;
+- the debt reconciliation act and its PDF.

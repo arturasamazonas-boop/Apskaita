@@ -12,6 +12,7 @@ import {tx} from '../db.mjs';
 import path from 'node:path';
 import {FORMS, buildStatement} from '../reports/statements.mjs';
 import {renderStatementPdf} from '../reports/statement-pdf.mjs';
+import {debtAct, renderDebtActPdf} from '../reports/debt-act.mjs';
 import {readJson} from '../http.mjs';
 import {money} from '../lib/money.mjs';
 
@@ -28,6 +29,7 @@ const REPORTS = {
   'sales-operational': (db, q) => R.operationalSales(db, q),
   purchases: (db, q) => R.purchasesReport(db, q),
   payments: (db, q) => R.paymentsReport(db, q),
+  'vat-return': (db, q) => R.vatReturn(db, q),
 };
 
 export function register(r, {pool, storage}) {
@@ -77,6 +79,18 @@ export function register(r, {pool, storage}) {
     await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: params.key, details: {format: 'pdf', period: st.period, precision: st.precision}});
     const name = `${params.key}_${st.period.to}.pdf`;
     res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/pdf', 'Content-Disposition': `${query.inline ? 'inline' : 'attachment'}; filename="${name}"`, 'Cache-Control': 'no-store'});
+    res.end(pdf);
+  });
+  r.get('/api/debt-act', async ({user, query, res}) => {
+    requireCap(user, 'read');
+    const asOf = /^\d{4}-\d{2}-\d{2}$/.test(query.asOf || '') ? query.asOf : todayVilnius();
+    const act = await debtAct(pool, {counterparty: query.counterparty, asOf});
+    if (!act) throw new AppError(404, 'not_found', 'Kontrahentas nerastas.');
+    if (query.format !== 'pdf') return act;
+    const company = (await pool.query('SELECT * FROM company_settings WHERE id=1')).rows[0];
+    const pdf = await renderDebtActPdf(act, company, {compiled: /^\d{4}-\d{2}-\d{2}$/.test(query.compiled || '') ? query.compiled : todayVilnius(), number: String(query.number || '').slice(0, 20)});
+    await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'debt-act', details: {counterparty: act.counterparty.id, asOf}});
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="skolu_suderinimas_${act.counterparty.id}_${asOf}.pdf"`, 'Cache-Control': 'no-store'});
     res.end(pdf);
   });
   r.put('/api/statements/:key/prior', async ({req, user, params}) => {

@@ -11,6 +11,7 @@ export async function render(main, rest, state) {
   const key = forms.some((f) => f.key === rest[0]) ? rest[0] : 'balansas-sutrumpintas';
   const form = forms.find((f) => f.key === key);
   const isBal = form.kind === 'balance';
+  const isEq = form.kind === 'equity';
   const params = new URLSearchParams(location.hash.split('?')[1] || '');
   const f = {
     form: select(forms.map((x) => [x.key, `${x.name} (${x.annex})`]), key, {onchange: () => { location.hash = `#/finansines/${f.form.value}`; }}),
@@ -24,7 +25,7 @@ export async function render(main, rest, state) {
   };
   const out = h('div');
   let st = null, editPrior = false;
-  const qs = () => new URLSearchParams({...(isBal ? {to: f.to.value, ...(f.prevTo.value && {prevTo: f.prevTo.value})} : {from: f.from.value, to: f.to.value}), precision: f.precision.value});
+  const qs = () => new URLSearchParams({...(isBal ? {to: f.to.value, ...(f.prevTo.value && {prevTo: f.prevTo.value})} : isEq ? {to: f.to.value} : {from: f.from.value, to: f.to.value}), precision: f.precision.value});
   const pdfUrl = (inline) => `/api/statements/${key}/pdf?${qs()}&${new URLSearchParams({compiled: f.compiled.value, number: f.number.value, status: f.status.value, managerTitle: f.managerTitle.value,
     managerName: f.managerName.value, accountantTitle: f.accountantTitle.value, accountantName: f.accountantName.value, ...(inline && {inline: '1'})})}`;
   const priorInputs = new Map();
@@ -40,7 +41,8 @@ export async function render(main, rest, state) {
         h('td', {class: ['num', l.priorOverridden && 'fs-manual'], title: l.priorOverridden ? 'Įvesta ranka' : null}, l.heading ? '' : prev));
     });
     clear(out,
-      st.checks.length ? h('div', {class: 'checks'}, st.checks.map((c) => h('p', {class: `issue issue-${c.level}`, role: c.level === 'error' ? 'alert' : null}, c.message))) : h('p', {class: 'issue issue-ok'}, isBal ? '✓ Turtas lygus nuosavam kapitalui ir įsipareigojimams; visos sąskaitos su likučiais priskirtos formos eilutėms.' : '✓ Visos pajamų ir sąnaudų sąskaitos priskirtos formos eilutėms.'),
+      st.checks.length ? h('div', {class: 'checks'}, st.checks.map((c) => h('p', {class: `issue issue-${c.level}`, role: c.level === 'error' ? 'alert' : null}, c.message))) : h('p', {class: 'issue issue-ok'}, {balance: '✓ Turtas lygus nuosavam kapitalui ir įsipareigojimams; visos sąskaitos su likučiais priskirtos formos eilutėms.', pl: '✓ Visos pajamų ir sąnaudų sąskaitos priskirtos formos eilutėms.',
+        cf: '✓ Pinigų srautų suma lygi pinigų likučio pokyčiui (VII eilutė = pinigai laikotarpio pabaigoje).', equity: '✓ Likučiai sutampa su pokyčiais ir balanso nuosavo kapitalo straipsniais.'}[st.form.kind]),
       h('div', {class: 'fs-sheet'},
         h('p', {class: 'fs-standard'}, st.form.standard, h('br'), st.form.annex),
         h('p', {class: 'fs-company'}, [st.company.name, st.company.code && `įmonės kodas ${st.company.code}`].filter(Boolean).join(', ')),
@@ -49,11 +51,14 @@ export async function render(main, rest, state) {
         h('h2', {class: 'fs-title'}, `${st.period.to} ${st.form.title}`),
         h('p', {class: 'fs-line'}, `${f.compiled.value} Nr. ${f.number.value}`), h('p', {class: 'fs-caption'}, '(ataskaitos sudarymo data)'),
         h('p', {class: 'fs-line'}, `${st.period.from} – ${st.period.to}    ·    ${cents ? 'eurais ir centais' : 'eurais'}`), h('p', {class: 'fs-caption'}, '(ataskaitinis laikotarpis) · (ataskaitos tikslumo lygis ir valiuta)'),
-        h('div', {class: 'table-wrap'}, h('table', {class: 'grid lines fs-table'},
-          h('thead', null, h('tr', null, h('th', null, 'Eil. Nr.'), h('th', null, 'Straipsniai'), h('th', null, 'Pastabos Nr.'), h('th', {class: 'num'}, `Ataskaitinis laikotarpis`), h('th', {class: 'num'}, `Praėjęs ataskaitinis laikotarpis (${st.previousPeriod.to})`))),
-          h('tbody', null, rows))),
+        st.matrix ? h('div', {class: 'table-wrap'}, h('table', {class: 'grid lines fs-matrix'},
+          h('thead', null, h('tr', null, h('th', null, 'Eil. Nr.'), h('th', null, 'Straipsniai'), st.matrix.cols.map((c) => h('th', {class: 'num'}, c.label)))),
+          h('tbody', null, st.matrix.rows.map((r) => h('tr', {class: r.strong && 'fs-total'}, h('td', {class: 'fs-no'}, `${r.no}.`), h('td', null, r.label), st.matrix.cols.map((c) => h('td', {class: 'num'}, fmt(st.matrix.cells[r.no][c.key], cents))))))))
+          : h('div', {class: 'table-wrap'}, h('table', {class: 'grid lines fs-table'},
+            h('thead', null, h('tr', null, h('th', null, 'Eil. Nr.'), h('th', null, 'Straipsniai'), h('th', null, 'Pastabos Nr.'), h('th', {class: 'num'}, st.form.colTitles[0]), h('th', {class: 'num'}, `${st.form.colTitles[1]} (${st.previousPeriod.to})`))),
+            h('tbody', null, rows))),
         h('div', {class: 'fs-signs'}, h('p', null, `${f.managerTitle.value}  ______________  ${f.managerName.value}`), h('p', null, `${f.accountantTitle.value}  ______________  ${f.accountantName.value}`))),
-      can(state.user, 'approve') ? h('div', {class: 'actions-left'}, editPrior
+      can(state.user, 'approve') && !st.matrix ? h('div', {class: 'actions-left'}, editPrior
         ? [h('button', {class: 'btn btn-primary', onclick: () => guard(async () => {
           await put(`/api/statements/${key}/prior`, {periodEnd: st.previousPeriod.to, values: Object.fromEntries([...priorInputs].map(([id, i]) => [id, i.value]))});
           editPrior = false; await load();
@@ -75,7 +80,7 @@ export async function render(main, rest, state) {
     h('a', {class: 'btn', href: '#', onclick: (e) => { e.preventDefault(); window.open(pdfUrl(true), '_blank', 'noopener'); }}, 'Peržiūrėti PDF')),
     h('p', {class: 'hint'}, `${form.standard}, ${form.annex}. ${form.who} Sumos – iš užregistruotų didžiosios knygos įrašų pagal sąskaitų plano grupes.`),
     section(null,
-      h('div', {class: 'form-grid'}, field('Forma', f.form), isBal ? null : field('Nuo', f.from), field(isBal ? 'Balanso data' : 'Iki', f.to),
+      h('div', {class: 'form-grid'}, field('Forma', f.form), isBal || isEq ? null : field('Nuo', f.from), field(isBal ? 'Balanso data' : isEq ? 'Ataskaitinių metų pabaiga' : 'Iki', f.to),
         isBal ? field('Praėjusio laikotarpio data', f.prevTo, 'Tuščia – praėjusių metų gruodžio 31 d.') : null, field('Tikslumas', f.precision)),
       h('details', {class: 'fs-header-fields'}, h('summary', null, 'Antraštė ir parašai (PDF)'),
         h('div', {class: 'form-grid'}, field('Sudarymo data', f.compiled), field('Nr.', f.number), field('Teisinis statusas', f.status),
