@@ -1,4 +1,4 @@
-# Fixed assets, year-end closing and payment files
+# Fixed assets, year-end closing, cash and payment files
 
 ## Ilgalaikis turtas (*Turtas* menu)
 
@@ -54,3 +54,28 @@ The page prepares an ISO 20022 `pain.001.001.03` credit transfer file. Lithuania
   - There is one payment information block (one debtor account and one execution date), and `ChrgBr` is `SLEV`.
 - **Validation.** Tests validate the file against the official ISO 20022 XSD (`vendor/sepa/pain.001.001.03.xsd`, from iso20022.org).
 - **Ledger.** The file posts nothing. Payments reach the ledger when the bank statement is imported and matched.
+
+## Kasa – cash orders (*Finansai → Kasos orderiai*)
+
+**Orders.** A cash receipt order (KPO) or cash payment order (KIO) gets its number from the KPO / KIO series when it is saved. It is posted at once against the cash account 272.
+
+| Operation | KPO (receipt) | KIO (payment) |
+|---|---|---|
+| Invoice payment | D 272 / K 2410 + allocation to the sales invoice | D 443 / K 272 + allocation to the purchase invoice |
+| Advance | K 442 (counterparty) | D 208 (counterparty) |
+| Bank | taken from the bank: K 273 | paid into the bank: D 273 |
+| Accountable person | returned: K 2445 (employee) | given: D 2445 |
+| Other | K chosen account | D chosen account |
+
+**Rules.**
+- A payment may not exceed the cash on hand at the end of that day, so the cash desk never goes negative.
+- Invoice payments may not exceed the invoice's outstanding amount.
+- Cash settlements over 5 000 € per transaction get a warning (*Atsiskaitymų grynaisiais pinigais ribojimo įstatymas*).
+
+**Cancelling.** A reversing entry is posted, plus a negative allocation, so the invoice is unpaid again. A KPO that would leave the cash desk negative cannot be cancelled.
+
+**PDF.**
+- The PDF prints the order with the amount in Lithuanian words (`src/lib/lt-words.mjs`) and signature lines.
+- A KPO also prints a receipt (kvitas) for the payer.
+
+**Kasos knyga.** Every movement of 272 by day, with the opening balance, receipts, payments and closing balance.

@@ -23,7 +23,7 @@ export async function render(main, rest, state) {
   // Recalculation is done by the server (same rules as the file), so the screen always matches what is downloaded.
   const recalc = async () => {
     const my = ++seq;
-    const res = await api('POST', '/api/eds/pln204/file', {year: year.value, format: 'json', values: edits});
+    const res = await api('POST', '/api/eds/pln204/file', {year: year.value, format: 'json', values: edits}, {raw: true});
     if (my !== seq) return;
     if (!res.ok) { const e = await res.json(); toast(e.error, 'error'); return; }
     values = (await res.json()).values; draw();

@@ -254,3 +254,5 @@ details summary { cursor: pointer; margin: .5rem 0; font-weight: 600; }
 .text-error { color: var(--error); }
 .eds-select { font-size: 12px !important; letter-spacing: 0; padding: 0; }
 .eds-page-title { margin: 1.2rem auto .3rem; max-width: 960px; font-size: 1rem; }
+dl.details { display: grid; grid-template-columns: minmax(10rem, max-content) 1fr; gap: .4rem 1.2rem; margin: 0; }
+dl.details dt { color: var(--muted, #666); } dl.details dd { margin: 0; font-weight: 500; }

@@ -5,13 +5,14 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | Command | What it does |
 |---|---|
 | `npm run check` | `node --check` on all JS modules, `php -l` on the OpenCart extension |
-| `npm test` | 83 `node:test` tests across 20 files |
+| `npm test` | 92 `node:test` tests across 23 files |
 | `npm run test:browser` | Chromium (Playwright) UI smoke test of the real UI and server |
 | `node test-browser/rekvizitai.mjs [dir]` | Runs the "→ Apskaita" bookmarklet on a company page. Checks the review screen (filled fields, VIES stub), counterparty creation, and the paste dialog in the company settings. |
 | `node test-browser/statements.mjs [dir]` | Statement forms page: opens a form from the menu, shows the balance check, saves a hand-entered previous-period amount and downloads the PDF. Also checks the second-level menu by mouse, keyboard and on a phone, plus the cash flow and equity pages |
 | `node test-browser/fr0600.mjs [dir]` | FR0600 page: opens it from the menu, checks values in the form cells (E11 right-aligned in its boxes), types into field 32 and checks the recalculated 36, switches to Patikslinta, downloads .ffdata (checks fields) and PDF. Also checks the i.SAF register preview and the phone layout. |
 | `node test-browser/rc-package.mjs [dir]` | Annual set for RC: from the menu, size cards, required forms, copyable amounts, switching the category, set PDF |
 | `node test-browser/new-modules.mjs [dir]` | Fixed asset card from the menu, depreciation run, register with reconciliation, year-end closing, SEPA file for a supplier invoice, GPM313 form and .ffdata |
+| `node test-browser/tax-cash.mjs [dir]` | PLN204 from the menu: values in the form cells, a typed loss carry-forward recalculated, .ffdata; SAM on the official Sodra form, .ffdata; a KPO entered from the menu, its PDF and the cash book |
 | `node test-browser/open-access.mjs` | With `OPEN_ACCESS=true` the app opens without the login form |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 
@@ -149,3 +150,25 @@ The PDF and the web form were also checked visually: characters fall into the fo
   - The split at the 15th by payment date.
   - Decimal cells.
   - Edits, FFData and PDF.
+
+## PLN204, SAM, cash orders (`20`–`22`)
+
+- **`20-eds-pln204`:**
+  - Template layouts, and rates by code and year.
+  - The loss branch.
+  - Fields 18 and 19 from the ledger, with profit tax excluded.
+  - Non-deductible rules → PLN204S rows → 20.
+  - The chain to 64 at the reduced rate.
+  - Edits: standard rate, the 70 % loss limit, validation, and tax depreciation reducing 37.
+  - The multi-page FFData with its annex group, a 3-page PDF, and editing the rules.
+- **`21-sodra-sam`:**
+  - Rows from the payroll sheet, the combined rate for indefinite and fixed-term contracts with pension accumulation, and people who left being excluded.
+  - Pages of 6 persons.
+  - FFData groups, pages and field counts as in the official sample, and the PDF.
+- **`22-cash-orders`:**
+  - Amounts in words.
+  - KPO settling a sales invoice, KIO paying a supplier, an accountable person, and a transfer to the bank.
+  - Cash cannot go negative, and an invoice cannot be overpaid.
+  - The cash book by day.
+  - Cancellation makes the invoice unpaid again; cancelling a KPO that would leave cash negative is refused.
+  - The PDF.

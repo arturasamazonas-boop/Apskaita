@@ -105,7 +105,7 @@ export async function pln204Values(db, {year}) {
   if (has(v.E52) || has(v.E48)) v.E53A = small ? '2' : '1';
   recompute(v);
   const notes = [];
-  notes.push(`53A laukelyje parinktas tarifo kodas ${v.E53A || '—'} (${small ? 'lengvatinis 7 % – mažiau nei 10 darbuotojų ir pajamos ≤ 300 000 €; patikrinkite kitas PMĮ 5 str. 2 d. sąlygas (pvz. akcininkai – fiziniai asmenys, ne pirmieji veiklos metai – tada kodas 3)' : 'standartinis'}). Pakeiskite, jei reikia.`);
+  notes.push(`53A laukelyje parinktas tarifo kodas ${v.E53A || '—'} (${small ? `lengvatinis ${rateFor(2, year)} %` + ' – mažiau nei 10 darbuotojų ir pajamos ≤ 300 000 €; patikrinkite kitas PMĮ 5 str. 2 d. sąlygas (pvz. akcininkai – fiziniai asmenys, ne pirmieji veiklos metai – tada kodas 3)' : `standartinis ${rateFor(1, year)} %`}). Pakeiskite, jei reikia.`);
   if (money.cmp(tax, '0') !== 0) notes.push(`Pelno mokesčio sąnaudos (69 grupė, ${tax} €) į 19 laukelį (pelnas prieš apmokestinimą) neįtrauktos.`);
   notes.push('Mokestinis nusidėvėjimas apskaitomas kaip buhalterinis – jei taikote kitus normatyvus (PMĮ 1 priedas), skirtumą įrašykite 25 / 36 laukeliuose ir PLN204S priede.');
   notes.push('Ankstesnių metų mokestiniai nuostoliai (45 laukelis): įrašykite patys – ne daugiau kaip 70 % 43 laukelio sumos (lengvatinį tarifą taikantiems – be ribos).');
