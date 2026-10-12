@@ -11,6 +11,10 @@ import {ROOT} from '../config.mjs';
 export const EDS_FORMS = {
   FR0600: {json: 'assets/forms/fr0600-v3.json', pdf: 'assets/forms/fr0600-v3.pdf', png: '/img/fr0600-v3.png', box: {left: 28.32, right: 567.0, bottom: 841.89 - 801.84, top: 841.89 - 40.08}},
   GPM313: {json: 'assets/forms/gpm313-v1.json', pdf: 'assets/forms/gpm313-v1.pdf', png: '/img/gpm313-v1.png', box: {left: 28.32, right: 567.0, bottom: 841.89 - 612.6, top: 841.89 - 229.32}},
+  // Multi-page forms: one entry per page (PageDefName), the main group's pages first, annexes in their own groups.
+  PLN204: {json: 'assets/forms/pln204-v8.json', pdf: 'assets/forms/pln204-v8.pdf', png: '/img/pln204-v8.png', box: {left: 28.32, right: 567.0, bottom: 841.89 - 611.4, top: 841.89 - 230.52}},
+  PLN204_2: {json: 'assets/forms/pln204-2-v8.json', pdf: 'assets/forms/pln204-2-v8.pdf', png: '/img/pln204-2-v8.png', box: {left: 28.32, right: 567.0, bottom: 841.89 - 611.4, top: 841.89 - 230.52}},
+  PLN204S: {json: 'assets/forms/pln204s-v8.json', pdf: 'assets/forms/pln204s-v8.pdf', png: '/img/pln204s-v8.png', box: {left: 28.32, right: 567.0, bottom: 841.89 - 611.4, top: 841.89 - 230.52}},
 };
 const cache = new Map();
 export function edsLayout(code) {
@@ -18,6 +22,7 @@ export function edsLayout(code) {
   return cache.get(code);
 }
 const PRINTED = new Set(['B_FormNr', 'B_FormVerNr', 'LT']);
+const fieldsXml = (layout, values) => `<Fields Count="${layout.fields.length}">\n${layout.fields.map((x) => `<Field Name="${xmlEsc(x.name)}">${xmlEsc(values[x.name] ?? '')}</Field>`).join('\n')}\n</Fields>`;
 const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** FFData XML for upload to EDS („Pildyti formą“ → „Įkelti failą“). */
@@ -39,6 +44,30 @@ export function toFFData(layout, values, {login = 'apskaita', today}) {
 ${f.map((x) => `<Field Name="${xmlEsc(x.name)}">${xmlEsc(values[x.name] ?? '')}</Field>`).join('\n')}
 </Fields>
 </Page>
+</Pages>
+</Form>
+</FFData>
+`;
+}
+
+/**
+ * FFData of a multi-page form: `pages` = [{layout, values, group?}] in page order; pages without `group` belong to the
+ * main group, the others are annexes nested in it (one <Group> per annex page), as in the VMI/Sodra FFData description.
+ */
+export function toFFDataPages({formDefId, mainGroup}, pages, {login = 'apskaita', today}) {
+  const main = pages.filter((p) => !p.group), annex = pages.filter((p) => p.group);
+  const list = (names) => `<ListPages>\n${names.map((n) => `<ListPage>${n}</ListPage>`).join('\n')}\n</ListPages>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<FFData Version="1" CreatedByApp="Apskaita" CreatedByLogin="${xmlEsc(login)}" CreatedOn="${today}">
+<Form FormDefId="${formDefId}">
+<DocumentPages>
+<Group Name="${xmlEsc(mainGroup)}">
+${list(main.map((p) => p.layout.pageName || p.layout.formCode))}
+${annex.map((p) => `<Group Name="${xmlEsc(p.group)}">\n${list([p.layout.pageName])}\n</Group>`).join('\n')}
+</Group>
+</DocumentPages>
+<Pages Count="${pages.length}">
+${[...main, ...annex].map((p, i) => `<Page PageDefName="${p.layout.pageName || p.layout.formCode}" PageNumber="${i + 1}">\n${fieldsXml(p.layout, p.values)}\n</Page>`).join('\n')}
 </Pages>
 </Form>
 </FFData>
@@ -70,31 +99,34 @@ export function placements(layout, values) {
   return out;
 }
 
-/** The form page with the values in its cells. */
-export async function renderEdsPdf(code, values, {title} = {}) {
-  const def = EDS_FORMS[code], layout = edsLayout(code);
-  const bg = await PDFDocument.load(fs.readFileSync(path.join(ROOT, def.pdf)));
+/** The form page(s) with the values in their cells. `pages` = [{code, values}] (code: key of EDS_FORMS). */
+export async function renderEdsPages(pages, {title} = {}) {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
-  doc.setTitle(title || layout.formCode); doc.setProducer('Apskaita');
+  doc.setTitle(title || pages[0].code); doc.setProducer('Apskaita');
   const font = await doc.embedFont(fs.readFileSync(path.join(ROOT, 'assets/fonts/DejaVuSans.ttf')), {subset: true});
-  const landscape = layout.page.width > layout.page.height;
-  const W = landscape ? 841.89 : 595.28, H = landscape ? 595.28 : 841.89;
-  const page = doc.addPage([W, H]);
-  const [embedded] = await doc.embedPages([bg.getPage(0)], [def.box]);
-  page.drawPage(embedded, {x: 0, y: 0, width: W, height: H});
-  const k = W / layout.page.width, ky = H / layout.page.height;
   const blue = rgb(0, 0, 0.55);
-  for (const p of placements(layout, values)) {
-    if (p.mark) {
-      const [l, t, r, b] = p.mark, size = (b - t) * ky * 0.95;
-      page.drawText('X', {x: (l + r) / 2 * k - font.widthOfTextAtSize('X', size) / 2, y: H - b * ky + (b - t) * ky * 0.15, size, font, color: blue});
-      continue;
-    }
-    for (const [[l, t, r, b], ch] of p.chars) {
-      const size = Math.min((b - t) * ky * 0.72, (r - l) * k * 1.1);
-      page.drawText(ch, {x: (l + r) / 2 * k - font.widthOfTextAtSize(ch, size) / 2, y: H - b * ky + (b - t) * ky * 0.2, size, font, color: blue});
+  for (const {code, values} of pages) {
+    const def = EDS_FORMS[code], layout = edsLayout(code);
+    const bg = await PDFDocument.load(fs.readFileSync(path.join(ROOT, def.pdf)));
+    const landscape = layout.page.width > layout.page.height;
+    const W = landscape ? 841.89 : 595.28, H = landscape ? 595.28 : 841.89;
+    const page = doc.addPage([W, H]);
+    const [embedded] = await doc.embedPages([bg.getPage(0)], [def.box]);
+    page.drawPage(embedded, {x: 0, y: 0, width: W, height: H});
+    const k = W / layout.page.width, ky = H / layout.page.height;
+    for (const p of placements(layout, values)) {
+      if (p.mark) {
+        const [l, t, r, b] = p.mark, size = (b - t) * ky * 0.95;
+        page.drawText('X', {x: (l + r) / 2 * k - font.widthOfTextAtSize('X', size) / 2, y: H - b * ky + (b - t) * ky * 0.15, size, font, color: blue});
+        continue;
+      }
+      for (const [[l, t, r, b], ch] of p.chars) {
+        const size = Math.min((b - t) * ky * 0.72, (r - l) * k * 1.1);
+        page.drawText(ch, {x: (l + r) / 2 * k - font.widthOfTextAtSize(ch, size) / 2, y: H - b * ky + (b - t) * ky * 0.2, size, font, color: blue});
+      }
     }
   }
   return Buffer.from(await doc.save());
 }
+export const renderEdsPdf = (code, values, opts) => renderEdsPages([{code, values}], opts);

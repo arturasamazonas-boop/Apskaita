@@ -15,7 +15,8 @@ import {renderStatementPdf} from '../reports/statement-pdf.mjs';
 import {debtAct, renderDebtActPdf} from '../reports/debt-act.mjs';
 import {readJson} from '../http.mjs';
 import {GPM313, gpm313Values, applyGpm313Edits} from '../reports/eds-gpm313.mjs';
-import {toFFData as edsFFData, placements as edsPlacements, renderEdsPdf} from '../reports/eds-forms.mjs';
+import {PLN204_LAYOUTS, S_CODES, pln204Values, applyPln204Edits, pln204Pages} from '../reports/eds-pln204.mjs';
+import {toFFData as edsFFData, toFFDataPages, placements as edsPlacements, renderEdsPdf, renderEdsPages, EDS_FORMS} from '../reports/eds-forms.mjs';
 import {buildRcPackage, renderRcPackagePdf, rcRows} from '../reports/rc-package.mjs';
 import {LAYOUT as FR0600_LAYOUT, fr0600Values, applyEdits, toFFData, placements, renderFr0600Pdf} from '../reports/eds-fr0600.mjs';
 import {money} from '../lib/money.mjs';
@@ -110,6 +111,48 @@ export function register(r, {pool, storage}) {
     await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'gpm313', details: {format: pdf ? 'pdf' : 'ffdata', ...p, edited: Object.keys(b.values || {})}});
     res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': pdf ? 'application/pdf' : 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
     res.end(body);
+  });
+  // ---------------------------------------------------------------- PLN204 (profit tax) as in VMI EDS
+  const taxYear = (q) => { const y = Number(q.year); if (!Number.isInteger(y) || y < 2020 || y > 2100) throw new AppError(400, 'year', 'Nurodykite mokestinius metus.'); return y; };
+  r.get('/api/eds/pln204/layout', async ({user}) => { requireCap(user, 'read'); return {pages: PLN204_LAYOUTS, codes: S_CODES}; });
+  r.get('/api/eds/pln204', async ({user, query}) => { requireCap(user, 'read'); return pln204Values(pool, {year: taxYear(query)}); });
+  r.post('/api/eds/pln204/file', async ({req, user, res}) => {
+    requireCap(user, 'read');
+    const b = await readJson(req);
+    const year = taxYear(b);
+    const values = applyPln204Edits((await pln204Values(pool, {year})).values, b.values);
+    if (b.format === 'json') return {values}; // recalculation for the on-screen form
+    const pages = pln204Pages(values);
+    const pdf = b.format === 'pdf';
+    const body = pdf ? await renderEdsPages(pages.map((p) => ({code: p.code, values: p.values})), {title: `PLN204 ${year}`})
+      : Buffer.from(toFFDataPages({formDefId: PLN204_LAYOUTS.PLN204.formDefId, mainGroup: PLN204_LAYOUTS.PLN204.group}, pages, {login: user.email || 'apskaita', today: todayVilnius()}), 'utf8');
+    const name = `PLN204_${year}.${pdf ? 'pdf' : 'ffdata'}`;
+    await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'pln204', details: {format: pdf ? 'pdf' : 'ffdata', year, edited: Object.keys(b.values || {})}});
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': pdf ? 'application/pdf' : 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
+    res.end(body);
+  });
+  r.get('/api/tax/nondeductible-rules', async ({user}) => {
+    requireCap(user, 'read');
+    return (await pool.query('SELECT r.*, a.name FROM tax_nondeductible_rules r JOIN accounts a ON a.code=r.account_code ORDER BY r.account_code')).rows;
+  });
+  r.put('/api/tax/nondeductible-rules', async ({req, user}) => {
+    requireCap(user, 'approve');
+    const b = await readJson(req);
+    const rows = Array.isArray(b.rules) ? b.rules : [];
+    const codes = new Set(S_CODES.map((c) => c.value));
+    return tx(pool, async (db) => {
+      for (const x of rows) {
+        const acc = String(x.account_code || '').trim();
+        if (!(await db.query(`SELECT 1 FROM accounts WHERE code=$1 AND code ~ '^6'`, [acc])).rowCount) throw new AppError(400, 'account', `Sąskaita ${acc} – ne sąnaudų (6 klasės) sąskaita.`);
+        if (!codes.has(String(x.code))) throw new AppError(400, 'code', `Netinkamas neleidžiamų atskaitymų kodas ${x.code}.`);
+        const p = Number(String(x.percent).replace(',', '.'));
+        if (!(p > 0 && p <= 100)) throw new AppError(400, 'percent', 'Neleidžiama dalis – nuo 0 iki 100 %.');
+      }
+      await db.query('DELETE FROM tax_nondeductible_rules');
+      for (const x of rows) await db.query('INSERT INTO tax_nondeductible_rules(account_code, code, percent, note) VALUES ($1,$2,$3,$4)', [String(x.account_code).trim(), String(x.code), String(x.percent).replace(',', '.'), String(x.note || '').slice(0, 200)]);
+      await audit(db, {userId: user.id, action: 'tax.nondeductible_rules', entityType: 'settings', entityId: 'pln204', details: {rules: rows}});
+      return {ok: true};
+    });
   });
   // ---------------------------------------------------------------- annual set for Registrų centras
   const rcPkg = (q) => {

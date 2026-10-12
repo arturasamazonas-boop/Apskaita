@@ -41,6 +41,14 @@ export function edsFormView({layout, values, label, onCheck, onInput}) {
     for (const [[l, t, r, b], ch] of cellChars(f, values[f.name])) {
       wrap.append(h('span', {class: 'eds-ch', style: {left: pct(l - fl, fr - fl), top: pct(t - ft, fb - ft), width: pct(r - l, fr - fl), height: pct(b - t, fb - ft), fontSize: cq(Math.min(b - t, (r - l) * 1.5), 0.72)}}, ch));
     }
+    if (!f.readOnly && onInput && f.list) {
+      // A list field (Taip/Ne, codes): a select over the cells, shown while focused.
+      const sel = h('select', {class: 'eds-input eds-select', 'aria-label': `Laukelis ${f.name.replace(/^[EG]/, '')}`, title: f.list.find((o) => o.value === values[f.name])?.label || ''},
+        h('option', {value: ''}, '—'), f.list.map((o) => h('option', {value: o.value, selected: o.value === values[f.name]}, `${o.value} – ${o.label}`)));
+      sel.addEventListener('change', () => onInput(f, sel.value, sel));
+      wrap.append(sel); form.append(wrap);
+      continue;
+    }
     if (!f.readOnly && onInput) {
       const cellH = f.cells?.[0] ? f.cells[0][3] - f.cells[0][1] : fb - ft;
       const inp = h('input', {class: ['eds-input', f.align === 'RightJustified' && 'right'], value: values[f.name] || '', 'aria-label': `Laukelis ${f.name.replace(/^[EG]/, '')}`,

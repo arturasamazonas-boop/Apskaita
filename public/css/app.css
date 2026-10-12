@@ -252,3 +252,5 @@ details summary { cursor: pointer; margin: .5rem 0; font-weight: 600; }
 /* Fixed assets. */
 .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem; align-items: start; }
 .text-error { color: var(--error); }
+.eds-select { font-size: 12px !important; letter-spacing: 0; padding: 0; }
+.eds-page-title { margin: 1.2rem auto .3rem; max-width: 960px; font-size: 1rem; }

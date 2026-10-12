@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 """Extract an EDS form layout from the official VMI .mxfd template (ABBYY eForm).
 
-Usage: python3 scripts/mxfd-layout.py FR0600.mxfd assets/forms/fr0600-v3
+Usage: python3 scripts/mxfd-layout.py FR0600.mxfd assets/forms/fr0600-v3 [PageName]
+PageName picks one page of a multi-page form (e.g. PLN204_2); the default is the first page.
 Writes <out>.json (FormDefId, page size in template units (300 dpi), every FFData field with its cells)
 and <out>.emf (page background). Convert the background once with LibreOffice:
   soffice --headless --convert-to pdf <out>.emf   (vector page used for PDF output)
 """
-import binascii, json, re, sys
+import binascii, html, json, re, sys
 
 src, out = sys.argv[1], sys.argv[2]
-t = open(src, encoding='utf-8').read()
+whole = open(src, encoding='utf-8').read()
+form_def = re.search(r'<FormDef [^>]*FormDefId="([^"]+)"', whole).group(1)
+group = re.search(r'<Group Name="([^"]+)"', whole).group(1)
+list_pages = re.findall(r'<ListPage>([^<]+)</ListPage>', re.search(r'<Group Name="[^"]+"[^>]*><ListPages>(.*?)</ListPages>', whole, flags=re.S).group(1))
+# One <PageDef> per page: its layout (background, cells) and its data fields (<PageDataDef Name=...>).
+starts = [m.start() for m in re.finditer(r'<PageDef ', whole)] + [len(whole)]
+pages = [whole[a:b] for a, b in zip(starts, starts[1:])]
+want = sys.argv[3] if len(sys.argv) > 3 else None
+t = next((p for p in pages if want and f'<PageDataDef Name="{want}"' in p), pages[0])
+page_name = re.search(r'<PageDataDef Name="([^"]+)"', t).group(1)
 rect = lambda s: [int(x) for x in re.findall(r'[ltrb]="(-?\d+)"', s)]
-form_def = re.search(r'<FormDef [^>]*FormDefId="([^"]+)"', t).group(1)
 items = {m.group(2): (m.group(1), m.group(3)) for m in re.finditer(r'<FormItem Type="(\w+)" UID="(0x[0-9A-F]+)">(.*?)</FormItem>', t, flags=re.S)}
 fields = []
 for m in re.finditer(r'<FieldDataDef FieldName="([^"]+)"[^>]*DataType="(\w+)"[^>]*ReferedXFDItem="([^"]*)">(.*?)</FieldDataDef>', t, flags=re.S):
@@ -25,6 +34,8 @@ for m in re.finditer(r'<FieldDataDef FieldName="([^"]+)"[^>]*DataType="(\w+)"[^>
     if al: f['align'] = al.group(1)
     dp = re.search(r'<DecimalPlaces>(\d+)</DecimalPlaces>', body)
     if dp: f['decimals'] = int(dp.group(1))
+    if re.search(r'<UseListPropperties>UseListOnly</UseListPropperties>', body):
+        f['list'] = [{'value': v, 'label': html.unescape(l)} for l, v in re.findall(r'<ListItem DisplayName="([^"]*)">([^<]*)</ListItem>', body) if v]
     ro = re.search(r'<IsReadOnly>(\w+)</IsReadOnly>', body)
     f['readOnly'] = bool(ro and ro.group(1) == 'true')
     if ref in items:
@@ -35,10 +46,9 @@ for m in re.finditer(r'<FieldDataDef FieldName="([^"]+)"[^>]*DataType="(\w+)"[^>
         if hint and hint.group(1).strip() and hint.group(1).strip() not in ',.': f['printed'] = hint.group(1).strip()
     fields.append(f)
 size = re.search(r'<Size><Width>(\d+)</Width><Height>(\d+)</Height></Size>', t)
-code = re.search(r'<ListPage>([^<]+)</ListPage>', t).group(1)
-group = re.search(r'<Group Name="([^"]+)"', t).group(1)
-json.dump({'source': src.split('/')[-1], 'formDefId': form_def, 'formCode': code, 'group': group, 'page': {'width': int(size.group(1)), 'height': int(size.group(2))}, 'fields': fields},
+json.dump({'source': src.split('/')[-1], 'formDefId': form_def, 'formCode': list_pages[0], 'group': group, 'listPages': list_pages, 'pageName': page_name,
+           'page': {'width': int(size.group(1)), 'height': int(size.group(2))}, 'fields': fields},
           open(out + '.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 img = re.search(r'<Image ImageSize="\d+" ImageType="EMF">([0-9A-Fa-f\s]+)</Image>', t)
 open(out + '.emf', 'wb').write(binascii.unhexlify(re.sub(r'\s', '', img.group(1))))
-print(form_def, code, len(fields), 'fields')
+print(form_def, page_name, len(fields), 'fields')

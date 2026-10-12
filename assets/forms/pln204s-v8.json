@@ -1,0 +1,8832 @@
+{
+ "source": "PLN204.mxfd",
+ "formDefId": "{B09451AC-AFF5-464B-AF35-057CC01B7699}",
+ "formCode": "PLN204",
+ "group": "Visa forma",
+ "listPages": [
+  "PLN204",
+  "PLN204_2"
+ ],
+ "pageName": "PLN204S",
+ "page": {
+  "width": 3507,
+  "height": 2480
+ },
+ "fields": [
+  {
+   "name": "S1-1",
+   "type": "Decimal",
+   "rect": [
+    302,
+    685,
+    424,
+    758
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     692,
+     356,
+     751
+    ],
+    [
+     370,
+     692,
+     417,
+     751
+    ]
+   ]
+  },
+  {
+   "name": "S2-1",
+   "type": "Decimal",
+   "rect": [
+    586,
+    685,
+    1318,
+    758
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     692,
+     640,
+     751
+    ],
+    [
+     654,
+     692,
+     701,
+     751
+    ],
+    [
+     715,
+     692,
+     762,
+     751
+    ],
+    [
+     776,
+     692,
+     823,
+     751
+    ],
+    [
+     837,
+     692,
+     884,
+     751
+    ],
+    [
+     898,
+     692,
+     945,
+     751
+    ],
+    [
+     959,
+     692,
+     1006,
+     751
+    ],
+    [
+     1020,
+     692,
+     1067,
+     751
+    ],
+    [
+     1081,
+     692,
+     1128,
+     751
+    ],
+    [
+     1142,
+     692,
+     1189,
+     751
+    ],
+    [
+     1203,
+     692,
+     1250,
+     751
+    ],
+    [
+     1264,
+     692,
+     1311,
+     751
+    ]
+   ]
+  },
+  {
+   "name": "S1-2",
+   "type": "Decimal",
+   "rect": [
+    302,
+    780,
+    424,
+    853
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     787,
+     356,
+     846
+    ],
+    [
+     370,
+     787,
+     417,
+     846
+    ]
+   ]
+  },
+  {
+   "name": "S2-2",
+   "type": "Decimal",
+   "rect": [
+    586,
+    780,
+    1318,
+    853
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     787,
+     640,
+     846
+    ],
+    [
+     654,
+     787,
+     701,
+     846
+    ],
+    [
+     715,
+     787,
+     762,
+     846
+    ],
+    [
+     776,
+     787,
+     823,
+     846
+    ],
+    [
+     837,
+     787,
+     884,
+     846
+    ],
+    [
+     898,
+     787,
+     945,
+     846
+    ],
+    [
+     959,
+     787,
+     1006,
+     846
+    ],
+    [
+     1020,
+     787,
+     1067,
+     846
+    ],
+    [
+     1081,
+     787,
+     1128,
+     846
+    ],
+    [
+     1142,
+     787,
+     1189,
+     846
+    ],
+    [
+     1203,
+     787,
+     1250,
+     846
+    ],
+    [
+     1264,
+     787,
+     1311,
+     846
+    ]
+   ]
+  },
+  {
+   "name": "S1-3",
+   "type": "Decimal",
+   "rect": [
+    302,
+    874,
+    424,
+    947
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     881,
+     356,
+     940
+    ],
+    [
+     370,
+     881,
+     417,
+     940
+    ]
+   ]
+  },
+  {
+   "name": "S2-3",
+   "type": "Decimal",
+   "rect": [
+    586,
+    874,
+    1318,
+    947
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     881,
+     640,
+     940
+    ],
+    [
+     654,
+     881,
+     701,
+     940
+    ],
+    [
+     715,
+     881,
+     762,
+     940
+    ],
+    [
+     776,
+     881,
+     823,
+     940
+    ],
+    [
+     837,
+     881,
+     884,
+     940
+    ],
+    [
+     898,
+     881,
+     945,
+     940
+    ],
+    [
+     959,
+     881,
+     1006,
+     940
+    ],
+    [
+     1020,
+     881,
+     1067,
+     940
+    ],
+    [
+     1081,
+     881,
+     1128,
+     940
+    ],
+    [
+     1142,
+     881,
+     1189,
+     940
+    ],
+    [
+     1203,
+     881,
+     1250,
+     940
+    ],
+    [
+     1264,
+     881,
+     1311,
+     940
+    ]
+   ]
+  },
+  {
+   "name": "S1-4",
+   "type": "Decimal",
+   "rect": [
+    302,
+    969,
+    424,
+    1042
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     976,
+     356,
+     1035
+    ],
+    [
+     370,
+     976,
+     417,
+     1035
+    ]
+   ]
+  },
+  {
+   "name": "S2-4",
+   "type": "Decimal",
+   "rect": [
+    586,
+    969,
+    1318,
+    1042
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     976,
+     640,
+     1035
+    ],
+    [
+     654,
+     976,
+     701,
+     1035
+    ],
+    [
+     715,
+     976,
+     762,
+     1035
+    ],
+    [
+     776,
+     976,
+     823,
+     1035
+    ],
+    [
+     837,
+     976,
+     884,
+     1035
+    ],
+    [
+     898,
+     976,
+     945,
+     1035
+    ],
+    [
+     959,
+     976,
+     1006,
+     1035
+    ],
+    [
+     1020,
+     976,
+     1067,
+     1035
+    ],
+    [
+     1081,
+     976,
+     1128,
+     1035
+    ],
+    [
+     1142,
+     976,
+     1189,
+     1035
+    ],
+    [
+     1203,
+     976,
+     1250,
+     1035
+    ],
+    [
+     1264,
+     976,
+     1311,
+     1035
+    ]
+   ]
+  },
+  {
+   "name": "S1-5",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1063,
+    424,
+    1136
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1070,
+     356,
+     1129
+    ],
+    [
+     370,
+     1070,
+     417,
+     1129
+    ]
+   ]
+  },
+  {
+   "name": "S2-5",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1063,
+    1318,
+    1136
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1070,
+     640,
+     1129
+    ],
+    [
+     654,
+     1070,
+     701,
+     1129
+    ],
+    [
+     715,
+     1070,
+     762,
+     1129
+    ],
+    [
+     776,
+     1070,
+     823,
+     1129
+    ],
+    [
+     837,
+     1070,
+     884,
+     1129
+    ],
+    [
+     898,
+     1070,
+     945,
+     1129
+    ],
+    [
+     959,
+     1070,
+     1006,
+     1129
+    ],
+    [
+     1020,
+     1070,
+     1067,
+     1129
+    ],
+    [
+     1081,
+     1070,
+     1128,
+     1129
+    ],
+    [
+     1142,
+     1070,
+     1189,
+     1129
+    ],
+    [
+     1203,
+     1070,
+     1250,
+     1129
+    ],
+    [
+     1264,
+     1070,
+     1311,
+     1129
+    ]
+   ]
+  },
+  {
+   "name": "S1-6",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1158,
+    424,
+    1231
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1165,
+     356,
+     1224
+    ],
+    [
+     370,
+     1165,
+     417,
+     1224
+    ]
+   ]
+  },
+  {
+   "name": "S2-6",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1158,
+    1318,
+    1231
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1165,
+     640,
+     1224
+    ],
+    [
+     654,
+     1165,
+     701,
+     1224
+    ],
+    [
+     715,
+     1165,
+     762,
+     1224
+    ],
+    [
+     776,
+     1165,
+     823,
+     1224
+    ],
+    [
+     837,
+     1165,
+     884,
+     1224
+    ],
+    [
+     898,
+     1165,
+     945,
+     1224
+    ],
+    [
+     959,
+     1165,
+     1006,
+     1224
+    ],
+    [
+     1020,
+     1165,
+     1067,
+     1224
+    ],
+    [
+     1081,
+     1165,
+     1128,
+     1224
+    ],
+    [
+     1142,
+     1165,
+     1189,
+     1224
+    ],
+    [
+     1203,
+     1165,
+     1250,
+     1224
+    ],
+    [
+     1264,
+     1165,
+     1311,
+     1224
+    ]
+   ]
+  },
+  {
+   "name": "S1-7",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1252,
+    424,
+    1325
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1259,
+     356,
+     1318
+    ],
+    [
+     370,
+     1259,
+     417,
+     1318
+    ]
+   ]
+  },
+  {
+   "name": "S2-7",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1252,
+    1318,
+    1325
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1259,
+     640,
+     1318
+    ],
+    [
+     654,
+     1259,
+     701,
+     1318
+    ],
+    [
+     715,
+     1259,
+     762,
+     1318
+    ],
+    [
+     776,
+     1259,
+     823,
+     1318
+    ],
+    [
+     837,
+     1259,
+     884,
+     1318
+    ],
+    [
+     898,
+     1259,
+     945,
+     1318
+    ],
+    [
+     959,
+     1259,
+     1006,
+     1318
+    ],
+    [
+     1020,
+     1259,
+     1067,
+     1318
+    ],
+    [
+     1081,
+     1259,
+     1128,
+     1318
+    ],
+    [
+     1142,
+     1259,
+     1189,
+     1318
+    ],
+    [
+     1203,
+     1259,
+     1250,
+     1318
+    ],
+    [
+     1264,
+     1259,
+     1311,
+     1318
+    ]
+   ]
+  },
+  {
+   "name": "S1-8",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1347,
+    424,
+    1420
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1354,
+     356,
+     1413
+    ],
+    [
+     370,
+     1354,
+     417,
+     1413
+    ]
+   ]
+  },
+  {
+   "name": "S2-8",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1347,
+    1318,
+    1420
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1354,
+     640,
+     1413
+    ],
+    [
+     654,
+     1354,
+     701,
+     1413
+    ],
+    [
+     715,
+     1354,
+     762,
+     1413
+    ],
+    [
+     776,
+     1354,
+     823,
+     1413
+    ],
+    [
+     837,
+     1354,
+     884,
+     1413
+    ],
+    [
+     898,
+     1354,
+     945,
+     1413
+    ],
+    [
+     959,
+     1354,
+     1006,
+     1413
+    ],
+    [
+     1020,
+     1354,
+     1067,
+     1413
+    ],
+    [
+     1081,
+     1354,
+     1128,
+     1413
+    ],
+    [
+     1142,
+     1354,
+     1189,
+     1413
+    ],
+    [
+     1203,
+     1354,
+     1250,
+     1413
+    ],
+    [
+     1264,
+     1354,
+     1311,
+     1413
+    ]
+   ]
+  },
+  {
+   "name": "S1-9",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1441,
+    424,
+    1514
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1448,
+     356,
+     1507
+    ],
+    [
+     370,
+     1448,
+     417,
+     1507
+    ]
+   ]
+  },
+  {
+   "name": "S2-9",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1441,
+    1318,
+    1514
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1448,
+     640,
+     1507
+    ],
+    [
+     654,
+     1448,
+     701,
+     1507
+    ],
+    [
+     715,
+     1448,
+     762,
+     1507
+    ],
+    [
+     776,
+     1448,
+     823,
+     1507
+    ],
+    [
+     837,
+     1448,
+     884,
+     1507
+    ],
+    [
+     898,
+     1448,
+     945,
+     1507
+    ],
+    [
+     959,
+     1448,
+     1006,
+     1507
+    ],
+    [
+     1020,
+     1448,
+     1067,
+     1507
+    ],
+    [
+     1081,
+     1448,
+     1128,
+     1507
+    ],
+    [
+     1142,
+     1448,
+     1189,
+     1507
+    ],
+    [
+     1203,
+     1448,
+     1250,
+     1507
+    ],
+    [
+     1264,
+     1448,
+     1311,
+     1507
+    ]
+   ]
+  },
+  {
+   "name": "S1-10",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1536,
+    424,
+    1609
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1543,
+     356,
+     1602
+    ],
+    [
+     370,
+     1543,
+     417,
+     1602
+    ]
+   ]
+  },
+  {
+   "name": "S2-10",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1536,
+    1318,
+    1609
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1543,
+     640,
+     1602
+    ],
+    [
+     654,
+     1543,
+     701,
+     1602
+    ],
+    [
+     715,
+     1543,
+     762,
+     1602
+    ],
+    [
+     776,
+     1543,
+     823,
+     1602
+    ],
+    [
+     837,
+     1543,
+     884,
+     1602
+    ],
+    [
+     898,
+     1543,
+     945,
+     1602
+    ],
+    [
+     959,
+     1543,
+     1006,
+     1602
+    ],
+    [
+     1020,
+     1543,
+     1067,
+     1602
+    ],
+    [
+     1081,
+     1543,
+     1128,
+     1602
+    ],
+    [
+     1142,
+     1543,
+     1189,
+     1602
+    ],
+    [
+     1203,
+     1543,
+     1250,
+     1602
+    ],
+    [
+     1264,
+     1543,
+     1311,
+     1602
+    ]
+   ]
+  },
+  {
+   "name": "S1-11",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1630,
+    424,
+    1703
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1637,
+     356,
+     1696
+    ],
+    [
+     370,
+     1637,
+     417,
+     1696
+    ]
+   ]
+  },
+  {
+   "name": "S2-11",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1630,
+    1318,
+    1703
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1637,
+     640,
+     1696
+    ],
+    [
+     654,
+     1637,
+     701,
+     1696
+    ],
+    [
+     715,
+     1637,
+     762,
+     1696
+    ],
+    [
+     776,
+     1637,
+     823,
+     1696
+    ],
+    [
+     837,
+     1637,
+     884,
+     1696
+    ],
+    [
+     898,
+     1637,
+     945,
+     1696
+    ],
+    [
+     959,
+     1637,
+     1006,
+     1696
+    ],
+    [
+     1020,
+     1637,
+     1067,
+     1696
+    ],
+    [
+     1081,
+     1637,
+     1128,
+     1696
+    ],
+    [
+     1142,
+     1637,
+     1189,
+     1696
+    ],
+    [
+     1203,
+     1637,
+     1250,
+     1696
+    ],
+    [
+     1264,
+     1637,
+     1311,
+     1696
+    ]
+   ]
+  },
+  {
+   "name": "S1-12",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1725,
+    424,
+    1798
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1732,
+     356,
+     1791
+    ],
+    [
+     370,
+     1732,
+     417,
+     1791
+    ]
+   ]
+  },
+  {
+   "name": "S2-12",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1725,
+    1318,
+    1798
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1732,
+     640,
+     1791
+    ],
+    [
+     654,
+     1732,
+     701,
+     1791
+    ],
+    [
+     715,
+     1732,
+     762,
+     1791
+    ],
+    [
+     776,
+     1732,
+     823,
+     1791
+    ],
+    [
+     837,
+     1732,
+     884,
+     1791
+    ],
+    [
+     898,
+     1732,
+     945,
+     1791
+    ],
+    [
+     959,
+     1732,
+     1006,
+     1791
+    ],
+    [
+     1020,
+     1732,
+     1067,
+     1791
+    ],
+    [
+     1081,
+     1732,
+     1128,
+     1791
+    ],
+    [
+     1142,
+     1732,
+     1189,
+     1791
+    ],
+    [
+     1203,
+     1732,
+     1250,
+     1791
+    ],
+    [
+     1264,
+     1732,
+     1311,
+     1791
+    ]
+   ]
+  },
+  {
+   "name": "S1-13",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1819,
+    424,
+    1892
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1826,
+     356,
+     1885
+    ],
+    [
+     370,
+     1826,
+     417,
+     1885
+    ]
+   ]
+  },
+  {
+   "name": "S2-13",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1819,
+    1318,
+    1892
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1826,
+     640,
+     1885
+    ],
+    [
+     654,
+     1826,
+     701,
+     1885
+    ],
+    [
+     715,
+     1826,
+     762,
+     1885
+    ],
+    [
+     776,
+     1826,
+     823,
+     1885
+    ],
+    [
+     837,
+     1826,
+     884,
+     1885
+    ],
+    [
+     898,
+     1826,
+     945,
+     1885
+    ],
+    [
+     959,
+     1826,
+     1006,
+     1885
+    ],
+    [
+     1020,
+     1826,
+     1067,
+     1885
+    ],
+    [
+     1081,
+     1826,
+     1128,
+     1885
+    ],
+    [
+     1142,
+     1826,
+     1189,
+     1885
+    ],
+    [
+     1203,
+     1826,
+     1250,
+     1885
+    ],
+    [
+     1264,
+     1826,
+     1311,
+     1885
+    ]
+   ]
+  },
+  {
+   "name": "S1-14",
+   "type": "Decimal",
+   "rect": [
+    302,
+    1914,
+    424,
+    1987
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     1921,
+     356,
+     1980
+    ],
+    [
+     370,
+     1921,
+     417,
+     1980
+    ]
+   ]
+  },
+  {
+   "name": "S2-14",
+   "type": "Decimal",
+   "rect": [
+    586,
+    1914,
+    1318,
+    1987
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     1921,
+     640,
+     1980
+    ],
+    [
+     654,
+     1921,
+     701,
+     1980
+    ],
+    [
+     715,
+     1921,
+     762,
+     1980
+    ],
+    [
+     776,
+     1921,
+     823,
+     1980
+    ],
+    [
+     837,
+     1921,
+     884,
+     1980
+    ],
+    [
+     898,
+     1921,
+     945,
+     1980
+    ],
+    [
+     959,
+     1921,
+     1006,
+     1980
+    ],
+    [
+     1020,
+     1921,
+     1067,
+     1980
+    ],
+    [
+     1081,
+     1921,
+     1128,
+     1980
+    ],
+    [
+     1142,
+     1921,
+     1189,
+     1980
+    ],
+    [
+     1203,
+     1921,
+     1250,
+     1980
+    ],
+    [
+     1264,
+     1921,
+     1311,
+     1980
+    ]
+   ]
+  },
+  {
+   "name": "S1-15",
+   "type": "Decimal",
+   "rect": [
+    302,
+    2008,
+    424,
+    2081
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     2015,
+     356,
+     2074
+    ],
+    [
+     370,
+     2015,
+     417,
+     2074
+    ]
+   ]
+  },
+  {
+   "name": "S2-15",
+   "type": "Decimal",
+   "rect": [
+    586,
+    2008,
+    1318,
+    2081
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     2015,
+     640,
+     2074
+    ],
+    [
+     654,
+     2015,
+     701,
+     2074
+    ],
+    [
+     715,
+     2015,
+     762,
+     2074
+    ],
+    [
+     776,
+     2015,
+     823,
+     2074
+    ],
+    [
+     837,
+     2015,
+     884,
+     2074
+    ],
+    [
+     898,
+     2015,
+     945,
+     2074
+    ],
+    [
+     959,
+     2015,
+     1006,
+     2074
+    ],
+    [
+     1020,
+     2015,
+     1067,
+     2074
+    ],
+    [
+     1081,
+     2015,
+     1128,
+     2074
+    ],
+    [
+     1142,
+     2015,
+     1189,
+     2074
+    ],
+    [
+     1203,
+     2015,
+     1250,
+     2074
+    ],
+    [
+     1264,
+     2015,
+     1311,
+     2074
+    ]
+   ]
+  },
+  {
+   "name": "S1-16",
+   "type": "Decimal",
+   "rect": [
+    302,
+    2103,
+    424,
+    2176
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     309,
+     2110,
+     356,
+     2169
+    ],
+    [
+     370,
+     2110,
+     417,
+     2169
+    ]
+   ]
+  },
+  {
+   "name": "S2-16",
+   "type": "Decimal",
+   "rect": [
+    586,
+    2103,
+    1318,
+    2176
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     593,
+     2110,
+     640,
+     2169
+    ],
+    [
+     654,
+     2110,
+     701,
+     2169
+    ],
+    [
+     715,
+     2110,
+     762,
+     2169
+    ],
+    [
+     776,
+     2110,
+     823,
+     2169
+    ],
+    [
+     837,
+     2110,
+     884,
+     2169
+    ],
+    [
+     898,
+     2110,
+     945,
+     2169
+    ],
+    [
+     959,
+     2110,
+     1006,
+     2169
+    ],
+    [
+     1020,
+     2110,
+     1067,
+     2169
+    ],
+    [
+     1081,
+     2110,
+     1128,
+     2169
+    ],
+    [
+     1142,
+     2110,
+     1189,
+     2169
+    ],
+    [
+     1203,
+     2110,
+     1250,
+     2169
+    ],
+    [
+     1264,
+     2110,
+     1311,
+     2169
+    ]
+   ]
+  },
+  {
+   "name": "S1-17",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    685,
+    2349,
+    758
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     692,
+     2281,
+     751
+    ],
+    [
+     2295,
+     692,
+     2342,
+     751
+    ]
+   ]
+  },
+  {
+   "name": "S2-17",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    685,
+    3255,
+    758
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     692,
+     2577,
+     751
+    ],
+    [
+     2591,
+     692,
+     2638,
+     751
+    ],
+    [
+     2652,
+     692,
+     2699,
+     751
+    ],
+    [
+     2713,
+     692,
+     2760,
+     751
+    ],
+    [
+     2774,
+     692,
+     2821,
+     751
+    ],
+    [
+     2835,
+     692,
+     2882,
+     751
+    ],
+    [
+     2896,
+     692,
+     2943,
+     751
+    ],
+    [
+     2957,
+     692,
+     3004,
+     751
+    ],
+    [
+     3018,
+     692,
+     3065,
+     751
+    ],
+    [
+     3079,
+     692,
+     3126,
+     751
+    ],
+    [
+     3140,
+     692,
+     3187,
+     751
+    ],
+    [
+     3201,
+     692,
+     3248,
+     751
+    ]
+   ]
+  },
+  {
+   "name": "S1-18",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    780,
+    2349,
+    853
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     787,
+     2281,
+     846
+    ],
+    [
+     2295,
+     787,
+     2342,
+     846
+    ]
+   ]
+  },
+  {
+   "name": "S2-18",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    780,
+    3255,
+    853
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     787,
+     2577,
+     846
+    ],
+    [
+     2591,
+     787,
+     2638,
+     846
+    ],
+    [
+     2652,
+     787,
+     2699,
+     846
+    ],
+    [
+     2713,
+     787,
+     2760,
+     846
+    ],
+    [
+     2774,
+     787,
+     2821,
+     846
+    ],
+    [
+     2835,
+     787,
+     2882,
+     846
+    ],
+    [
+     2896,
+     787,
+     2943,
+     846
+    ],
+    [
+     2957,
+     787,
+     3004,
+     846
+    ],
+    [
+     3018,
+     787,
+     3065,
+     846
+    ],
+    [
+     3079,
+     787,
+     3126,
+     846
+    ],
+    [
+     3140,
+     787,
+     3187,
+     846
+    ],
+    [
+     3201,
+     787,
+     3248,
+     846
+    ]
+   ]
+  },
+  {
+   "name": "S1-19",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    874,
+    2349,
+    947
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     881,
+     2281,
+     940
+    ],
+    [
+     2295,
+     881,
+     2342,
+     940
+    ]
+   ]
+  },
+  {
+   "name": "S2-19",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    874,
+    3255,
+    947
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     881,
+     2577,
+     940
+    ],
+    [
+     2591,
+     881,
+     2638,
+     940
+    ],
+    [
+     2652,
+     881,
+     2699,
+     940
+    ],
+    [
+     2713,
+     881,
+     2760,
+     940
+    ],
+    [
+     2774,
+     881,
+     2821,
+     940
+    ],
+    [
+     2835,
+     881,
+     2882,
+     940
+    ],
+    [
+     2896,
+     881,
+     2943,
+     940
+    ],
+    [
+     2957,
+     881,
+     3004,
+     940
+    ],
+    [
+     3018,
+     881,
+     3065,
+     940
+    ],
+    [
+     3079,
+     881,
+     3126,
+     940
+    ],
+    [
+     3140,
+     881,
+     3187,
+     940
+    ],
+    [
+     3201,
+     881,
+     3248,
+     940
+    ]
+   ]
+  },
+  {
+   "name": "S1-20",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    969,
+    2349,
+    1042
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     976,
+     2281,
+     1035
+    ],
+    [
+     2295,
+     976,
+     2342,
+     1035
+    ]
+   ]
+  },
+  {
+   "name": "S2-20",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    969,
+    3255,
+    1042
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     976,
+     2577,
+     1035
+    ],
+    [
+     2591,
+     976,
+     2638,
+     1035
+    ],
+    [
+     2652,
+     976,
+     2699,
+     1035
+    ],
+    [
+     2713,
+     976,
+     2760,
+     1035
+    ],
+    [
+     2774,
+     976,
+     2821,
+     1035
+    ],
+    [
+     2835,
+     976,
+     2882,
+     1035
+    ],
+    [
+     2896,
+     976,
+     2943,
+     1035
+    ],
+    [
+     2957,
+     976,
+     3004,
+     1035
+    ],
+    [
+     3018,
+     976,
+     3065,
+     1035
+    ],
+    [
+     3079,
+     976,
+     3126,
+     1035
+    ],
+    [
+     3140,
+     976,
+     3187,
+     1035
+    ],
+    [
+     3201,
+     976,
+     3248,
+     1035
+    ]
+   ]
+  },
+  {
+   "name": "S1-21",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1063,
+    2349,
+    1136
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1070,
+     2281,
+     1129
+    ],
+    [
+     2295,
+     1070,
+     2342,
+     1129
+    ]
+   ]
+  },
+  {
+   "name": "S2-21",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1063,
+    3255,
+    1136
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1070,
+     2577,
+     1129
+    ],
+    [
+     2591,
+     1070,
+     2638,
+     1129
+    ],
+    [
+     2652,
+     1070,
+     2699,
+     1129
+    ],
+    [
+     2713,
+     1070,
+     2760,
+     1129
+    ],
+    [
+     2774,
+     1070,
+     2821,
+     1129
+    ],
+    [
+     2835,
+     1070,
+     2882,
+     1129
+    ],
+    [
+     2896,
+     1070,
+     2943,
+     1129
+    ],
+    [
+     2957,
+     1070,
+     3004,
+     1129
+    ],
+    [
+     3018,
+     1070,
+     3065,
+     1129
+    ],
+    [
+     3079,
+     1070,
+     3126,
+     1129
+    ],
+    [
+     3140,
+     1070,
+     3187,
+     1129
+    ],
+    [
+     3201,
+     1070,
+     3248,
+     1129
+    ]
+   ]
+  },
+  {
+   "name": "S1-22",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1158,
+    2349,
+    1231
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1165,
+     2281,
+     1224
+    ],
+    [
+     2295,
+     1165,
+     2342,
+     1224
+    ]
+   ]
+  },
+  {
+   "name": "S2-22",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1158,
+    3255,
+    1231
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1165,
+     2577,
+     1224
+    ],
+    [
+     2591,
+     1165,
+     2638,
+     1224
+    ],
+    [
+     2652,
+     1165,
+     2699,
+     1224
+    ],
+    [
+     2713,
+     1165,
+     2760,
+     1224
+    ],
+    [
+     2774,
+     1165,
+     2821,
+     1224
+    ],
+    [
+     2835,
+     1165,
+     2882,
+     1224
+    ],
+    [
+     2896,
+     1165,
+     2943,
+     1224
+    ],
+    [
+     2957,
+     1165,
+     3004,
+     1224
+    ],
+    [
+     3018,
+     1165,
+     3065,
+     1224
+    ],
+    [
+     3079,
+     1165,
+     3126,
+     1224
+    ],
+    [
+     3140,
+     1165,
+     3187,
+     1224
+    ],
+    [
+     3201,
+     1165,
+     3248,
+     1224
+    ]
+   ]
+  },
+  {
+   "name": "S1-23",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1252,
+    2349,
+    1325
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1259,
+     2281,
+     1318
+    ],
+    [
+     2295,
+     1259,
+     2342,
+     1318
+    ]
+   ]
+  },
+  {
+   "name": "S2-23",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1252,
+    3255,
+    1325
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1259,
+     2577,
+     1318
+    ],
+    [
+     2591,
+     1259,
+     2638,
+     1318
+    ],
+    [
+     2652,
+     1259,
+     2699,
+     1318
+    ],
+    [
+     2713,
+     1259,
+     2760,
+     1318
+    ],
+    [
+     2774,
+     1259,
+     2821,
+     1318
+    ],
+    [
+     2835,
+     1259,
+     2882,
+     1318
+    ],
+    [
+     2896,
+     1259,
+     2943,
+     1318
+    ],
+    [
+     2957,
+     1259,
+     3004,
+     1318
+    ],
+    [
+     3018,
+     1259,
+     3065,
+     1318
+    ],
+    [
+     3079,
+     1259,
+     3126,
+     1318
+    ],
+    [
+     3140,
+     1259,
+     3187,
+     1318
+    ],
+    [
+     3201,
+     1259,
+     3248,
+     1318
+    ]
+   ]
+  },
+  {
+   "name": "S1-24",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1347,
+    2349,
+    1420
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1354,
+     2281,
+     1413
+    ],
+    [
+     2295,
+     1354,
+     2342,
+     1413
+    ]
+   ]
+  },
+  {
+   "name": "S2-24",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1347,
+    3255,
+    1420
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1354,
+     2577,
+     1413
+    ],
+    [
+     2591,
+     1354,
+     2638,
+     1413
+    ],
+    [
+     2652,
+     1354,
+     2699,
+     1413
+    ],
+    [
+     2713,
+     1354,
+     2760,
+     1413
+    ],
+    [
+     2774,
+     1354,
+     2821,
+     1413
+    ],
+    [
+     2835,
+     1354,
+     2882,
+     1413
+    ],
+    [
+     2896,
+     1354,
+     2943,
+     1413
+    ],
+    [
+     2957,
+     1354,
+     3004,
+     1413
+    ],
+    [
+     3018,
+     1354,
+     3065,
+     1413
+    ],
+    [
+     3079,
+     1354,
+     3126,
+     1413
+    ],
+    [
+     3140,
+     1354,
+     3187,
+     1413
+    ],
+    [
+     3201,
+     1354,
+     3248,
+     1413
+    ]
+   ]
+  },
+  {
+   "name": "S1-25",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1441,
+    2349,
+    1514
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1448,
+     2281,
+     1507
+    ],
+    [
+     2295,
+     1448,
+     2342,
+     1507
+    ]
+   ]
+  },
+  {
+   "name": "S2-25",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1441,
+    3255,
+    1514
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1448,
+     2577,
+     1507
+    ],
+    [
+     2591,
+     1448,
+     2638,
+     1507
+    ],
+    [
+     2652,
+     1448,
+     2699,
+     1507
+    ],
+    [
+     2713,
+     1448,
+     2760,
+     1507
+    ],
+    [
+     2774,
+     1448,
+     2821,
+     1507
+    ],
+    [
+     2835,
+     1448,
+     2882,
+     1507
+    ],
+    [
+     2896,
+     1448,
+     2943,
+     1507
+    ],
+    [
+     2957,
+     1448,
+     3004,
+     1507
+    ],
+    [
+     3018,
+     1448,
+     3065,
+     1507
+    ],
+    [
+     3079,
+     1448,
+     3126,
+     1507
+    ],
+    [
+     3140,
+     1448,
+     3187,
+     1507
+    ],
+    [
+     3201,
+     1448,
+     3248,
+     1507
+    ]
+   ]
+  },
+  {
+   "name": "S1-26",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1536,
+    2349,
+    1609
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1543,
+     2281,
+     1602
+    ],
+    [
+     2295,
+     1543,
+     2342,
+     1602
+    ]
+   ]
+  },
+  {
+   "name": "S2-26",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1536,
+    3255,
+    1609
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1543,
+     2577,
+     1602
+    ],
+    [
+     2591,
+     1543,
+     2638,
+     1602
+    ],
+    [
+     2652,
+     1543,
+     2699,
+     1602
+    ],
+    [
+     2713,
+     1543,
+     2760,
+     1602
+    ],
+    [
+     2774,
+     1543,
+     2821,
+     1602
+    ],
+    [
+     2835,
+     1543,
+     2882,
+     1602
+    ],
+    [
+     2896,
+     1543,
+     2943,
+     1602
+    ],
+    [
+     2957,
+     1543,
+     3004,
+     1602
+    ],
+    [
+     3018,
+     1543,
+     3065,
+     1602
+    ],
+    [
+     3079,
+     1543,
+     3126,
+     1602
+    ],
+    [
+     3140,
+     1543,
+     3187,
+     1602
+    ],
+    [
+     3201,
+     1543,
+     3248,
+     1602
+    ]
+   ]
+  },
+  {
+   "name": "S1-27",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1630,
+    2349,
+    1703
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1637,
+     2281,
+     1696
+    ],
+    [
+     2295,
+     1637,
+     2342,
+     1696
+    ]
+   ]
+  },
+  {
+   "name": "S2-27",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1630,
+    3255,
+    1703
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1637,
+     2577,
+     1696
+    ],
+    [
+     2591,
+     1637,
+     2638,
+     1696
+    ],
+    [
+     2652,
+     1637,
+     2699,
+     1696
+    ],
+    [
+     2713,
+     1637,
+     2760,
+     1696
+    ],
+    [
+     2774,
+     1637,
+     2821,
+     1696
+    ],
+    [
+     2835,
+     1637,
+     2882,
+     1696
+    ],
+    [
+     2896,
+     1637,
+     2943,
+     1696
+    ],
+    [
+     2957,
+     1637,
+     3004,
+     1696
+    ],
+    [
+     3018,
+     1637,
+     3065,
+     1696
+    ],
+    [
+     3079,
+     1637,
+     3126,
+     1696
+    ],
+    [
+     3140,
+     1637,
+     3187,
+     1696
+    ],
+    [
+     3201,
+     1637,
+     3248,
+     1696
+    ]
+   ]
+  },
+  {
+   "name": "S1-28",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1725,
+    2349,
+    1798
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1732,
+     2281,
+     1791
+    ],
+    [
+     2295,
+     1732,
+     2342,
+     1791
+    ]
+   ]
+  },
+  {
+   "name": "S2-28",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1725,
+    3255,
+    1798
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1732,
+     2577,
+     1791
+    ],
+    [
+     2591,
+     1732,
+     2638,
+     1791
+    ],
+    [
+     2652,
+     1732,
+     2699,
+     1791
+    ],
+    [
+     2713,
+     1732,
+     2760,
+     1791
+    ],
+    [
+     2774,
+     1732,
+     2821,
+     1791
+    ],
+    [
+     2835,
+     1732,
+     2882,
+     1791
+    ],
+    [
+     2896,
+     1732,
+     2943,
+     1791
+    ],
+    [
+     2957,
+     1732,
+     3004,
+     1791
+    ],
+    [
+     3018,
+     1732,
+     3065,
+     1791
+    ],
+    [
+     3079,
+     1732,
+     3126,
+     1791
+    ],
+    [
+     3140,
+     1732,
+     3187,
+     1791
+    ],
+    [
+     3201,
+     1732,
+     3248,
+     1791
+    ]
+   ]
+  },
+  {
+   "name": "S1-29",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1819,
+    2349,
+    1892
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1826,
+     2281,
+     1885
+    ],
+    [
+     2295,
+     1826,
+     2342,
+     1885
+    ]
+   ]
+  },
+  {
+   "name": "S2-29",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1819,
+    3255,
+    1892
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1826,
+     2577,
+     1885
+    ],
+    [
+     2591,
+     1826,
+     2638,
+     1885
+    ],
+    [
+     2652,
+     1826,
+     2699,
+     1885
+    ],
+    [
+     2713,
+     1826,
+     2760,
+     1885
+    ],
+    [
+     2774,
+     1826,
+     2821,
+     1885
+    ],
+    [
+     2835,
+     1826,
+     2882,
+     1885
+    ],
+    [
+     2896,
+     1826,
+     2943,
+     1885
+    ],
+    [
+     2957,
+     1826,
+     3004,
+     1885
+    ],
+    [
+     3018,
+     1826,
+     3065,
+     1885
+    ],
+    [
+     3079,
+     1826,
+     3126,
+     1885
+    ],
+    [
+     3140,
+     1826,
+     3187,
+     1885
+    ],
+    [
+     3201,
+     1826,
+     3248,
+     1885
+    ]
+   ]
+  },
+  {
+   "name": "S1-30",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    1914,
+    2349,
+    1987
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     1921,
+     2281,
+     1980
+    ],
+    [
+     2295,
+     1921,
+     2342,
+     1980
+    ]
+   ]
+  },
+  {
+   "name": "S2-30",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    1914,
+    3255,
+    1987
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     1921,
+     2577,
+     1980
+    ],
+    [
+     2591,
+     1921,
+     2638,
+     1980
+    ],
+    [
+     2652,
+     1921,
+     2699,
+     1980
+    ],
+    [
+     2713,
+     1921,
+     2760,
+     1980
+    ],
+    [
+     2774,
+     1921,
+     2821,
+     1980
+    ],
+    [
+     2835,
+     1921,
+     2882,
+     1980
+    ],
+    [
+     2896,
+     1921,
+     2943,
+     1980
+    ],
+    [
+     2957,
+     1921,
+     3004,
+     1980
+    ],
+    [
+     3018,
+     1921,
+     3065,
+     1980
+    ],
+    [
+     3079,
+     1921,
+     3126,
+     1980
+    ],
+    [
+     3140,
+     1921,
+     3187,
+     1980
+    ],
+    [
+     3201,
+     1921,
+     3248,
+     1980
+    ]
+   ]
+  },
+  {
+   "name": "S1-31",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    2008,
+    2349,
+    2081
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     2015,
+     2281,
+     2074
+    ],
+    [
+     2295,
+     2015,
+     2342,
+     2074
+    ]
+   ]
+  },
+  {
+   "name": "S2-31",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    2008,
+    3255,
+    2081
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     2015,
+     2577,
+     2074
+    ],
+    [
+     2591,
+     2015,
+     2638,
+     2074
+    ],
+    [
+     2652,
+     2015,
+     2699,
+     2074
+    ],
+    [
+     2713,
+     2015,
+     2760,
+     2074
+    ],
+    [
+     2774,
+     2015,
+     2821,
+     2074
+    ],
+    [
+     2835,
+     2015,
+     2882,
+     2074
+    ],
+    [
+     2896,
+     2015,
+     2943,
+     2074
+    ],
+    [
+     2957,
+     2015,
+     3004,
+     2074
+    ],
+    [
+     3018,
+     2015,
+     3065,
+     2074
+    ],
+    [
+     3079,
+     2015,
+     3126,
+     2074
+    ],
+    [
+     3140,
+     2015,
+     3187,
+     2074
+    ],
+    [
+     3201,
+     2015,
+     3248,
+     2074
+    ]
+   ]
+  },
+  {
+   "name": "S1-32",
+   "type": "Decimal",
+   "rect": [
+    2227,
+    2103,
+    2349,
+    2176
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "list": [
+    {
+     "value": "01",
+     "label": "Netesybos, į biudžetą ir valstybės fondus sumokėtos baudos, delspinigiai ir kitos sankcijos už Lietuvos Respublikos teisės aktų pažeidimus"
+    },
+    {
+     "value": "02",
+     "label": "Palūkanos ar kitokios išmokos už susijusių asmenų sutartinių įsipareigojimų nevykdymą"
+    },
+    {
+     "value": "03",
+     "label": "Ilgalaikio turto nusidėvėjimo (arba amortizacijos) sumos pagal PMĮ 18 ir 19 str."
+    },
+    {
+     "value": "04",
+     "label": "Komandiruočių sąnaudos pagal PMĮ 21 str."
+    },
+    {
+     "value": "05",
+     "label": "Reklamos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "06",
+     "label": "Reprezentacijos sumos pagal PMĮ 22 str."
+    },
+    {
+     "value": "07",
+     "label": "Natūralios netekties nuostolių sumos pagal PMĮ 23 str."
+    },
+    {
+     "value": "08",
+     "label": "Mokesčių sumos pagal PMĮ 24 str."
+    },
+    {
+     "value": "09",
+     "label": "Beviltiškos skolos pagal PMĮ 25 str."
+    },
+    {
+     "value": "10",
+     "label": "Išlaidos darbuotojų ir (arba) jų šeimos narių naudai pagal PMĮ 26 str. 2 d. ir 31 str."
+    },
+    {
+     "value": "11",
+     "label": "Sumos, viršijančios specialiuosius kredito įstaigų ir draudimo įmonių atidėjinius pagal PMĮ 27 str."
+    },
+    {
+     "value": "12",
+     "label": "Apskaitoje pripažinta paramos suma"
+    },
+    {
+     "value": "13",
+     "label": "Dovanos, išskyrus dovanas darbuotojams"
+    },
+    {
+     "value": "14",
+     "label": "Narių mokesčiai, įnašai ir įmokos pagal PMĮ 29 str."
+    },
+    {
+     "value": "15",
+     "label": "Neapmokėtos sąnaudos pagal PMĮ 31 str. 1 d. 8 p."
+    },
+    {
+     "value": "16",
+     "label": "Išmokos, nepagrįstos įrodymais pagal PMĮ 31 str. 2 d."
+    },
+    {
+     "value": "17",
+     "label": "Išmokos, neapmokestintos prie pajamų šaltinio pagal PMĮ 37 str."
+    },
+    {
+     "value": "18",
+     "label": "Nuostoliai dėl nenudėvėto/neamortizuoto ilgalaikio ir kito turto nurašymo"
+    },
+    {
+     "value": "19",
+     "label": "Vieneto padarytos žalos atlyginimas"
+    },
+    {
+     "value": "20",
+     "label": "Sąnaudos dėl turto, įskaitant VP, ir įsipareigojimų (išskyrus išvestinių finansinių priemonių, įsigytų rizikai drausti) perkainojimų pagal PMĮ 31 str. 1 d. 15 p."
+    },
+    {
+     "value": "21",
+     "label": "Įvairių bendrųjų atidėjinių sąnaudos"
+    },
+    {
+     "value": "22",
+     "label": "Neapmokestinamosioms pajamoms tenkantys leidžiami ir ribojamų dydžių leidžiami atskaitymai"
+    },
+    {
+     "value": "23",
+     "label": "Palūkanos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "24",
+     "label": "Kitos išmokos pagal PMĮ 40 str. 3 d."
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma, išskyrus priedo PLN204F F2 laukelyje įrašytą sumą (taikoma už mokestinį laikotarpį iki 2020-12-31)"
+    },
+    {
+     "value": "25",
+     "label": "Akcijų, nurodytų PMĮ 30 str. 2 d., perleidimo nuostolių suma(taikoma už mokestinį laikotarpį nuo 2021-01-01)"
+    },
+    {
+     "value": "26",
+     "label": "Apskaitoje pripažintos mokslinių tyrimų ir eksperimentinės plėtros darbų sąnaudos pagal PMĮ 17-1 str."
+    },
+    {
+     "value": "27",
+     "label": "Sąnaudos, tenkančios per nuolatines buveines vykdomos veiklos pajamoms pagal PMĮ 31 str. 1 d. 19 p."
+    },
+    {
+     "value": "28",
+     "label": "Apskaitoje pripažinta apmokestinamųjų pajamų mažinimo dėl filmo arba jo dalies gamybai neatlygintinai suteiktų lėšų suma pagal PMĮ 17-2 str."
+    },
+    {
+     "value": "29",
+     "label": "Sąnaudos dėl praėjusių mokestinių laikotarpių klaidų taisymo atvejų"
+    },
+    {
+     "value": "30",
+     "label": "Kitos ribojamų dydžių leidžiamus atskaitymus viršijančios sąnaudos"
+    },
+    {
+     "value": "31",
+     "label": "Kitos sąnaudos, laikomos neleidžiamais atskaitymais"
+    },
+    {
+     "value": "32",
+     "label": "Palūkanų sąnaudų sumos pagal PMĮ 30-1 str."
+    },
+    {
+     "value": "33",
+     "label": "Mokestinės tvarkos neatitikimas: dvigubas atskaitymas pagal PMĮ 31 str. 3 d."
+    },
+    {
+     "value": "34",
+     "label": "Mokestinės tvarkos neatitikimas: atskaitymas be įtraukimo pagal PMĮ 31 str. 4 d."
+    },
+    {
+     "value": "35",
+     "label": "Mokestinės tvarkos neatitikimas: Lietuvos vieneto mokėjimo dvigubas atskaitymas pagal PMĮ 31 str. 5 d."
+    },
+    {
+     "value": "36",
+     "label": "Kiti Mokestinės tvarkos neatitikimai pagal PMĮ 31 str. 6 d."
+    }
+   ],
+   "readOnly": false,
+   "cells": [
+    [
+     2234,
+     2110,
+     2281,
+     2169
+    ],
+    [
+     2295,
+     2110,
+     2342,
+     2169
+    ]
+   ]
+  },
+  {
+   "name": "S2-32",
+   "type": "Decimal",
+   "rect": [
+    2523,
+    2103,
+    3255,
+    2176
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": false,
+   "cells": [
+    [
+     2530,
+     2110,
+     2577,
+     2169
+    ],
+    [
+     2591,
+     2110,
+     2638,
+     2169
+    ],
+    [
+     2652,
+     2110,
+     2699,
+     2169
+    ],
+    [
+     2713,
+     2110,
+     2760,
+     2169
+    ],
+    [
+     2774,
+     2110,
+     2821,
+     2169
+    ],
+    [
+     2835,
+     2110,
+     2882,
+     2169
+    ],
+    [
+     2896,
+     2110,
+     2943,
+     2169
+    ],
+    [
+     2957,
+     2110,
+     3004,
+     2169
+    ],
+    [
+     3018,
+     2110,
+     3065,
+     2169
+    ],
+    [
+     3079,
+     2110,
+     3126,
+     2169
+    ],
+    [
+     3140,
+     2110,
+     3187,
+     2169
+    ],
+    [
+     3201,
+     2110,
+     3248,
+     2169
+    ]
+   ]
+  },
+  {
+   "name": "S3",
+   "type": "Decimal",
+   "rect": [
+    1354,
+    2254,
+    2086,
+    2327
+   ],
+   "align": "RightJustified",
+   "decimals": 0,
+   "readOnly": true,
+   "cells": [
+    [
+     1361,
+     2261,
+     1408,
+     2320
+    ],
+    [
+     1422,
+     2261,
+     1469,
+     2320
+    ],
+    [
+     1483,
+     2261,
+     1530,
+     2320
+    ],
+    [
+     1544,
+     2261,
+     1591,
+     2320
+    ],
+    [
+     1605,
+     2261,
+     1652,
+     2320
+    ],
+    [
+     1666,
+     2261,
+     1713,
+     2320
+    ],
+    [
+     1727,
+     2261,
+     1774,
+     2320
+    ],
+    [
+     1788,
+     2261,
+     1835,
+     2320
+    ],
+    [
+     1849,
+     2261,
+     1896,
+     2320
+    ],
+    [
+     1910,
+     2261,
+     1957,
+     2320
+    ],
+    [
+     1971,
+     2261,
+     2018,
+     2320
+    ],
+    [
+     2032,
+     2261,
+     2079,
+     2320
+    ]
+   ]
+  },
+  {
+   "name": "B_MM_ID",
+   "type": "Decimal",
+   "rect": [
+    763,
+    140,
+    1373,
+    213
+   ],
+   "align": "LeftJustified",
+   "decimals": 0,
+   "readOnly": true,
+   "cells": [
+    [
+     770,
+     147,
+     817,
+     206
+    ],
+    [
+     831,
+     147,
+     878,
+     206
+    ],
+    [
+     892,
+     147,
+     939,
+     206
+    ],
+    [
+     953,
+     147,
+     1000,
+     206
+    ],
+    [
+     1014,
+     147,
+     1061,
+     206
+    ],
+    [
+     1075,
+     147,
+     1122,
+     206
+    ],
+    [
+     1136,
+     147,
+     1183,
+     206
+    ],
+    [
+     1197,
+     147,
+     1244,
+     206
+    ],
+    [
+     1258,
+     147,
+     1305,
+     206
+    ],
+    [
+     1319,
+     147,
+     1366,
+     206
+    ]
+   ]
+  },
+  {
+   "name": "B_FormNr",
+   "type": "Text",
+   "rect": [
+    1661,
+    140,
+    2088,
+    213
+   ],
+   "align": "LeftJustified",
+   "readOnly": true,
+   "cells": [
+    [
+     1668,
+     147,
+     1715,
+     206
+    ],
+    [
+     1729,
+     147,
+     1776,
+     206
+    ],
+    [
+     1790,
+     147,
+     1837,
+     206
+    ],
+    [
+     1851,
+     147,
+     1898,
+     206
+    ],
+    [
+     1912,
+     147,
+     1959,
+     206
+    ],
+    [
+     1973,
+     147,
+     2020,
+     206
+    ],
+    [
+     2034,
+     147,
+     2081,
+     206
+    ]
+   ],
+   "printed": "PLN204S"
+  },
+  {
+   "name": "B_ML_DataNuo",
+   "type": "Date",
+   "rect": [
+    1300,
+    448,
+    1910,
+    521
+   ],
+   "align": "LeftJustified",
+   "readOnly": true,
+   "cells": [
+    [
+     1307,
+     455,
+     1354,
+     514
+    ],
+    [
+     1368,
+     455,
+     1415,
+     514
+    ],
+    [
+     1429,
+     455,
+     1476,
+     514
+    ],
+    [
+     1490,
+     455,
+     1537,
+     514
+    ],
+    [
+     1551,
+     455,
+     1598,
+     514
+    ],
+    [
+     1612,
+     455,
+     1659,
+     514
+    ],
+    [
+     1673,
+     455,
+     1720,
+     514
+    ],
+    [
+     1734,
+     455,
+     1781,
+     514
+    ],
+    [
+     1795,
+     455,
+     1842,
+     514
+    ],
+    [
+     1856,
+     455,
+     1903,
+     514
+    ]
+   ]
+  },
+  {
+   "name": "B_ML_DataIki",
+   "type": "Date",
+   "rect": [
+    2032,
+    448,
+    2642,
+    521
+   ],
+   "align": "LeftJustified",
+   "readOnly": true,
+   "cells": [
+    [
+     2039,
+     455,
+     2086,
+     514
+    ],
+    [
+     2100,
+     455,
+     2147,
+     514
+    ],
+    [
+     2161,
+     455,
+     2208,
+     514
+    ],
+    [
+     2222,
+     455,
+     2269,
+     514
+    ],
+    [
+     2283,
+     455,
+     2330,
+     514
+    ],
+    [
+     2344,
+     455,
+     2391,
+     514
+    ],
+    [
+     2405,
+     455,
+     2452,
+     514
+    ],
+    [
+     2466,
+     455,
+     2513,
+     514
+    ],
+    [
+     2527,
+     455,
+     2574,
+     514
+    ],
+    [
+     2588,
+     455,
+     2635,
+     514
+    ]
+   ]
+  }
+ ]
+}
