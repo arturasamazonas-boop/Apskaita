@@ -10,8 +10,9 @@ Parameters are stored in `payroll_params` with an effective date. Each sheet use
 |---|---|---|---|---|---|---|
 | 2025-01-01 | 1038 € | 747 − 0.49 × (DU − 1038) | 20 % | VSD 12.52 % + PSD 6.98 % | 3 % | 1.77 % (fixed-term 2.49 %) |
 | 2026-01-01 | 1153 € | 747 − 0.49 × (DU − 1153) | 20 % | VSD 12.52 % + PSD 6.98 % | 3 % | 1.77 % (fixed-term 2.49 %) |
+| 2027-01-01 | 1245 € (hourly 7.61 €) | 747 − 0.49 × (DU − 1245) | 20 % | VSD 12.52 % + PSD 6.98 % | 3 % | 1.77 % (fixed-term 2.49 %) |
 
-Above 60 VDU of employment income in a calendar year at this employer (2026: 60 × 2312.15 = 138 729 €), GPM on the part above is withheld at 32 % (`gpm_rate_high`) and the employee's VSD is no longer charged on it (the 60 VDU contribution ceiling); PSD has no ceiling. The year-to-date gross comes from the employee's earlier payroll sheets of the same year. The 25 % rate for 36–60 VDU is settled in the annual return and is not withheld monthly. Hourly rates keep 4 decimals: rate × hours is rounded once, to cents.
+Above 60 VDU of employment income in a calendar year at this employer (2026: 60 × 2312.15 = 138 729 €), GPM on the part above is withheld at 32 % (`gpm_rate_high`) and the employee's VSD is no longer charged on it (the 60 VDU contribution ceiling); PSD has no ceiling. For 2027, the Government approved the MMA (1245 €, decision of 2026-07-01). The 2027 insured-income amount (VDU) is not approved yet, so the 2027 row has no VDU. Until it is entered, the payroll sheet shows a warning and the 60 VDU limit is not applied. Click the 2027 row on the Tarifai page to load it into the form, add the VDU and save. The additional NPD for children from 2027 (87 € a month per child) is claimed in the annual return, not withheld monthly. The year-to-date gross comes from the employee's earlier payroll sheets of the same year. The 25 % rate for 36–60 VDU is settled in the annual return and is not withheld monthly. Hourly rates keep 4 decimals: rate × hours is rounded once, to cents.
 
 ## Calculation (per employee, per month)
 

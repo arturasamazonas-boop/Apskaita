@@ -107,6 +107,18 @@ test('product card: all fields saved, SKU unique, stock from invoices and manual
   assert.equal(svc.body.track_stock, false);
 });
 
+test('2027 payroll parameters: MMA 1245 €, NPD formula unchanged, VDU left for the Government to approve', async () => {
+  const rows = (await acc.get('/api/payroll/params')).body;
+  const p = rows.find((r) => String(r.effective_from).startsWith('2027-01-01'));
+  assert.ok(p, '2027 row present');
+  assert.deepEqual([p.mma, p.vdu, p.npd_max, p.npd_coef, p.gpm_rate, p.vsd_rate, p.psd_rate, p.employer_rate], ['1245.00', null, '747.00', '0.4900', '20.00', '12.52', '6.98', '1.77']);
+  // MMA earner in 2027: NPD 747, GPM 20 % × 498 = 99.60, VSD 155.87, PSD 86.90 → net 902.63.
+  const c = calcLine({pay_type: 'monthly', base_salary: '1245.00', apply_npd: true, contract_type: 'indefinite', pension_extra: false}, p, {workedDays: '21', normDays: '21'});
+  assert.deepEqual([c.gross, c.npd, c.gpm, c.vsd, c.psd, c.net], ['1245.00', '747.00', '99.60', '155.87', '86.90', '902.63']);
+  // NPD reaches 0 at MMA + 747 / 0.49 = 2769.49 €.
+  assert.equal(calcLine({pay_type: 'monthly', base_salary: '2770.00', apply_npd: true, contract_type: 'indefinite'}, p, {workedDays: '21', normDays: '21'}).npd, '0.00');
+});
+
 test('payroll calculation: 2026 NPD formula, GPM 20 %, Sodra 19.5 % + employer 1.77 %, working-day norm', () => {
   const p = {mma: '1153.00', npd_max: '747.00', npd_coef: '0.4900', gpm_rate: '20.00', vsd_rate: '12.52', psd_rate: '6.98', pension_extra_rate: '3.00', employer_rate: '1.77', employer_rate_fixed: '2.49'};
   const e = {pay_type: 'monthly', base_salary: '2000.00', apply_npd: true, contract_type: 'indefinite', pension_extra: false};

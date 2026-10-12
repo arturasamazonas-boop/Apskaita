@@ -82,6 +82,7 @@ async function runSheet(main, id, state) {
   if (run.status === 'draft' && !run.approval_no && can(state.user, 'write')) actions.push(h('button', {class: 'btn btn-danger', onclick: async () => { if (await confirmDialog('Ištrinti žiniaraštį?', `Žiniaraštis už ${run.period} bus ištrintas.`, 'Ištrinti')) { if (await guard(() => del(`/api/payroll/runs/${id}`), 'Ištrinta.')) location.hash = '#/atlyginimai'; } }}, 'Ištrinti'));
   if (run.lines.length) actions.push(h('button', {class: 'btn', onclick: () => payslip(run, run.lines, state.company?.name)}, 'Visi algalapiai'));
   clear(main, pageHeader(`Darbo užmokesčio žiniaraštis ${run.period}`, badge(STATUS, run.status), ...actions), tabs(''),
+    p.vdu ? null : h('p', {class: 'issue issue-warning'}, `Parametruose nuo ${date(p.effective_from)} nenurodytas VDU, todėl 60 VDU riba (GPM 32 %, VSD lubos) neskaičiuojama. Kai VDU bus patvirtintas, įrašykite jį skiltyje „Tarifai ir parametrai“ ir perskaičiuokite žiniaraštį.`),
     h('div', {class: 'filters'}, field('Darbo dienų norma', norm), field('Išmokėjimo data', pay), draft && missing.length ? field('Darbuotojai', addSel) : null,
       run.journal_entry_id ? h('a', {class: 'btn btn-small', href: `#/ataskaitos/zurnalas/${run.journal_entry_id}`}, `DK įrašas #${run.journal_entry_id}`) : null),
     h('div', {class: 'table-wrap'}, h('table', {class: 'grid lines payroll-grid'},
@@ -97,7 +98,8 @@ async function runSheet(main, id, state) {
       section('Taikyti parametrai', h('dl', {class: 'dl'}, h('dt', null, 'Galioja nuo'), h('dd', null, date(p.effective_from)), h('dt', null, 'MMA'), h('dd', null, eur(p.mma)),
         h('dt', null, 'NPD'), h('dd', null, `${money(p.npd_max)} − ${Number(p.npd_coef)} × (DU − MMA)`), h('dt', null, 'GPM'), h('dd', null, `${Number(p.gpm_rate)} %`),
         h('dt', null, 'Darbuotojo Sodra'), h('dd', null, `VSD ${Number(p.vsd_rate)} % + PSD ${Number(p.psd_rate)} %`), h('dt', null, 'Papildomas kaupimas'), h('dd', null, `${Number(p.pension_extra_rate)} %`),
-        h('dt', null, 'Darbdavio Sodra'), h('dd', null, `${Number(p.employer_rate)} % (terminuota – ${Number(p.employer_rate_fixed)} %)`)))));
+        h('dt', null, 'Darbdavio Sodra'), h('dd', null, `${Number(p.employer_rate)} % (terminuota – ${Number(p.employer_rate_fixed)} %)`),
+        h('dt', null, 'VDU (60 VDU riba)'), h('dd', null, p.vdu ? eur(p.vdu) : 'nenurodytas')))));
 }
 
 function payslipBody(run, l, company) {
@@ -161,8 +163,10 @@ async function params(main, state) {
   const f = Object.fromEntries(keys.map(([k, , t]) => [k, input({type: t || 'text', inputmode: t ? null : 'decimal', value: t ? '' : latest[k] ?? ''})]));
   const note = input();
   clear(main, pageHeader('Atlyginimų tarifai ir parametrai'), tabs('parametrai'),
-    h('p', {class: 'hint'}, 'Parametrai taikomi pagal žiniaraščio mėnesio paskutinę dieną. Naujiems metams pridėkite naują eilutę – senų žiniaraščių skaičiavimas nesikeis. Reikšmes patikrinkite su buhalteriu (VMI, Sodra).'),
-    table([...keys.map(([k, label]) => ({label, num: k !== 'effective_from', render: (r) => (k === 'effective_from' ? date(r[k]) : r[k] === null ? '—' : String(Number(r[k])))})), {label: 'Pastaba', key: 'note'}], rows),
+    h('p', {class: 'hint'}, 'Parametrai taikomi pagal žiniaraščio mėnesio paskutinę dieną. Naujiems metams pridėkite naują eilutę – senų žiniaraščių skaičiavimas nesikeis. Paspaudus eilutę, jos reikšmės įkeliamos į formą (pvz. įrašyti vėliau patvirtintą VDU). Reikšmes patikrinkite su buhalteriu (VMI, Sodra).'),
+    table([...keys.map(([k, label]) => ({label, num: k !== 'effective_from', render: (r) => (k === 'effective_from' ? h('span', {style: {whiteSpace: 'nowrap'}}, date(r[k])) : r[k] === null ? h('span', {class: 'text-error', title: 'Dar nepatvirtinta'}, 'nepatvirtinta') : String(Number(r[k])))}))], rows,
+      {onRow: can(state.user, 'settings') ? (r) => { keys.forEach(([k, , t]) => { f[k].value = t ? String(r[k]).slice(0, 10) : r[k] === null ? '' : String(Number(r[k])); }); note.value = r.note || ''; f.mma.focus(); } : null}),
+    h('ul', {class: 'hint'}, rows.filter((r) => r.note).map((r) => h('li', null, h('strong', null, `Nuo ${date(r.effective_from)}: `), r.note))),
     can(state.user, 'settings') ? section('Nauji parametrai', h('form', {onsubmit: async (e) => { e.preventDefault(); if (await guard(() => post('/api/payroll/params', {...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.value])), note: note.value}), 'Išsaugota.')) params(main, state); }},
       h('div', {class: 'form-grid'}, keys.map(([k, label]) => field(label, f[k])), field('Pastaba', note)), h('button', {class: 'btn btn-primary'}, 'Išsaugoti'))) : null);
 }
