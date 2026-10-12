@@ -14,6 +14,9 @@ export const EDS_FORMS = {
   // Multi-page forms: one entry per page (PageDefName), the main group's pages first, annexes in their own groups.
   PLN204: {json: 'assets/forms/pln204-v8.json', pdf: 'assets/forms/pln204-v8.pdf', png: '/img/pln204-v8.png', box: {left: 28.32, right: 567.0, bottom: 841.89 - 611.4, top: 841.89 - 230.52}},
   PLN204_2: {json: 'assets/forms/pln204-2-v8.json', pdf: 'assets/forms/pln204-2-v8.pdf', png: '/img/pln204-2-v8.png', box: {left: 28.32, right: 567.0, bottom: 841.89 - 611.4, top: 841.89 - 230.52}},
+  // Sodra SAM v07: the official paper form (annex of Sodra order V-243) as background, cells detected by scripts/paper-form-layout.py.
+  SAM: {json: 'assets/forms/sam-v07.json', pdf: 'assets/forms/sam-v07.pdf', pdfPage: 0, png: '/img/sam-v07.png', box: {left: 0, right: 841.92, bottom: 0, top: 595.32}},
+  SAM3SD: {json: 'assets/forms/sam3sd-v07.json', pdf: 'assets/forms/sam-v07.pdf', pdfPage: 1, png: '/img/sam3sd-v07.png', box: {left: 0, right: 841.92, bottom: 0, top: 595.32}},
   PLN204S: {json: 'assets/forms/pln204s-v8.json', pdf: 'assets/forms/pln204s-v8.pdf', png: '/img/pln204s-v8.png', box: {left: 28.32, right: 567.0, bottom: 841.89 - 611.4, top: 841.89 - 230.52}},
 };
 const cache = new Map();
@@ -112,7 +115,7 @@ export async function renderEdsPages(pages, {title} = {}) {
     const landscape = layout.page.width > layout.page.height;
     const W = landscape ? 841.89 : 595.28, H = landscape ? 595.28 : 841.89;
     const page = doc.addPage([W, H]);
-    const [embedded] = await doc.embedPages([bg.getPage(0)], [def.box]);
+    const [embedded] = await doc.embedPages([bg.getPage(def.pdfPage || 0)], [def.box]);
     page.drawPage(embedded, {x: 0, y: 0, width: W, height: H});
     const k = W / layout.page.width, ky = H / layout.page.height;
     for (const p of placements(layout, values)) {

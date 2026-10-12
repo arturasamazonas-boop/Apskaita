@@ -15,6 +15,8 @@ import {renderStatementPdf} from '../reports/statement-pdf.mjs';
 import {debtAct, renderDebtActPdf} from '../reports/debt-act.mjs';
 import {readJson} from '../http.mjs';
 import {GPM313, gpm313Values, applyGpm313Edits} from '../reports/eds-gpm313.mjs';
+import {samData, samPages, samFFData, checkSamPeriod} from '../reports/sam.mjs';
+import {edsLayout} from '../reports/eds-forms.mjs';
 import {PLN204_LAYOUTS, S_CODES, pln204Values, applyPln204Edits, pln204Pages} from '../reports/eds-pln204.mjs';
 import {toFFData as edsFFData, toFFDataPages, placements as edsPlacements, renderEdsPdf, renderEdsPages, EDS_FORMS} from '../reports/eds-forms.mjs';
 import {buildRcPackage, renderRcPackagePdf, rcRows} from '../reports/rc-package.mjs';
@@ -153,6 +155,24 @@ export function register(r, {pool, storage}) {
       await audit(db, {userId: user.id, action: 'tax.nondeductible_rules', entityType: 'settings', entityId: 'pln204', details: {rules: rows}});
       return {ok: true};
     });
+  });
+  // ---------------------------------------------------------------- Sodra SAM (monthly report on insured persons)
+  r.get('/api/sodra/sam', async ({user, query}) => {
+    requireCap(user, 'read');
+    const d = await samData(pool, {...checkSamPeriod(query), revised: query.revised === '1', preparator: String(query.preparator || '').slice(0, 68)});
+    return {...d, pages: samPages(d, {today: todayVilnius()}).map((p) => ({code: p.code, values: p.values})), layouts: {SAM: edsLayout('SAM'), SAM3SD: edsLayout('SAM3SD')}};
+  });
+  r.get('/api/sodra/sam/file', async ({user, query, res}) => {
+    requireCap(user, 'read');
+    const p = checkSamPeriod(query);
+    const d = await samData(pool, {...p, revised: query.revised === '1', preparator: String(query.preparator || '').slice(0, 68)});
+    if (!d.exportable) throw new AppError(422, 'sam_invalid', d.errors.join(' ') || 'Nėra apdraustųjų duomenų.');
+    const pdf = query.format === 'pdf', today = todayVilnius();
+    const body = pdf ? await renderEdsPages(samPages(d, {today}).map((x) => ({code: x.code, values: x.values})), {title: `SAM ${d.period}`}) : Buffer.from(samFFData(d, {login: user.email || 'apskaita', today}), 'utf8');
+    const name = `SAM_${d.period}.${pdf ? 'pdf' : 'ffdata'}`;
+    await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: 'sam', details: {format: pdf ? 'pdf' : 'ffdata', period: d.period, persons: d.totals.persons, income: d.totals.income, payment: d.totals.payment}});
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': pdf ? 'application/pdf' : 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store'});
+    res.end(body);
   });
   // ---------------------------------------------------------------- annual set for Registrų centras
   const rcPkg = (q) => {
