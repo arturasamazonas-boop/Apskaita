@@ -1,46 +1,51 @@
-// Prekės ir paslaugos: product list, product card (all fields), stock balances and movements.
-import {h, clear, get, post, put, pageHeader, section, table, money, eur, date, guard, select, input, field, pager, debounce, can, modal, today} from '../core.mjs';
+// Prekės / Paslaugos: product list, product card (all fields + user-defined rodikliai), stock balances and movements.
+import {h, clear, get, post, put, del, pageHeader, section, table, money, eur, date, guard, select, input, field, pager, debounce, can, modal, today, confirmDialog} from '../core.mjs';
 
 const KIND = {goods: 'Prekė', service: 'Paslauga'};
 const MOVE = {purchase: 'Pirkimas', sale: 'Pardavimas', opening: 'Pradinis likutis', adjustment: 'Inventorizacijos koregavimas', writeoff: 'Nurašymas'};
 const dec = (v) => (v === null || v === undefined || v === '' ? '' : String(Number(v)));
 const qty = (v) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('lt-LT', {maximumFractionDigits: 4}));
-const tabs = (cur) => h('div', {class: 'tabs'}, [['', 'Prekių sąrašas'], ['likuciai', 'Likučiai'], ['judejimas', 'Judėjimas']].map(([k, t]) => h('a', {class: ['tab', cur === k && 'active'], href: `#/prekes${k ? '/' + k : ''}`}, t)));
+const ATTR_KIND = {text: 'Tekstas', number: 'Skaičius', choice: 'Pasirinkimas iš sąrašo'};
+const attrLabel = (a) => (a.unit ? `${a.name}, ${a.unit}` : a.name);
+const attrValue = (a, v) => (v === undefined || v === null || v === '' ? '' : a.kind === 'number' ? Number(v).toLocaleString('lt-LT', {maximumFractionDigits: 6}) : v);
+const tabs = (cur) => h('div', {class: 'tabs'}, [['', 'Prekių sąrašas'], ['likuciai', 'Likučiai'], ['judejimas', 'Judėjimas'], ['rodikliai', 'Rodikliai']].map(([k, t]) => h('a', {class: ['tab', cur === k && 'active'], href: `#/prekes${k ? '/' + k : ''}`}, t)));
 
 export async function render(main, rest, state) {
   if (rest[0] === 'likuciai') return stock(main, state);
   if (rest[0] === 'judejimas') return moves(main, state);
+  if (rest[0] === 'rodikliai') return attributes(main, state);
   if (rest[0] === 'nauja') return card(main, null, state);
   if (rest[0]) return card(main, rest[0], state);
   return list(main, state);
 }
 
 async function list(main, state) {
-  const groups = await get('/api/products/groups');
+  const [groups, attrs] = await Promise.all([get('/api/products/groups'), get('/api/product-attributes')]);
+  const attrCols = attrs.filter((a) => a.show_in_list).map((a) => ({label: attrLabel(a), num: a.kind === 'number', render: (p) => attrValue(a, p.attributes?.[a.id])}));
   const st = {q: '', group: '', kind: '', active: 'true', low: '', offset: 0, limit: 50};
   const box = h('div');
   const load = async () => {
     const d = await get(`/api/products?${new URLSearchParams({q: st.q, group: st.group, kind: st.kind, active: st.active, low: st.low, limit: st.limit, offset: st.offset})}`);
     st.count = d.items.length; st.hasMore = d.hasMore;
-    clear(box, table([{label: 'Kodas', key: 'sku'}, {label: 'Pavadinimas', key: 'name'}, {label: 'Grupė', key: 'group_name'}, {label: 'Tipas', render: (p) => KIND[p.kind]}, {label: 'Vnt.', key: 'unit'},
+    clear(box, table([{label: 'Kodas', key: 'sku'}, {label: 'Pavadinimas', key: 'name'}, {label: 'Grupė', key: 'group_name'}, {label: 'Tipas', render: (p) => KIND[p.kind]}, {label: 'Vnt.', key: 'unit'}, ...attrCols,
       {label: 'Kaina be PVM', num: true, render: (p) => money(p.unit_price)}, {label: 'Pirkimo kaina', num: true, render: (p) => money(p.purchase_price)},
       {label: 'Likutis', num: true, render: (p) => (p.track_stock ? h('span', {class: p.min_stock !== null && Number(p.stock || 0) < Number(p.min_stock) ? 'neg' : null}, qty(p.stock || 0)) : '')},
       {label: 'Būsena', render: (p) => (p.active ? '' : 'neaktyvi')}],
     d.items, {onRow: (p) => { location.hash = `#/prekes/${p.id}`; }, empty: 'Prekių nerasta.'}), pager(st, load));
   };
-  const q = input({type: 'search', placeholder: 'Kodas, pavadinimas, brūkšninis kodas', oninput: debounce(() => { st.q = q.value; st.offset = 0; load(); })});
+  const q = input({type: 'search', placeholder: 'Kodas, pavadinimas, brūkšninis kodas, rodiklio reikšmė', oninput: debounce(() => { st.q = q.value; st.offset = 0; load(); })});
   const grp = select([['', 'Visos'], ...groups.map((g) => [g.group_name, `${g.group_name} (${g.count})`])], '', {onchange: () => { st.group = grp.value; st.offset = 0; load(); }});
   const kind = select([['', 'Visi'], ['goods', 'Prekės'], ['service', 'Paslaugos']], '', {onchange: () => { st.kind = kind.value; st.offset = 0; load(); }});
   const act = h('input', {type: 'checkbox', checked: true, onchange: () => { st.active = act.checked ? 'true' : ''; load(); }});
   const low = h('input', {type: 'checkbox', onchange: () => { st.low = low.checked ? 'true' : ''; load(); }});
-  clear(main, pageHeader('Prekės ir paslaugos', can(state.user, 'write') ? h('a', {class: 'btn btn-primary', href: '#/prekes/nauja'}, '+ Nauja prekė / paslauga') : null), tabs(''),
+  clear(main, pageHeader('Prekės / Paslaugos', can(state.user, 'write') ? h('a', {class: 'btn btn-primary', href: '#/prekes/nauja'}, '+ Nauja prekė / paslauga') : null), tabs(''),
     h('div', {class: 'filters'}, field('Paieška', q), field('Grupė', grp), field('Tipas', kind), h('label', {class: 'check'}, act, ' tik aktyvios'), h('label', {class: 'check'}, low, ' žemiau minimalaus likučio')), box);
   await load();
 }
 
 async function card(main, id, state) {
-  const [p, accounts, taxCodes, stores, groups, suppliers] = await Promise.all([id ? get(`/api/products/${id}`) : {kind: 'goods', unit: 'vnt.', tax_code: 'PVM1', active: true, track_stock: true},
-    get('/api/accounts'), get('/api/tax-codes'), get('/api/stores'), get('/api/products/groups'), get('/api/counterparties?limit=200')]);
+  const [p, accounts, taxCodes, stores, groups, suppliers, attrs] = await Promise.all([id ? get(`/api/products/${id}`) : {kind: 'goods', unit: 'vnt.', tax_code: 'PVM1', active: true, track_stock: true},
+    get('/api/accounts'), get('/api/tax-codes'), get('/api/stores'), get('/api/products/groups'), get('/api/counterparties?limit=200'), get('/api/product-attributes')]);
   const ro = !can(state.user, 'write');
   const accSel = (types, v) => select([['', '— pagal numatytas taisykles —'], ...accounts.filter((a) => a.active && types.includes(a.type)).map((a) => [a.code, `${a.code} ${a.name}`])], v || '');
   const dl = h('datalist', {id: 'product-groups'}, groups.map((g) => h('option', {value: g.group_name})));
@@ -57,7 +62,22 @@ async function card(main, id, state) {
     description: h('textarea', {rows: 3}, p.description || ''), notes: h('textarea', {rows: 3}, p.notes || ''),
   };
   Object.values(f).forEach((x) => { x.disabled = ro; });
-  const body = () => Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.type === 'checkbox' ? v.checked : v.value]));
+  // Rodikliai: one input per active attribute; a new attribute can be created right here and appears immediately.
+  const attrInputs = new Map(), attrBox = h('div');
+  const attrInput = (a, v) => {
+    const el = a.kind === 'choice' ? select([['', '—'], ...a.options.map((o) => [o, o])], v ?? '') : input({value: v ?? '', inputmode: a.kind === 'number' ? 'decimal' : null, 'data-attribute': a.name});
+    el.disabled = ro;
+    return el;
+  };
+  const drawAttrs = () => {
+    for (const a of attrs) if (!attrInputs.has(String(a.id))) attrInputs.set(String(a.id), attrInput(a, p.attributes?.[a.id]));
+    clear(attrBox, attrs.length ? h('div', {class: 'form-grid'}, attrs.map((a) => field(attrLabel(a), attrInputs.get(String(a.id)))))
+      : h('p', {class: 'hint'}, 'Rodiklių dar nėra. Sukurkite, pvz., „Diametras“ (mm), „Spalva“ ar „Medžiaga“ – jie atsiras visose prekių kortelėse ir prekių sąraše.'));
+  };
+  drawAttrs();
+  const newAttr = () => attributeDialog(null, (a) => { attrs.push(a); drawAttrs(); attrInputs.get(String(a.id))?.focus(); });
+  const body = () => ({...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.type === 'checkbox' ? v.checked : v.value])),
+    attributes: Object.fromEntries([...attrInputs].map(([k, el]) => [k, el.value]))});
   const save = async (e) => {
     e.preventDefault();
     const saved = await guard(() => (id ? put(`/api/products/${id}`, body()) : post('/api/products', body())), 'Prekės kortelė išsaugota.');
@@ -84,6 +104,8 @@ async function card(main, id, state) {
     h('form', {class: 'product-card', onsubmit: save},
       section('Pagrindiniai duomenys', h('div', {class: 'form-grid'}, field('Kodas (SKU)', f.sku, 'Unikalus prekės kodas'), field('Pavadinimas', f.name), field('Tipas', f.kind), field('Mato vienetas', f.unit),
         field('Prekių grupė', f.group_name), field('Brūkšninis kodas (EAN)', f.barcode), h('label', {class: 'check'}, f.active, ' Aktyvi'), h('label', {class: 'check'}, f.track_stock, ' Skaičiuoti likutį'))),
+      section('Rodikliai', attrBox, ro ? null : h('div', {class: 'actions'}, h('button', {type: 'button', class: 'btn', onclick: newAttr}, '+ Naujas rodiklis'),
+        h('a', {class: 'btn btn-link', href: '#/prekes/rodikliai'}, 'Tvarkyti rodiklius'))),
       section('Kainos ir apskaita', h('div', {class: 'form-grid'}, field('Pardavimo kaina be PVM', f.unit_price), field('Pirkimo kaina be PVM', f.purchase_price), field('PVM kodas', f.tax_code),
         field('Pajamų sąskaita', f.revenue_account), field('Pirkimo sąskaita', f.expense_account, 'Prekėms perparduoti – 204 (atsargos), ne sąnaudos'))),
       section('Tiekimas ir sandėlis', h('div', {class: 'form-grid'}, field('Pagrindinis tiekėjas', f.supplier_id), field('Tiekėjo prekės kodas', f.supplier_sku), field('Gamintojas', f.manufacturer),
@@ -132,5 +154,41 @@ async function moves(main, state) {
   };
   [f.product, f.from, f.to].forEach((x) => x.addEventListener('change', () => { st.offset = 0; guard(load); }));
   clear(main, pageHeader('Prekių judėjimas'), tabs('judejimas'), h('div', {class: 'filters'}, field('Prekė', f.product), field('Nuo', f.from), field('Iki', f.to)), box);
+  await load();
+}
+
+// Rodiklio (attribute definition) create / edit dialog; onSaved gets the saved attribute.
+function attributeDialog(a, onSaved) {
+  const g = {name: input({value: a?.name || '', required: true, placeholder: 'pvz. Diametras'}), kind: select(Object.entries(ATTR_KIND), a?.kind || 'text'), unit: input({value: a?.unit || '', placeholder: 'pvz. mm'}),
+    options: h('textarea', {rows: 3, placeholder: 'Kiekviena reikšmė naujoje eilutėje'}, (a?.options || []).join('\n')), show_in_list: h('input', {type: 'checkbox', checked: a ? a.show_in_list : true}),
+    active: h('input', {type: 'checkbox', checked: a ? a.active : true})};
+  const optField = field('Galimos reikšmės', g.options);
+  const sync = () => { optField.hidden = g.kind.value !== 'choice'; };
+  g.kind.addEventListener('change', sync); sync();
+  const m = modal(a ? `Rodiklis: ${a.name}` : 'Naujas rodiklis', h('form', {onsubmit: async (e) => {
+    e.preventDefault();
+    const b = {name: g.name.value, kind: g.kind.value, unit: g.unit.value, options: g.options.value, show_in_list: g.show_in_list.checked, active: g.active.checked};
+    const saved = await guard(() => (a ? put(`/api/product-attributes/${a.id}`, b) : post('/api/product-attributes', b)), a ? 'Rodiklis išsaugotas.' : 'Rodiklis sukurtas.');
+    if (saved) { m.close(); onSaved(saved); }
+  }}, h('div', {class: 'form-grid'}, field('Pavadinimas', g.name), field('Reikšmės tipas', g.kind), field('Mato vienetas', g.unit, 'Nebūtina'), optField,
+    h('label', {class: 'check'}, g.show_in_list, ' Rodyti prekių sąraše'), a ? h('label', {class: 'check'}, g.active, ' Aktyvus') : null),
+  h('div', {class: 'actions'}, h('button', {class: 'btn btn-primary'}, a ? 'Išsaugoti' : 'Sukurti'))));
+}
+
+async function attributes(main, state) {
+  const box = h('div');
+  const write = can(state.user, 'write');
+  const load = async () => {
+    const rows = await get('/api/product-attributes?all=true');
+    clear(box, table([{label: 'Pavadinimas', key: 'name'}, {label: 'Tipas', render: (a) => ATTR_KIND[a.kind]}, {label: 'Mato vnt.', key: 'unit'}, {label: 'Reikšmės', render: (a) => a.options.join(', ')},
+      {label: 'Sąraše', render: (a) => (a.show_in_list ? 'taip' : 'ne')}, {label: 'Užpildyta prekių', num: true, key: 'used'}, {label: 'Būsena', render: (a) => (a.active ? '' : 'neaktyvus')},
+      {label: '', render: (a) => (write && !a.used ? h('button', {class: 'btn btn-small', onclick: () => guard(async () => {
+        if (!await confirmDialog('Ištrinti rodiklį', `Ištrinti rodiklį „${a.name}“?`, 'Ištrinti')) return;
+        await del(`/api/product-attributes/${a.id}`); await load();
+      }, 'Rodiklis ištrintas.')}, 'Ištrinti') : '')}],
+    rows, {onRow: write ? (a) => attributeDialog(a, load) : null, empty: 'Rodiklių dar nėra.'}));
+  };
+  clear(main, pageHeader('Prekių rodikliai', write ? h('button', {class: 'btn btn-primary', onclick: () => attributeDialog(null, load)}, '+ Naujas rodiklis') : null), tabs('rodikliai'),
+    h('p', {class: 'hint'}, 'Savi prekių rodikliai (pvz. „Diametras“, mm). Sukurtas rodiklis atsiranda visų prekių kortelėse, o pažymėtas „Rodyti prekių sąraše“ – ir prekių sąrašo stulpelyje. Pagal rodiklio reikšmę galima ieškoti sąraše. Užpildyto rodiklio ištrinti negalima – jį galima padaryti neaktyvų.'), box);
   await load();
 }

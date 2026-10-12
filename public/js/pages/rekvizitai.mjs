@@ -43,8 +43,8 @@ async function review(main, data, state) {
   clear(matchBox, existing ? h('p', {class: 'hint'}, `Toks kontrahentas jau yra: ${existing.name} (#${existing.id}).`) : null);
   const actions = [];
   if (can(state.user, 'write')) {
-    if (existing) actions.push(h('button', {class: 'btn btn-primary', onclick: () => guard(async () => { await put(`/api/counterparties/${existing.id}`, merge(existing)); location.hash = '#/kontaktai'; }, 'Kontrahentas atnaujintas.')}, `Atnaujinti kontrahentą`));
-    else actions.push(h('button', {class: 'btn btn-primary', onclick: () => guard(async () => { await post('/api/counterparties', {...body(), country: 'LT', is_supplier: supplier.checked, is_customer: customer.checked}); location.hash = '#/kontaktai'; }, 'Kontrahentas sukurtas.')}, 'Sukurti kontrahentą'));
+    if (existing) actions.push(h('button', {class: 'btn btn-primary', onclick: () => guard(async () => { await put(`/api/counterparties/${existing.id}`, merge(existing)); location.hash = '#/kontaktai'; }, 'Pirkėjo / tiekėjo duomenys atnaujinti.')}, 'Atnaujinti pirkėją / tiekėją'));
+    else actions.push(h('button', {class: 'btn btn-primary', onclick: () => guard(async () => { await post('/api/counterparties', {...body(), country: 'LT', is_supplier: supplier.checked, is_customer: customer.checked}); location.hash = '#/kontaktai'; }, 'Pirkėjas / tiekėjas sukurtas.')}, 'Sukurti pirkėją / tiekėją'));
   }
   if (can(state.user, 'settings')) actions.push(h('button', {class: 'btn', onclick: () => guard(async () => {
     const c = await get('/api/settings/company');

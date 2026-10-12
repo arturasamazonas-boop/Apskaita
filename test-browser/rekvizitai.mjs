@@ -27,7 +27,7 @@ try {
   assert.equal(await popup.inputValue('input >> nth=0'), 'UAB „Energitech“');
   assert.ok(!popup.url().includes('d='), 'page text removed from the URL');
   await shot(popup, '2-review.png');
-  await popup.click('button:text("Sukurti kontrahentą")'); await popup.waitForSelector('h1:text("Kontrahentai")');
+  await popup.click('button:text("Sukurti pirkėją / tiekėją")'); await popup.waitForSelector('h1:text("Pirkėjai / Tiekėjai")');
   await popup.getByText('306988664').waitFor();
   // 2. Paste flow in the company settings.
   await popup.goto(t.base + '/#/nustatymai/imone'); await popup.click('button:text("Užpildyti iš rekvizitai.lt")');

@@ -1,4 +1,5 @@
-// Prekės: product cards, stock balances and movements (quantities from posted invoices + manual movements).
+// Prekės: product cards, user-defined attributes (rodikliai), stock balances and movements (quantities from posted
+// invoices + manual movements).
 import {AppError, tx} from '../db.mjs';
 import {requireCap} from '../auth/auth.mjs';
 import {readJson} from '../http.mjs';
@@ -35,13 +36,59 @@ export function register(r, {pool}) {
       SELECT p.*, st.stock, st.avg_cost, c.name AS supplier_name,
         (SELECT json_agg(json_build_object('storeId', x.store_id, 'externalId', x.external_id, 'externalSku', x.external_sku)) FROM product_external_refs x WHERE x.product_id=p.id) AS external_refs
       FROM products p LEFT JOIN st ON st.product_id=p.id LEFT JOIN counterparties c ON c.id=p.supplier_id
-      WHERE ($2='' OR p.name ILIKE '%'||$2||'%' OR p.sku ILIKE $2||'%' OR p.barcode=$2)
+      WHERE ($2='' OR p.name ILIKE '%'||$2||'%' OR p.sku ILIKE $2||'%' OR p.barcode=$2
+             OR EXISTS (SELECT 1 FROM jsonb_each_text(p.attributes) a WHERE a.value ILIKE '%'||$2||'%'))
         AND ($3='' OR p.group_name=$3) AND ($4='' OR p.kind=$4) AND ($5 <> 'true' OR p.active)
         AND ($6 <> 'true' OR (p.track_stock AND p.min_stock IS NOT NULL AND coalesce(st.stock,0) < p.min_stock))
       ORDER BY p.name, p.id LIMIT ${limit + 1} OFFSET ${offset}`,
     [query.asOf && isDate(query.asOf) ? query.asOf : '9999-12-31', q, s(query.group, 80), ['goods', 'service'].includes(query.kind) ? query.kind : '', query.active || '', query.low || ''])).rows;
     return {items: rows.slice(0, limit), hasMore: rows.length > limit};
   });
+  // ---------------------------------------------------------------- rodikliai (attribute definitions)
+  r.get('/api/product-attributes', async ({user, query}) => {
+    requireCap(user, 'read');
+    return (await pool.query(`SELECT a.*, (SELECT count(*)::int FROM products p WHERE p.attributes ? a.id::text) AS used
+      FROM product_attributes a WHERE ($1 = 'true' OR a.active) ORDER BY a.sort_order, lower(a.name), a.id`, [query.all || ''])).rows;
+  });
+  r.post('/api/product-attributes', async ({req, user}) => {
+    requireCap(user, 'write');
+    const v = attributeDef(await readJson(req));
+    if (v.sort_order === null) v.sort_order = (await pool.query('SELECT coalesce(max(sort_order), 0) + 10 AS n FROM product_attributes')).rows[0].n;
+    const row = await uniqueName(() => pool.query(`INSERT INTO product_attributes(name, kind, unit, options, sort_order, show_in_list, active) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [v.name, v.kind, v.unit, v.options, v.sort_order, v.show_in_list, v.active]), v.name);
+    await audit(pool, {userId: user.id, action: 'product_attribute.create', entityType: 'product_attribute', entityId: row.id, details: v});
+    return row;
+  });
+  r.put('/api/product-attributes/:id', async ({req, user, params}) => {
+    requireCap(user, 'write');
+    return tx(pool, async (db) => {
+      const old = (await db.query('SELECT * FROM product_attributes WHERE id=$1 FOR UPDATE', [params.id])).rows[0];
+      if (!old) throw new AppError(404, 'not_found', 'Rodiklis nerastas.');
+      const v = attributeDef({...old, ...(await readJson(req))});
+      if (v.sort_order === null) v.sort_order = old.sort_order;
+      // Values already entered must stay valid under the new type / options.
+      const used = (await db.query(`SELECT name, attributes->>$1::text AS value FROM products WHERE attributes ? $1::text`, [old.id])).rows;
+      const bad = used.find((x) => checkValue(v, x.value) === undefined);
+      if (bad) throw new AppError(409, 'in_use', `Prekės „${bad.name}“ reikšmė „${bad.value}“ netinka naujam rodiklio tipui ar pasirinkimams.`);
+      const row = await uniqueName(() => db.query(`UPDATE product_attributes SET name=$2, kind=$3, unit=$4, options=$5, sort_order=$6, show_in_list=$7, active=$8 WHERE id=$1 RETURNING *`,
+        [old.id, v.name, v.kind, v.unit, v.options, v.sort_order, v.show_in_list, v.active]), v.name);
+      await audit(db, {userId: user.id, action: 'product_attribute.update', entityType: 'product_attribute', entityId: old.id, details: v});
+      return row;
+    });
+  });
+  r.delete('/api/product-attributes/:id', async ({user, params}) => {
+    requireCap(user, 'write');
+    return tx(pool, async (db) => {
+      const a = (await db.query('SELECT * FROM product_attributes WHERE id=$1 FOR UPDATE', [params.id])).rows[0];
+      if (!a) throw new AppError(404, 'not_found', 'Rodiklis nerastas.');
+      const n = (await db.query('SELECT count(*)::int AS n FROM products WHERE attributes ? $1::text', [a.id])).rows[0].n;
+      if (n) throw new AppError(409, 'in_use', `Rodiklis „${a.name}“ užpildytas ${n} prekėms – jo ištrinti negalima, galite padaryti neaktyvų.`);
+      await db.query('DELETE FROM product_attributes WHERE id=$1', [a.id]);
+      await audit(db, {userId: user.id, action: 'product_attribute.delete', entityType: 'product_attribute', entityId: a.id, details: {name: a.name}});
+      return {ok: true};
+    });
+  });
+
   r.get('/api/products/groups', async ({user}) => {
     requireCap(user, 'read');
     return (await pool.query(`SELECT group_name, count(*)::int AS count FROM products WHERE group_name <> '' GROUP BY group_name ORDER BY group_name`)).rows;
@@ -114,6 +161,32 @@ export function register(r, {pool}) {
   });
 }
 
+const KINDS = ['text', 'number', 'choice'];
+function attributeDef(b) {
+  const v = {name: s(b.name, 80), kind: KINDS.includes(b.kind) ? b.kind : 'text', unit: s(b.unit, 20),
+    options: [...new Set((Array.isArray(b.options) ? b.options : String(b.options || '').split(/[\n;]/)).map((o) => s(o, 80)).filter(Boolean))].slice(0, 200),
+    sort_order: b.sort_order === undefined || b.sort_order === null || b.sort_order === '' ? null : Math.trunc(Number(b.sort_order)) || 0,
+    show_in_list: b.show_in_list !== false && b.show_in_list !== 'false', active: b.active !== false && b.active !== 'false'};
+  if (!v.name) throw new AppError(400, 'name', 'Nurodykite rodiklio pavadinimą.');
+  if (v.kind === 'choice' && !v.options.length) throw new AppError(400, 'options', 'Pasirinkimo rodikliui nurodykite galimas reikšmes.');
+  if (v.kind !== 'choice') v.options = [];
+  return v;
+}
+async function uniqueName(run, name) {
+  try { return (await run()).rows[0]; } catch (e) {
+    if (e.code === '23505') throw new AppError(409, 'name', `Rodiklis „${name}“ jau yra.`);
+    throw e;
+  }
+}
+// Normalized value for an attribute, '' for "no value", undefined when invalid.
+function checkValue(a, raw) {
+  const v = s(raw, 300);
+  if (!v) return '';
+  if (a.kind === 'number') { const n = v.replace(/\s/g, '').replace(',', '.'); return /^-?\d+(\.\d+)?$/.test(n) ? n : undefined; }
+  if (a.kind === 'choice') return a.options.includes(v) ? v : undefined;
+  return v;
+}
+
 async function saveProduct(pool, user, id, b) {
   const v = Object.fromEntries(Object.entries(FIELDS).filter(([k]) => k in b || !id).map(([k, f]) => [k, f(b[k])]));
   if (!id && !('track_stock' in b)) v.track_stock = v.kind === 'goods';
@@ -123,10 +196,24 @@ async function saveProduct(pool, user, id, b) {
     if (v[k] && !(await pool.query('SELECT 1 FROM accounts WHERE code=$1 AND active AND postable', [v[k]])).rowCount) throw new AppError(400, k, `Sąskaita ${v[k]} nerasta arba į ją kontuoti negalima.`);
   }
   if (v.sku && (await pool.query('SELECT 1 FROM products WHERE sku=$1 AND id <> $2', [v.sku, id || 0])).rowCount) throw new AppError(409, 'sku', `Prekė su kodu ${v.sku} jau yra.`);
-  const keys = Object.keys(v);
+  // Rodikliai: {attributeId: value}; only the attributes sent change, an empty value removes it.
+  const set = {}, drop = [];
+  if (b.attributes !== undefined && b.attributes !== null) {
+    if (typeof b.attributes !== 'object' || Array.isArray(b.attributes)) throw new AppError(400, 'attributes', 'Netinkami rodikliai.');
+    const defs = new Map((await pool.query('SELECT * FROM product_attributes')).rows.map((a) => [String(a.id), a]));
+    for (const [k, raw] of Object.entries(b.attributes)) {
+      const a = defs.get(String(k));
+      if (!a) throw new AppError(400, 'attributes', `Rodiklis #${k} nerastas.`);
+      const val = checkValue(a, raw);
+      if (val === undefined) throw new AppError(400, 'attributes', a.kind === 'number' ? `Rodiklis „${a.name}“: netinkamas skaičius.` : `Rodiklis „${a.name}“: reikšmė „${raw}“ negalima.`);
+      if (val === '') drop.push(String(a.id)); else set[a.id] = val;
+    }
+  }
+  const keys = Object.keys(v), vals = keys.map((k) => v[k]);
   const row = id
-    ? (await pool.query(`UPDATE products SET ${keys.map((k, i) => `${k}=$${i + 2}`).join(', ')}, updated_at=now() WHERE id=$1 RETURNING *`, [id, ...keys.map((k) => v[k])])).rows[0]
-    : (await pool.query(`INSERT INTO products(${keys.join(', ')}) VALUES (${keys.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING *`, keys.map((k) => v[k]))).rows[0];
+    ? (await pool.query(`UPDATE products SET ${keys.map((k, i) => `${k}=$${i + 4}`).join(', ')}${keys.length ? ', ' : ''}attributes=(attributes || $2::jsonb) - $3::text[], updated_at=now() WHERE id=$1 RETURNING *`,
+      [id, JSON.stringify(set), drop, ...vals])).rows[0]
+    : (await pool.query(`INSERT INTO products(${[...keys, 'attributes'].join(', ')}) VALUES (${[...keys, 'a'].map((_, i) => `$${i + 1}`).join(', ')}) RETURNING *`, [...vals, JSON.stringify(set)])).rows[0];
   if (!row) throw new AppError(404, 'not_found', 'Prekė nerasta.');
   await audit(pool, {userId: user.id, action: id ? 'product.update' : 'product.create', entityType: 'product', entityId: row.id});
   return row;

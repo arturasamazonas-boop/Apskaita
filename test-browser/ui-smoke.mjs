@@ -119,7 +119,7 @@ try {
   });
 
   await step('vault, contacts, integrations and settings pages render', async () => {
-    for (const [hash, heading] of [['dokumentai', 'Dokumentai'], ['kontaktai', 'Kontrahentai'], ['saskaitos', 'Sąskaitų planas'], ['prekes', 'Prekės ir paslaugos'], ['atlyginimai', 'Darbo užmokestis'], ['atlyginimai/darbuotojai', 'Darbuotojai'], ['integracijos', 'Integracijos'], ['nustatymai/taisykles', 'Klasifikavimo taisyklės'], ['pirkimai', 'Pirkimai'], ['pardavimai/uzsakymai', 'Pardavimai']]) {
+    for (const [hash, heading] of [['dokumentai', 'Dokumentai'], ['kontaktai', 'Pirkėjai / Tiekėjai'], ['saskaitos', 'Sąskaitų planas'], ['prekes', 'Prekės / Paslaugos'], ['atlyginimai', 'Darbo užmokestis'], ['atlyginimai/darbuotojai', 'Darbuotojai'], ['integracijos', 'Integracijos'], ['nustatymai/taisykles', 'Klasifikavimo taisyklės'], ['pirkimai', 'Pirkimai'], ['pardavimai/uzsakymai', 'Pardavimai']]) {
       await page.goto(`${t.base}/#/${hash}`);
       await page.getByRole('heading', {name: heading}).first().waitFor();
     }

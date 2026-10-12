@@ -37,7 +37,7 @@ function metaInputs(d = {}) {
 const metaValues = (m) => ({kind: m.kind.value, title: m.title.value, reference_number: m.reference_number.value, counterparty_id: m.counterparty_id.value || null, issue_date: m.issue_date.value || null, start_date: m.start_date.value || null, end_date: m.end_date.value || null,
   contract_value: m.contract_value.value.replace(',', '.') || null, contract_currency: m.contract_currency.value, contract_status: m.contract_status.value, tags: m.tags.value, notes: m.notes.value, confidentiality: m.confidentiality.value,
   retain_until: m.retain_until.value || null, legal_hold: m.legal_hold.checked});
-const metaForm = (m) => h('div', {class: 'form-grid'}, field('Tipas', m.kind), field('Pavadinimas', m.title), field('Numeris', m.reference_number), field('Kontrahento ID', m.counterparty_id, 'Žr. „Kontaktai ir prekės“'),
+const metaForm = (m) => h('div', {class: 'form-grid'}, field('Tipas', m.kind), field('Pavadinimas', m.title), field('Numeris', m.reference_number), field('Kontrahento ID', m.counterparty_id, 'Žr. Žinynai → „Pirkėjai / Tiekėjai“'),
   field('Data', m.issue_date), field('Galioja nuo', m.start_date), field('Galioja iki', m.end_date), field('Sutarties vertė', m.contract_value, 'Informacinė – neregistruojama apskaitoje'), field('Valiuta', m.contract_currency),
   field('Sutarties būsena', m.contract_status), field('Žymos (kableliais)', m.tags), field('Prieiga', m.confidentiality), field('Saugoti iki', m.retain_until, 'Nurodykite pagal savo saugojimo politiką; teisės aktų terminų programa nenustato.'),
   h('label', {class: 'check'}, m.legal_hold, ' Draudimas naikinti (legal hold)'), field('Pastabos', m.notes));

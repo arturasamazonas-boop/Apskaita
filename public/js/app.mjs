@@ -11,8 +11,8 @@ const PAGES = {
   pirkimai: ['Pirkimai', () => import('./pages/purchases.mjs')],
   bankas: ['Bankas ir mokėjimai', () => import('./pages/bank.mjs')],
   dokumentai: ['Dokumentai', () => import('./pages/vault.mjs')],
-  kontaktai: ['Kontrahentai', () => import('./pages/contacts.mjs')],
-  prekes: ['Prekės ir paslaugos', () => import('./pages/products.mjs')],
+  kontaktai: ['Pirkėjai / Tiekėjai', () => import('./pages/contacts.mjs')],
+  prekes: ['Prekės / Paslaugos', () => import('./pages/products.mjs')],
   saskaitos: ['Sąskaitų planas', () => import('./pages/chart.mjs')],
   rekvizitai: ['Įmonė iš rekvizitai.lt', () => import('./pages/rekvizitai.mjs')],
   atlyginimai: ['Atlyginimai', () => import('./pages/payroll.mjs')],
@@ -35,7 +35,7 @@ const PAGES = {
 
 // Top menu bar with drop-down menus. Items: [label, hash path, capability?] or '-' (separator).
 export const MENU = [
-  ['Žinynai', [['Sąskaitų planas', 'saskaitos'], ['Kontrahentai', 'kontaktai'], ['Įmonė iš rekvizitai.lt', 'rekvizitai'], ['Prekės ir paslaugos', 'prekes'], ['Darbuotojai', 'atlyginimai/darbuotojai'], '-',
+  ['Žinynai', [['Prekės / Paslaugos', 'prekes'], ['Pirkėjai / Tiekėjai', 'kontaktai'], ['Sąskaitų planas', 'saskaitos'], ['Įmonė iš rekvizitai.lt', 'rekvizitai'], ['Darbuotojai', 'atlyginimai/darbuotojai'], '-',
     ['PVM kodai', 'nustatymai/pvm'], ['Dokumentų serijos', 'nustatymai/serijos'], ['Klasifikavimo taisyklės', 'nustatymai/taisykles']]],
   ['Dokumentai', [['Dokumentų dėžutė (įkėlimas)', 'deze'], ['Dokumentų archyvas', 'dokumentai'], ['Įkelti sutartį ar kitą dokumentą', 'dokumentai/naujas', 'write']]],
   ['Prekyba', [['Pardavimo sąskaitos', 'pardavimai'], ['Nauja pardavimo sąskaita', 'pardavimai/nauja', 'write'], ['Parduotuvių užsakymai', 'pardavimai/uzsakymai'], '-',

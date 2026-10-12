@@ -1,11 +1,13 @@
 :root {
-  --bg: #f4f6f8; --surface: #ffffff; --text: #1d2733; --muted: #5d6b7a; --border: #d6dde4; --primary: #1f5f8b; --primary-ink: #fff;
+  --bg: #f4f6f8; --surface: #ffffff; --text: #1d2733; --muted: #5d6b7a; --border: #d6dde4; --primary: #114232; --primary-ink: #fff;
+  /* Pagrindinė spalva – RAL 6005 (samanų žalia), sRGB #114232. */
+  --brand: #114232; --brand-dark: #0b2f23; --brand-ink: #fff; --brand-soft: #e6efe9;
   --ok: #1d7a46; --ok-bg: #e3f4ea; --warn: #8a5a00; --warn-bg: #fff3d6; --error: #b42318; --error-bg: #fde8e7; --info: #175cd3; --info-bg: #e7efff; --done: #344054; --done-bg: #eceff3;
   --hl: rgba(255, 196, 0, .35); --hl-border: #e0a800; --radius: 8px; --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 15px; color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #11161c; --surface: #1a2129; --text: #e5e9ee; --muted: #9aa7b4; --border: #2e3843; --primary: #4a9fd8; --primary-ink: #0b1218;
+  :root { --bg: #11161c; --surface: #1a2129; --text: #e5e9ee; --muted: #9aa7b4; --border: #2e3843; --primary: #6fbf9e; --primary-ink: #0b1218; --brand: #114232; --brand-dark: #0b2f23; --brand-ink: #fff; --brand-soft: #1c3329;
     --ok-bg: #12301f; --ok: #6fd39b; --warn-bg: #33270b; --warn: #f2c25c; --error-bg: #3a1513; --error: #ff8a80; --info-bg: #13254a; --info: #8fb4ff; --done-bg: #252d36; --done: #c7cfd8; color-scheme: dark; }
 }
 * { box-sizing: border-box; }
@@ -18,16 +20,19 @@ code { font-size: .85em; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 #app { min-height: 100vh; }
-.topbar { display: flex; align-items: center; gap: 1rem; padding: .45rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border); }
-.brand { font-weight: 700; font-size: 1.1rem; display: flex; gap: .6rem; align-items: baseline; color: var(--text); text-decoration: none; } .brand-company { font-weight: 400; color: var(--muted); font-size: .9rem; }
-.userbox { margin-left: auto; display: flex; gap: .75rem; align-items: center; color: var(--muted); font-size: .9rem; }
-.nav-toggle { display: none; }
+.topbar { display: flex; align-items: center; gap: 1rem; padding: .5rem 1rem; background: linear-gradient(90deg, var(--brand-dark), var(--brand)); color: var(--brand-ink); border-bottom: 1px solid var(--brand-dark); }
+.brand { font-weight: 700; font-size: 1.1rem; display: flex; gap: .6rem; align-items: baseline; color: var(--brand-ink); text-decoration: none; letter-spacing: .01em; } .brand-company { font-weight: 400; color: rgba(255,255,255,.78); font-size: .9rem; }
+.userbox { margin-left: auto; display: flex; gap: .75rem; align-items: center; color: rgba(255,255,255,.82); font-size: .9rem; }
+.topbar .btn { background: transparent; border-color: rgba(255,255,255,.45); color: var(--brand-ink); }
+.topbar .btn:hover:not(:disabled) { background: rgba(255,255,255,.12); border-color: #fff; }
+.topbar :focus-visible { outline-color: #fff; }
+.nav-toggle { display: none; font: inherit; background: transparent; color: var(--brand-ink); border: 1px solid rgba(255,255,255,.45); border-radius: 6px; padding: .35rem .7rem; cursor: pointer; }
 /* Top menu bar with drop-down menus (desktop-application style). */
-.menubar-wrap { position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: var(--shadow); }
+.menubar-wrap { position: sticky; top: 0; z-index: 30; background: var(--surface); border-top: 3px solid var(--brand); border-bottom: 1px solid var(--border); box-shadow: var(--shadow); }
 .menubar { list-style: none; margin: 0; padding: 0 .5rem; display: flex; flex-wrap: wrap; }
 .menu { position: relative; }
 .menu-top { font: inherit; font-size: .95rem; background: none; border: 0; border-bottom: 2px solid transparent; padding: .55rem .8rem; color: var(--text); cursor: pointer; }
-.menu-top:hover, .menu-top[aria-expanded="true"] { background: var(--bg); }
+.menu-top:hover, .menu-top[aria-expanded="true"] { background: var(--brand-soft); }
 .menu.current > .menu-top { border-bottom-color: var(--primary); color: var(--primary); font-weight: 600; }
 .menu-top::after { content: " ▾"; font-size: .7em; color: var(--muted); }
 .menu-list { list-style: none; margin: 0; padding: .3rem 0; display: none; position: absolute; left: 0; top: 100%; min-width: 250px; background: var(--surface); border: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 8px 24px rgba(16,24,40,.16); z-index: 40; }
