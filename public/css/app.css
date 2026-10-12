@@ -230,7 +230,10 @@ details summary { cursor: pointer; margin: .5rem 0; font-weight: 600; }
   .menu-subtoggle { padding: .6rem 1.6rem; }
   .menu-arrow { transform: rotate(90deg); }
 }
-@media (min-width: 821px) { .menubar > .menu:nth-last-child(-n+3) .menu-sub { left: auto; right: 100%; } }
+@media (min-width: 821px) {
+  .menubar > .menu > .menu-list { overflow-y: auto; overscroll-behavior: contain; }
+  .menu-list.menu-sub { position: fixed; overflow-y: auto; overscroll-behavior: contain; }
+}
 .fs-matrix th { white-space: normal; font-size: .78rem; vertical-align: bottom; min-width: 6rem; max-width: 8rem; } .fs-matrix td { font-size: .85rem; } .fs-matrix td:nth-child(2) { min-width: 18rem; }
 .fs-matrix tr.fs-total td { font-weight: 700; background: var(--bg); }
 /* FR0600 as in VMI EDS: official form page as background, values in its cells (sizes in % of the form width). */

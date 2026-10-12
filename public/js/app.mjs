@@ -71,6 +71,18 @@ function closeMenus(except) {
 function menuBar() {
   const allowed = (it) => it === '-' || !it[2] || can(state.user, it[2]);
   const tops = [];
+  // Desktop drop-downs must stay inside the window: a long list scrolls, and a submenu (position: fixed, so the list's
+  // scrolling does not clip it) opens beside its item on whichever side has room, moved up when it would run off the bottom.
+  const desktop = () => window.matchMedia('(min-width: 821px)').matches;
+  const fitList = (list) => { list.style.maxHeight = desktop() ? `${Math.max(160, window.innerHeight - list.getBoundingClientRect().top - 8)}px` : ''; };
+  const placeSub = (tog, sub) => {
+    if (!desktop()) { Object.assign(sub.style, {top: '', left: '', maxHeight: ''}); return; }
+    sub.style.maxHeight = `${window.innerHeight - 16}px`;
+    const r = tog.getBoundingClientRect(), w = sub.offsetWidth, ht = sub.offsetHeight;
+    const left = r.right + w <= window.innerWidth - 8 ? r.right : Math.max(8, r.left - w);
+    const top = Math.max(8, Math.min(r.top - 4, window.innerHeight - 8 - ht));
+    Object.assign(sub.style, {left: `${left}px`, top: `${top}px`});
+  };
   const closeSubs = (root) => root.querySelectorAll('.menu-subtoggle[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
   const link = (it) => h('li', {role: 'none'}, h('a', {role: 'menuitem', href: `#/${it[1]}`, 'data-path': it[1], tabindex: '-1', onclick: () => closeMenus()}, it[0]));
   // Items: [label, path, cap?], '-' separator, or [label, [items…]] – a submenu opening to the side (▸).
@@ -79,11 +91,11 @@ function menuBar() {
     if (!Array.isArray(it[1])) return link(it);
     const sub = h('ul', {class: 'menu-list menu-sub', role: 'menu', 'aria-label': it[0]}, entries(it[1]));
     const tog = h('button', {class: 'menu-subtoggle', type: 'button', role: 'menuitem', 'aria-haspopup': 'true', 'aria-expanded': 'false', tabindex: '-1',
-      onclick: (e) => { e.stopPropagation(); const open = tog.getAttribute('aria-expanded') !== 'true'; closeSubs(tog.closest('.menu-list')); tog.setAttribute('aria-expanded', String(open)); },
-      onkeydown: (e) => { if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); tog.setAttribute('aria-expanded', 'true'); sub.querySelector('a, button')?.focus(); } }}, h('span', null, it[0]), h('span', {class: 'menu-arrow', 'aria-hidden': 'true'}, '▸'));
+      onclick: (e) => { e.stopPropagation(); const open = tog.getAttribute('aria-expanded') !== 'true'; closeSubs(tog.closest('.menu-list')); tog.setAttribute('aria-expanded', String(open)); if (open) placeSub(tog, sub); },
+      onkeydown: (e) => { if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); tog.setAttribute('aria-expanded', 'true'); placeSub(tog, sub); sub.querySelector('a, button')?.focus(); } }}, h('span', null, it[0]), h('span', {class: 'menu-arrow', 'aria-hidden': 'true'}, '▸'));
     sub.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); tog.setAttribute('aria-expanded', 'false'); tog.focus(); } });
     const li = h('li', {role: 'none', class: 'menu-hassub'}, tog, sub);
-    li.addEventListener('mouseenter', () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches) { closeSubs(li.parentElement); tog.setAttribute('aria-expanded', 'true'); } });
+    li.addEventListener('mouseenter', () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches) { closeSubs(li.parentElement); tog.setAttribute('aria-expanded', 'true'); placeSub(tog, sub); } });
     li.addEventListener('mouseleave', () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches) tog.setAttribute('aria-expanded', 'false'); });
     return li;
   });
@@ -92,14 +104,15 @@ function menuBar() {
     // Keyboard order: the visible items of this level (links and submenu toggles, not the items inside closed submenus).
     const items$ = (ul = list) => [...ul.children].map((li) => li.querySelector(':scope > a, :scope > button')).filter(Boolean);
     const btn = h('button', {class: 'menu-top', type: 'button', role: 'menuitem', 'aria-haspopup': 'true', 'aria-expanded': 'false', tabindex: i ? '-1' : '0',
-      onclick: () => { const open = btn.getAttribute('aria-expanded') !== 'true'; closeMenus(btn); btn.setAttribute('aria-expanded', String(open)); },
-      onmouseenter: () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches && menubar.querySelector('.menu-top[aria-expanded="true"]')) { closeMenus(btn); btn.setAttribute('aria-expanded', 'true'); } },
+      onclick: () => { const open = btn.getAttribute('aria-expanded') !== 'true'; closeMenus(btn); btn.setAttribute('aria-expanded', String(open)); if (open) fitList(list); },
+      onmouseenter: () => { if (window.matchMedia('(hover: hover) and (min-width: 821px)').matches && menubar.querySelector('.menu-top[aria-expanded="true"]')) { closeMenus(btn); btn.setAttribute('aria-expanded', 'true'); fitList(list); } },
       onkeydown: (e) => {
         const k = e.key;
-        if (k === 'ArrowDown' || k === 'Enter' || k === ' ') { e.preventDefault(); closeMenus(btn); btn.setAttribute('aria-expanded', 'true'); items$()[0]?.focus(); }
-        else if (k === 'ArrowRight' || k === 'ArrowLeft') { e.preventDefault(); const j = (i + (k === 'ArrowRight' ? 1 : tops.length - 1)) % tops.length; const wasOpen = btn.getAttribute('aria-expanded') === 'true'; closeMenus(); tops[j].focus(); if (wasOpen) tops[j].setAttribute('aria-expanded', 'true'); }
+        if (k === 'ArrowDown' || k === 'Enter' || k === ' ') { e.preventDefault(); closeMenus(btn); btn.setAttribute('aria-expanded', 'true'); fitList(list); items$()[0]?.focus(); }
+        else if (k === 'ArrowRight' || k === 'ArrowLeft') { e.preventDefault(); const j = (i + (k === 'ArrowRight' ? 1 : tops.length - 1)) % tops.length; const wasOpen = btn.getAttribute('aria-expanded') === 'true'; closeMenus(); tops[j].focus(); if (wasOpen) { tops[j].setAttribute('aria-expanded', 'true'); fitList(tops[j].nextElementSibling); } }
         else if (k === 'Escape') closeMenus();
       }}, label);
+    list.addEventListener('scroll', () => list.querySelectorAll('.menu-subtoggle[aria-expanded="true"]').forEach((t) => placeSub(t, t.nextElementSibling)), {passive: true});
     list.addEventListener('keydown', (e) => {
       const ul = document.activeElement.closest('ul.menu-list');
       const its = items$(ul); const at = its.indexOf(document.activeElement);
@@ -129,6 +142,9 @@ function shell() {
     menubar, toolbar, main);
 }
 document.addEventListener('click', (e) => { if (menubar && !menubar.contains(e.target)) closeMenus(); });
+// Open drop-downs are placed for the current window; on resize or page scroll they would be out of place.
+window.addEventListener('resize', () => closeMenus());
+window.addEventListener('scroll', () => closeMenus(), {passive: true});
 
 async function logout() { await post('/api/logout').catch(() => {}); location.hash = ''; location.reload(); }
 

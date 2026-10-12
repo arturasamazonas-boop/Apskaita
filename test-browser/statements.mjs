@@ -54,6 +54,22 @@ try {
   await page.goto(t.base + '/#/finansines/nuosavo-kapitalo-pokyciai?to=2026-12-31');
   await page.waitForSelector('.fs-matrix');
   if (out) await page.screenshot({path: `${out}/5-nuosavas-kapitalas.png`, fullPage: true});
+  // A low window (laptop with zoom): the long Ataskaitos list scrolls and the submenu at its bottom stays fully on screen.
+  const low = await browser.newPage({viewport: {width: 1366, height: 620}});
+  await low.goto(t.base + '/#/apzvalga'); await low.waitForSelector('.menubar');
+  await low.click('.menu-top:text("Ataskaitos")');
+  await low.hover('.menu-subtoggle:has-text("Kitos ataskaitos")');
+  await low.getByRole('menuitem', {name: 'Mokėjimų suvestinė'}).waitFor();
+  const fit = await low.evaluate(() => {
+    const top = document.querySelector('.menu-top[aria-expanded="true"] + .menu-list').getBoundingClientRect();
+    const sub = document.querySelector('.menu-subtoggle[aria-expanded="true"] + .menu-sub').getBoundingClientRect();
+    return {list: top.bottom <= innerHeight, sub: sub.top >= 0 && sub.bottom <= innerHeight && sub.left >= 0 && sub.right <= innerWidth};
+  });
+  assert.deepEqual(fit, {list: true, sub: true}, 'drop-down and submenu inside the window');
+  if (out) await low.screenshot({path: `${out}/3b-submenu-low-window.png`});
+  await low.getByRole('menuitem', {name: 'Mokėjimų suvestinė'}).click();
+  await low.waitForSelector('h1');
+  await low.close();
   const m = await browser.newPage({viewport: {width: 390, height: 800}});
   await m.goto(t.base + '/#/apzvalga'); await m.click('.nav-toggle'); await m.click('.menu-top:text("Ataskaitos")'); await m.click('.menu-subtoggle');
   await m.getByRole('menuitem', {name: 'Kasos knyga (272)'}).waitFor();
