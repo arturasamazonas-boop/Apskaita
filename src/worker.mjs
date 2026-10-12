@@ -5,7 +5,7 @@ import {startScheduler} from './scheduler.mjs';
 
 const app = await createApp(loadConfig());
 app.worker.start();
-startScheduler(app.pool);
+startScheduler(app.pool, {fxUrl: app.config?.fxUrl || ''});
 console.log('Apskaita worker started');
 const stop = async () => { await app.close(); process.exit(0); };
 process.on('SIGINT', stop); process.on('SIGTERM', stop);

@@ -20,7 +20,7 @@ export async function startTestApp({config: overrides = {}} = {}) {
   await admin.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
   await admin.end();
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), 'apskaita-test-'));
-  const config = {...loadConfig({NODE_ENV: 'test', DATABASE_URL: TEST_DB, STORAGE_DIR: storageDir}), ...overrides};
+  const config = {...loadConfig({NODE_ENV: 'test', DATABASE_URL: TEST_DB, STORAGE_DIR: storageDir}), fxUrl: '', ...overrides}; // no network in tests unless a stub URL is given
   const quiet = {info() {}, warn() {}, error: (...a) => console.error(...a)};
   const app = await createApp(config, {log: quiet});
   const users = {

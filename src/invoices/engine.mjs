@@ -170,7 +170,12 @@ export function computeProposal(data, ctx) {
 
   // Currency.
   if (!data.currency) err('currency', 'required', 'Nenurodyta valiuta.');
-  else if (data.currency !== 'EUR') err('currency', 'currency', `Valiuta ${data.currency} automatiškai nepalaikoma (reikia kurso ir perskaičiavimo). Registruokite rankiniu būdu su buhalteriu.`);
+  else if (!/^[A-Z]{3}$/.test(data.currency)) err('currency', 'currency', `Netinkamas valiutos kodas ${data.currency}.`);
+  else if (data.currency !== 'EUR') {
+    // Booked in EUR at the rate of the transaction date (Lietuvos bankas, EU type); the rate is filled in from the rates table.
+    if (!(Number(data.fxRate) > 0)) err('fxRate', 'fx_rate', `Nėra ${data.currency} kurso ${data.vatPointDate || data.issueDate || ''} datai – atnaujinkite valiutų kursus (Finansai → Valiutų kursai) arba įveskite kursą.`);
+    else info('fxRate', 'fx_rate', `Sąskaita ${data.currency}: apskaitoje registruojama eurais pagal ${data.fxRateSource === 'manual' ? 'įvestą' : 'Lietuvos banko'} kursą ${data.fxRate} ${data.currency} = 1 EUR (${data.fxRateDate || ''}).`);
+  }
   else if (data.provenance?.currency?.status === 'defaulted' && !conf.currency && data.counterparty?.country && data.counterparty.country !== 'LT') err('currency', 'currency_default_foreign', 'Užsienio kontrahento dokumente valiuta nenurodyta – patvirtinkite valiutą.');
 
   // Dates.
@@ -305,22 +310,26 @@ export function computeProposal(data, ctx) {
   for (const d of dup.open || []) if (!ack[`dup:${d.documentId}`]) err('number', 'duplicate_open', `Galimas dublikatas: kitas dokumentas #${d.documentId} turi tą patį tiekėją ir numerį (${d.label}). Atmeskite vieną iš jų arba patvirtinkite, kad tai skirtingi dokumentai.`);
   for (const d of dup.near || []) if (!ack[`near:${d.id}`]) err('number', 'duplicate_near', `Galimas dublikatas: ${d.label} – tas pats kontrahentas, data ir suma, bet kitas numeris. Patikrinkite ir patvirtinkite, kad tai skirtingi dokumentai.`);
 
+  // Foreign currency: every amount converted to EUR; lines, VAT and the entry are then built from the EUR amounts.
+  const fx = data.currency && data.currency !== 'EUR' && Number(data.fxRate) > 0 && lines.length && lines.every((l) => l.net !== null)
+    ? convertToEur({lines, vatGroups, rate: data.fxRate, register: data.register}) : null;
   // Journal entries.
   const entries = [];
-  if (['purchase', 'sales'].includes(data.register) && lines.every((l) => l.net !== null) && lines.length) {
+  if (['purchase', 'sales'].includes(data.register) && lines.every((l) => l.net !== null) && lines.length && (data.currency === 'EUR' || fx)) {
+    const eLines = fx ? fx.lines : lines, eGross = fx ? fx.gross : gross, eVat = fx ? fx.vat : vat;
     const signed = new Map();
     const add = (account, amount, cp) => { if (!account || money.isZero(amount)) return; const k = `${account}|${cp ? 'cp' : ''}`; signed.set(k, money.add(signed.get(k) || '0', amount)); };
     if (data.register === 'purchase') {
-      for (const l of lines) {
+      for (const l of eLines) {
         const nd = l.vatTreatment === 'deductible' ? '0.00' : l.vat || '0.00';
         add(l.accountCode, money.add(l.net, nd));
         if (l.vatTreatment === 'deductible') add(roles.vat_input, l.vat || '0.00');
       }
-      add(roles.payable, money.neg(gross), true);
+      add(roles.payable, money.neg(eGross), true);
     } else {
-      for (const l of lines) add(l.accountCode, money.neg(l.net));
-      add(roles.vat_output, money.neg(vat));
-      add(roles.receivable, gross, true);
+      for (const l of eLines) add(l.accountCode, money.neg(l.net));
+      add(roles.vat_output, money.neg(eVat));
+      add(roles.receivable, eGross, true);
     }
     for (const [k, amt] of signed) {
       const [account, cp] = k.split('|');
@@ -337,8 +346,28 @@ export function computeProposal(data, ctx) {
   const seen = new Set();
   for (let i = issues.length - 1; i >= 0; i--) { const k = `${issues[i].level}|${issues[i].message}`; if (seen.has(k)) issues.splice(i, 1); else seen.add(k); }
   const blocking = issues.some((x) => x.level === 'error');
-  return {computed: {lines: lines.map(({index, ...l}) => ({index, net: l.net, vat: l.vat ?? null, gross: l.gross ?? null, rate: l.rate ?? null, isafCode: l.isafCode || ''})), vatGroups, net, vat, gross, deductibleVat, entries, numberKey: numberKey(data.series, data.number), counterpartyKey: counterpartyKey(data)}, issues, blocking};
+  return {computed: {lines: lines.map(({index, ...l}) => ({index, net: l.net, vat: l.vat ?? null, gross: l.gross ?? null, rate: l.rate ?? null, isafCode: l.isafCode || ''})), vatGroups, net, vat, gross, deductibleVat, entries, fx: fx && {currency: data.currency, rate: data.fxRate, date: data.fxRateDate || '', lines: fx.lines.map((l) => ({index: l.index, net: l.net, vat: l.vat, gross: l.gross})), vatGroups: fx.vatGroups, net: fx.net, vat: fx.vat, gross: fx.gross, deductibleVat: fx.deductibleVat}, numberKey: numberKey(data.series, data.number), counterpartyKey: counterpartyKey(data)}, issues, blocking};
 }
+
+/**
+ * EUR amounts of a foreign-currency invoice: each line's net at the rate; each VAT group's VAT at the rate, spread over
+ * its lines (rounding difference on the largest line) so lines, VAT rows, totals and the entry agree to the cent.
+ */
+export function convertToEur({lines, vatGroups, rate, register}) {
+  const out = lines.map((l) => ({...l, net: toEur(l.net, rate), vat: toEur(l.vat || '0', rate)}));
+  const groups = vatGroups.map((g) => {
+    const ls = out.filter((l) => (l.taxCode || '?') === g.taxCode);
+    const vatEur = toEur(g.vat, rate);
+    const rest = money.sub(vatEur, money.sum(ls.map((l) => l.vat)));
+    if (!money.isZero(rest) && ls.length) { let k = ls[0]; for (const l of ls) if (money.cmp(money.abs(l.net), money.abs(k.net)) > 0) k = l; k.vat = money.add(k.vat, rest); }
+    return {...g, taxable: money.sum(ls.map((l) => l.net)), vat: vatEur};
+  });
+  for (const l of out) l.gross = money.add(l.net, l.vat);
+  const net = money.sum(out.map((l) => l.net)), vat = money.sum(groups.map((g) => g.vat));
+  const deductibleVat = register === 'purchase' ? money.sum(out.filter((l) => l.vatTreatment === 'deductible').map((l) => l.vat)) : '0.00';
+  return {lines: out, vatGroups: groups, net, vat, gross: money.add(net, vat), deductibleVat};
+}
+const toEur = (amount, rate) => fromUnits(divRound(toUnits(amount, 2) * 1000000n, toUnits(String(rate), 6)), 2);
 
 function normAmount(v) { try { return money.norm(fromUnits(toUnits(v, 4), 4).replace(/(\.\d{2})\d+$/, '$1')); } catch { return '0'; } }
 

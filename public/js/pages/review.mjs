@@ -140,9 +140,14 @@ export async function render(main, [docId], state) {
   }
   function computedBox(v) {
     const c = v.computed || {};
+    const cur = model.currency || 'EUR', fx = c.fx;
+    const amt = (x) => (cur === 'EUR' ? eur(x) : `${money(x)} ${cur}`);
     return h('div', null,
-      h('div', {class: 'totals'}, h('div', null, h('span', null, 'Suma be PVM'), h('strong', null, eur(c.net))), h('div', null, h('span', null, 'PVM'), h('strong', null, eur(c.vat))), h('div', null, h('span', null, 'Iš viso'), h('strong', null, eur(c.gross))),
-        model.register === 'purchase' ? h('div', null, h('span', null, 'Atskaitomas PVM'), h('strong', null, eur(c.deductibleVat))) : null),
+      h('div', {class: 'totals'}, h('div', null, h('span', null, 'Suma be PVM'), h('strong', null, amt(c.net))), h('div', null, h('span', null, 'PVM'), h('strong', null, amt(c.vat))), h('div', null, h('span', null, 'Iš viso'), h('strong', null, amt(c.gross))),
+        model.register === 'purchase' ? h('div', null, h('span', null, 'Atskaitomas PVM'), h('strong', null, amt(c.deductibleVat))) : null),
+      fx ? [h('p', {class: 'banner'}, `Apskaitoje eurais pagal kursą ${fx.rate} ${cur} = 1 EUR${fx.date ? ` (${fx.date})` : ''}:`),
+        h('div', {class: 'totals'}, h('div', null, h('span', null, 'Suma be PVM, EUR'), h('strong', null, eur(fx.net))), h('div', null, h('span', null, 'PVM, EUR'), h('strong', null, eur(fx.vat))), h('div', null, h('span', null, 'Iš viso, EUR'), h('strong', null, eur(fx.gross))),
+          model.register === 'purchase' ? h('div', null, h('span', null, 'Atskaitomas PVM, EUR'), h('strong', null, eur(fx.deductibleVat))) : null)] : null,
       table([{label: 'PVM kodas', key: 'taxCode'}, {label: 'Tarifas', render: (g) => `${g.rate ?? '—'} %`}, {label: 'Apmokestinama', num: true, render: (g) => money(g.taxable)}, {label: 'Apskaičiuota', num: true, render: (g) => money(g.vatComputed)}, {label: 'Dokumente', num: true, render: (g) => money(g.vatSource)}, {label: 'Naudojama', num: true, render: (g) => money(g.vat)}, {label: 'Paaiškinimas', key: 'note'}], c.vatGroups || []),
       h('h3', null, 'Siūlomi didžiosios knygos įrašai'),
       table([{label: 'Sąskaita', render: (e) => `${e.account} ${e.accountName}`}, {label: 'Kontrahentas', key: 'counterparty'}, {label: 'Debetas', num: true, render: (e) => (Number(e.debit) ? money(e.debit) : '')}, {label: 'Kreditas', num: true, render: (e) => (Number(e.credit) ? money(e.credit) : '')}], c.entries || [], {empty: 'Įrašai bus parodyti, kai bus pasirinktas registras ir sąskaitos.'}));
@@ -212,7 +217,7 @@ export async function render(main, [docId], state) {
         fieldOf('Tipas', 'docType', {options: docTypes}), fieldOf('Registras', 'register', {options: [['', '— pasirinkite —'], ['purchase', 'Pirkimai'], ['sales', 'Pardavimai']]}),
         model.issueHere ? h('p', {class: 'hint'}, `Numeris bus suteiktas patvirtinant (serija ${model.seriesCode}).`) : [fieldOf('Serija', 'series'), fieldOf('Numeris', 'number')],
         fieldOf('Išrašymo data', 'issueDate', {type: 'date'}), fieldOf('Apmokėti iki', 'dueDate', {type: 'date'}), fieldOf('PVM apskaičiavimo data (jei kita)', 'vatPointDate', {type: 'date'}),
-        fieldOf('Valiuta', 'currency'), fieldOf('Mokėjimo paskirtis', 'paymentReference'), fieldOf('Užsakymo nr.', 'orderReference'), fieldOf('Koreguojamas dokumentas', 'relatedDocument')),
+        fieldOf('Valiuta', 'currency'), model.currency && model.currency !== 'EUR' ? fieldOf(`Kursas: ${model.currency} už 1 EUR`, 'fxRate') : null, fieldOf('Mokėjimo paskirtis', 'paymentReference'), fieldOf('Užsakymo nr.', 'orderReference'), fieldOf('Koreguojamas dokumentas', 'relatedDocument')),
       model.registerReason ? h('p', {class: 'hint'}, model.registerReason) : null),
       section(model.register === 'sales' ? 'Pirkėjas' : 'Tiekėjas', h('div', {class: 'form-grid'},
         fieldOf('Pavadinimas', 'counterparty.name'), fieldOf('Įmonės kodas', 'counterparty.companyCode'), fieldOf('PVM mokėtojo kodas', 'counterparty.vatCode'),

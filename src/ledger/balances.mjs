@@ -9,21 +9,22 @@ export async function invoiceBalances(db, {register = null, asOf = null, counter
   if (ids) { params.push(ids); where.push(`r.id = ANY($${params.length}::bigint[])`); }
   const sql = `
     WITH g AS (
-      SELECT i.id, i.gross_total, i.doc_type,
+      SELECT i.id, i.gross_total, coalesce(i.orig_gross, i.gross_total) AS orig_gross, i.doc_type,
         CASE WHEN i.doc_type IN ('correction','credit_note','debit_note') AND i.related_invoice_id IS NOT NULL THEN i.related_invoice_id ELSE i.id END AS root_id
       FROM invoices i WHERE i.issue_date <= $1
     ), paid AS (
-      SELECT g.root_id, sum(a.amount) AS paid, max(e.entry_date) AS last_payment
+      SELECT g.root_id, sum(a.amount) AS paid, sum(coalesce(a.orig_amount, CASE WHEN a.kind='fx_revaluation' THEN 0 ELSE a.amount END)) AS orig_paid, max(e.entry_date) AS last_payment
       FROM allocations a JOIN g ON g.id = a.invoice_id JOIN journal_entries e ON e.id = a.journal_entry_id
       WHERE e.entry_date <= $1 GROUP BY g.root_id
     ), tot AS (
-      SELECT root_id, sum(gross_total) AS gross, count(*) FILTER (WHERE doc_type='credit_note') AS credit_notes FROM g GROUP BY root_id
+      SELECT root_id, sum(gross_total) AS gross, sum(orig_gross) AS orig_gross, count(*) FILTER (WHERE doc_type='credit_note') AS credit_notes FROM g GROUP BY root_id
     )
     SELECT r.id, r.register, r.doc_type, r.series, r.number, r.issue_date, r.due_date, r.currency, r.counterparty_id, r.counterparty_snapshot->>'name' AS counterparty_name,
       r.store_id, r.document_id, r.payment_reference, r.order_reference, r.gross_total AS original_gross,
-      tot.gross, coalesce(paid.paid, 0) AS paid, tot.gross - coalesce(paid.paid, 0) AS outstanding, paid.last_payment, tot.credit_notes
+      tot.gross, coalesce(paid.paid, 0) AS paid, tot.gross - coalesce(paid.paid, 0) AS outstanding, paid.last_payment, tot.credit_notes,
+      r.fx_rate, tot.orig_gross, tot.orig_gross - coalesce(paid.orig_paid, 0) AS orig_outstanding
     FROM tot JOIN invoices r ON r.id = tot.root_id LEFT JOIN paid ON paid.root_id = tot.root_id
-    ${where.length || openOnly ? 'WHERE ' + [...where, ...(openOnly ? ['tot.gross - coalesce(paid.paid,0) <> 0'] : [])].join(' AND ') : ''}
+    ${where.length || openOnly ? 'WHERE ' + [...where, ...(openOnly ? ['(tot.gross - coalesce(paid.paid,0) <> 0 OR tot.orig_gross - coalesce(paid.orig_paid,0) <> 0)'] : [])].join(' AND ') : ''}
     ORDER BY r.issue_date, r.id LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
   const rows = (await db.query(sql, params)).rows;
   return rows.map((x) => ({...x, payment_status: paymentStatus(x)}));

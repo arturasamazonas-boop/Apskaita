@@ -21,10 +21,13 @@ import * as assetRoutes from './routes/assets.mjs';
 import * as yearEndRoutes from './routes/yearend.mjs';
 import * as paymentRoutes from './routes/payments.mjs';
 import * as cashRoutes from './routes/cash.mjs';
+import * as fxRoutes from './routes/fx.mjs';
+import {configureFx} from './fx/rates.mjs';
 import {renderAndStorePdf} from './sales/service.mjs';
 import {integrationJobHandlers} from './integrations/sync.mjs';
 
 export async function createApp(config, {pool: givenPool, log = console} = {}) {
+  configureFx(config.fxUrl);
   const pool = givenPool || createPool(config.databaseUrl);
   await migrate(pool, (m) => log.info?.(`[db] ${m}`));
   const storage = createStorage(config.storageDir, {backend: config.storageBackend, pool});
@@ -32,7 +35,7 @@ export async function createApp(config, {pool: givenPool, log = console} = {}) {
   const llm = createLlmProvider(config, pool);
   const deps = {pool, storage, config, auth, llm, log};
   const router = createRouter();
-  for (const m of [coreRoutes, docRoutes, bankRoutes, reportRoutes, salesRoutes, integrationRoutes, productRoutes, payrollRoutes, assetRoutes, yearEndRoutes, paymentRoutes, cashRoutes]) m.register(router, deps);
+  for (const m of [coreRoutes, docRoutes, bankRoutes, reportRoutes, salesRoutes, integrationRoutes, productRoutes, payrollRoutes, assetRoutes, yearEndRoutes, paymentRoutes, cashRoutes, fxRoutes]) m.register(router, deps);
 
   const handlers = {
     extract_invoice: (p) => processInvoiceDocument(deps, p.documentId, {force: !!p.force}),
@@ -82,5 +85,5 @@ export async function createApp(config, {pool: givenPool, log = console} = {}) {
     }
   }
 
-  return {handle, pool, storage, worker, deps, async close() { await worker.stop(); await pool.end(); }};
+  return {handle, pool, storage, worker, deps, config, async close() { await worker.stop(); await pool.end(); }};
 }

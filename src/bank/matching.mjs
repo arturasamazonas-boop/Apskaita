@@ -8,11 +8,12 @@
 import {AppError, tx} from '../db.mjs';
 import {audit} from '../audit.mjs';
 import {requireCap} from '../auth/auth.mjs';
-import {money} from '../lib/money.mjs';
+import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
 import {contentHash} from '../invoices/engine.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
 import {roleAccounts, postEntry} from '../ledger/ledger.mjs';
 import {fold, normalizeName, normalizeIban, numberKey} from '../extraction/ids.mjs';
+import {rateFor, toEur} from '../fx/rates.mjs';
 
 export const PROCESSORS = /(stripe|paypal|paysera|montonio|adyen|klix|braintree|mollie|checkout\.com|makecommerce|neopay)/i;
 const FEE_RE = /(komisin|aptarnavimo mokest|mokestis uz|saskaitos mokest|banko mokest|\bfee\b|charge|commission)/;
@@ -28,7 +29,8 @@ async function openInvoicesFor(db, t) {
   const incoming = money.sign(t.amount) > 0;
   const all = await invoiceBalances(db, {openOnly: true, limit: 2000});
   // Incoming: sales invoices (positive balance) or supplier credit notes (negative purchase balance). Outgoing: the reverse.
-  return all.filter((i) => i.currency === t.currency && (incoming
+  // A EUR payment may settle an invoice in another currency (the bank converts); a foreign-currency account only its own currency.
+  return all.filter((i) => (i.currency === t.currency || t.currency === 'EUR') && (incoming
     ? (i.register === 'sales' && money.sign(i.outstanding) > 0) || (i.register === 'purchase' && money.sign(i.outstanding) < 0)
     : (i.register === 'purchase' && money.sign(i.outstanding) > 0) || (i.register === 'sales' && money.sign(i.outstanding) < 0)));
 }
@@ -145,8 +147,17 @@ export async function computeRecon(db, t, data) {
   const invIds = allocs.filter((a) => a.kind === 'invoice').map((a) => a.invoiceId);
   const balances = invIds.length ? await invoiceBalances(db, {ids: invIds}) : [];
   const byId = new Map(balances.map((b) => [String(b.id), b]));
-  const lines = [{account: acct.ledger_account, debit: money.sign(t.amount) > 0 ? t.amount : '0', credit: money.sign(t.amount) < 0 ? money.abs(t.amount) : '0', description: `Banko operacija ${t.booking_date}`}];
-  let effect = '0.00';
+  // Foreign-currency account: the ledger is in EUR at the rate of the booking date.
+  let txRate = null;
+  if (t.currency !== 'EUR') {
+    const r = await rateFor(db, t.currency, String(t.booking_date instanceof Date ? t.booking_date.toISOString() : t.booking_date).slice(0, 10));
+    if (!r) err(`Nėra ${t.currency} kurso ${t.booking_date} datai – atnaujinkite valiutų kursus.`, 'fx_rate'); else txRate = r.rate;
+  }
+  const eur = (v) => (txRate ? toEur(v, txRate) : money.norm(v));
+  const tEur = t.currency === 'EUR' ? money.norm(t.amount) : (txRate ? eur(t.amount) : money.norm(t.amount));
+  const lines = [{account: acct.ledger_account, debit: money.sign(tEur) > 0 ? tEur : '0', credit: money.sign(tEur) < 0 ? money.abs(tEur) : '0', description: `Banko operacija ${t.booking_date}${txRate ? ` (${money.norm(t.amount)} ${t.currency}, kursas ${txRate})` : ''}`}];
+  let effect = '0.00', eurPosted = '0.00', fxDiff = '0.00';
+  const results = [];
   const seen = new Set();
   for (const [i, a] of allocs.entries()) {
     const n = i + 1;
@@ -158,10 +169,29 @@ export async function computeRecon(db, t, data) {
       if (!b) { err(`${n}: sąskaita nerasta (galbūt pasikeitė).`, 'invoice'); continue; }
       if (seen.has(String(a.invoiceId))) err(`${n}: ta pati sąskaita nurodyta du kartus.`, 'dup_invoice');
       seen.add(String(a.invoiceId));
-      if (b.currency !== t.currency) err(`${n}: valiuta nesutampa.`, 'currency');
-      if (money.sign(a.amount) !== money.sign(b.outstanding) || money.cmp(money.abs(a.amount), money.abs(b.outstanding)) > 0) err(`${n}: suma ${a.amount} viršija sąskaitos ${b.series} ${b.number} likutį ${b.outstanding} arba yra priešingo ženklo. Perteklių priskirkite permokai.`, 'exceeds');
       reg = b.register; cpId = b.counterparty_id;
       account = reg === 'sales' ? roles.receivable : roles.payable;
+      if (b.currency !== 'EUR') {
+        // Invoice in another currency: settle a part of its own-currency balance, clear the matching part of its EUR
+        // balance, the difference to the EUR actually paid is an exchange difference (5803 gain / 6803 loss).
+        if (t.currency !== 'EUR' && t.currency !== b.currency) { err(`${n}: valiuta nesutampa (${t.currency} ir ${b.currency}).`, 'currency'); continue; }
+        const orig = t.currency === b.currency ? money.norm(a.amount) : money.norm(a.origAmount || b.orig_outstanding);
+        if (money.sign(orig) !== money.sign(b.orig_outstanding) || money.cmp(money.abs(orig), money.abs(b.orig_outstanding)) > 0) err(`${n}: ${orig} ${b.currency} viršija sąskaitos ${b.series} ${b.number} likutį ${money.norm(b.orig_outstanding)} ${b.currency}.`, 'exceeds');
+        if (money.sign(a.amount) !== money.sign(b.outstanding)) err(`${n}: sumos ženklas neatitinka sąskaitos likučio.`, 'exceeds');
+        const cleared = money.eq(orig, b.orig_outstanding) ? money.norm(b.outstanding)
+          : fromUnits(divRound(toUnits(b.outstanding, 2) * toUnits(orig, 2), toUnits(b.orig_outstanding, 2) || 1n), 2);
+        const eff = cashEffect(a, reg), effEur = eur(eff);
+        const clearedEffect = reg === 'sales' ? cleared : money.neg(cleared);
+        effect = money.add(effect, eff); eurPosted = money.add(eurPosted, effEur);
+        fxDiff = money.add(fxDiff, money.sub(effEur, clearedEffect));
+        const amt = money.neg(clearedEffect);
+        lines.push({account, debit: money.sign(amt) > 0 ? amt : '0', credit: money.sign(amt) < 0 ? money.abs(amt) : '0', counterpartyId: cpId, description: `${b.series || ''} ${b.number} (${orig} ${b.currency})`.trim()});
+        results.push({cleared, origAmount: orig});
+        info(`${b.series || ''} ${b.number}: apmokama ${orig} ${b.currency}, iš skolos nurašoma ${cleared} EUR; kursų skirtumas ${money.sub(effEur, clearedEffect)} EUR.`, 'fx_settlement');
+        continue;
+      }
+      if (b.currency !== t.currency) err(`${n}: valiuta nesutampa.`, 'currency');
+      if (money.sign(a.amount) !== money.sign(b.outstanding) || money.cmp(money.abs(a.amount), money.abs(b.outstanding)) > 0) err(`${n}: suma ${a.amount} viršija sąskaitos ${b.series} ${b.number} likutį ${b.outstanding} arba yra priešingo ženklo. Perteklių priskirkite permokai.`, 'exceeds');
     } else if (a.kind === 'fee') {
       if (money.sign(a.amount) < 0) err(`${n}: mokestis turi būti teigiamas.`, 'fee');
       account = a.accountCode || roles.bank_fees;
@@ -175,15 +205,23 @@ export async function computeRecon(db, t, data) {
     }
     if (['advance', 'overpayment', 'own_transfer', 'other'].includes(a.kind) && money.sign(a.amount) !== money.sign(t.amount)) err(`${n}: sumos ženklas turi sutapti su operacijos kryptimi.`, 'sign');
     if (a.kind === 'advance' && !a.counterpartyId) info('Avansas be nurodyto kontrahento – vėliau jį pritaikant teks pasirinkti kontrahentą.', 'advance_cp');
-    const eff = cashEffect(a, reg);
-    effect = money.add(effect, eff);
-    const amt = money.neg(eff);
+    const eff = cashEffect(a, reg), effEur = eur(eff);
+    effect = money.add(effect, eff); eurPosted = money.add(eurPosted, effEur);
+    const amt = money.neg(effEur);
     lines.push({account, debit: money.sign(amt) > 0 ? amt : '0', credit: money.sign(amt) < 0 ? money.abs(amt) : '0', counterpartyId: cpId || a.counterpartyId || null, description: a.note || a.label || a.kind});
+    results.push({cleared: a.kind === 'invoice' ? money.norm(a.amount) : null, origAmount: null});
   }
   if (!money.eq(effect, t.amount)) err(`Paskirstyta ${effect}, o operacijos suma ${t.amount} (skirtumas ${money.sub(t.amount, effect)}).`, 'unallocated');
+  // Exchange differences (and cent rounding of a foreign-currency account) to 5803 / 6803.
+  if (txRate) fxDiff = money.add(fxDiff, money.sub(tEur, eurPosted));
+  if (!money.isZero(fxDiff)) {
+    // Like every allocation the difference posts −effect: a credit is a gain (5803), a debit a loss (6803).
+    const amt = money.neg(fxDiff), gain = money.sign(amt) < 0;
+    lines.push({account: gain ? (roles.fx_gain || '5803') : (roles.fx_loss || '6803'), debit: gain ? '0' : money.abs(amt), credit: gain ? money.abs(amt) : '0', description: 'Valiutų kursų skirtumas'});
+  }
   if (allocs.some((a) => a.kind === 'invoice')) info('Apmokėjimas mažina pirkėjų/tiekėjų skolą – naujų pajamų, sąnaudų ar PVM įrašų nekuria.', 'settlement');
   if (data.kind === 'advance' || allocs.some((a) => a.kind === 'advance')) info(`Avansas registruojamas tarpinėje sąskaitoje; gavus sąskaitą jį pritaikysite be naujo pinigų judėjimo.`, 'advance');
-  return {issues, blocking: issues.some((i) => i.level === 'error'), entries: lines};
+  return {issues, blocking: issues.some((i) => i.level === 'error'), entries: lines, results, txRate, tEur};
 }
 
 async function createReconVersion(db, t, data, userId) {
@@ -208,7 +246,7 @@ function sanitizeAllocations(list) {
   if (!Array.isArray(list) || list.length > 50) throw new AppError(400, 'bad_allocations', 'Netinkamas paskirstymas.');
   return list.map((a) => ({kind: String(a.kind), invoiceId: a.invoiceId ? String(a.invoiceId) : undefined, amount: String(a.amount || '').replace(',', '.').trim(),
     accountCode: a.accountCode ? String(a.accountCode).slice(0, 8) : undefined, counterpartyId: a.counterpartyId ? String(a.counterpartyId) : undefined,
-    note: String(a.note || '').slice(0, 300), label: a.label ? String(a.label).slice(0, 100) : undefined, evidence: Array.isArray(a.evidence) ? a.evidence.slice(0, 10).map((e) => String(e).slice(0, 300)) : ['Pasirinkta naudotojo.']}));
+    origAmount: a.origAmount ? String(a.origAmount).replace(',', '.').trim() : undefined, note: String(a.note || '').slice(0, 300), label: a.label ? String(a.label).slice(0, 100) : undefined, evidence: Array.isArray(a.evidence) ? a.evidence.slice(0, 10).map((e) => String(e).slice(0, 300)) : ['Pasirinkta naudotojo.']}));
 }
 
 export async function editRecon(pool, user, txId, {contentHash: base, allocations, kind}) {
@@ -236,11 +274,15 @@ export async function approveRecon(pool, user, txId, {contentHash: hash}) {
     const c = await computeRecon(db, t, p.data);
     if (c.blocking) throw new AppError(422, 'validation', 'Suderinimas turi neišspręstų klaidų.', {issues: c.issues.filter((i) => i.level === 'error')});
     const entry = await postEntry(db, {date: t.booking_date, description: `Bankas: ${t.counterparty_name || ''} ${t.reference || ''}`.trim().slice(0, 300), sourceType: 'bank', sourceId: t.id, idempotencyKey: `recon:${p.id}`, userId: user.id, lines: c.entries});
-    for (const a of p.data.allocations) {
+    for (const [i, a] of p.data.allocations.entries()) {
       const inv = a.kind === 'invoice' ? (await db.query('SELECT counterparty_id FROM invoices WHERE id=$1', [a.invoiceId])).rows[0] : null;
-      await db.query(`INSERT INTO allocations(transaction_id, proposal_id, kind, invoice_id, counterparty_id, account_code, amount, journal_entry_id, note, approved_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [t.id, p.id, a.kind, a.invoiceId || null, inv?.counterparty_id || a.counterpartyId || null, a.accountCode || null, a.amount, entry.id, a.note || '', user.id]);
+      const r = c.results[i] || {};
+      // Invoice allocations record the EUR amount cleared from the invoice (and, for another currency, the part settled in it).
+      const amount = a.kind === 'invoice' && r.cleared ? r.cleared : (c.txRate ? toEur(a.amount, c.txRate) : a.amount);
+      await db.query(`INSERT INTO allocations(transaction_id, proposal_id, kind, invoice_id, counterparty_id, account_code, amount, orig_amount, journal_entry_id, note, approved_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [t.id, p.id, a.kind, a.invoiceId || null, inv?.counterparty_id || a.counterpartyId || null, a.accountCode || null, amount, r.origAmount || null, entry.id, a.note || '', user.id]);
     }
+    if (c.txRate) await db.query('UPDATE bank_transactions SET eur_amount=$2, fx_rate=$3 WHERE id=$1', [t.id, c.tEur, c.txRate]);
     await db.query(`UPDATE reconciliation_proposals SET status='approved', decided_by=$2, decided_at=now() WHERE id=$1`, [p.id, user.id]);
     await db.query(`UPDATE bank_transactions SET status='approved' WHERE id=$1`, [t.id]);
     await audit(db, {userId: user.id, action: 'recon.approve', entityType: 'bank_transaction', entityId: t.id, details: {proposalId: p.id, version: p.version, journalEntryId: entry.id, allocations: p.data.allocations.map((a) => ({kind: a.kind, invoiceId: a.invoiceId, amount: a.amount}))}});

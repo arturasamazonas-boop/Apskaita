@@ -54,7 +54,9 @@ export async function createManualInvoice(pool, user, b) {
       register, registerReason: 'Įvesta rankiniu būdu.', origin: 'manual',
       issueHere: register === 'sales', seriesCode: register === 'sales' ? s(b.seriesCode || 'PP', 10).toUpperCase() : undefined,
       series: register === 'purchase' ? s(b.series, 20) : '', number: register === 'purchase' ? s(b.number, 60) : '',
-      issueDate, dueDate: s(b.dueDate, 10), vatPointDate: s(b.vatPointDate, 10), currency: 'EUR', counterparty,
+      issueDate, dueDate: s(b.dueDate, 10), vatPointDate: s(b.vatPointDate, 10),
+      // Invoices issued here are in EUR; a supplier's invoice entered by hand may be in another currency.
+      currency: register === 'purchase' && /^[A-Z]{3}$/.test(String(b.currency || '')) ? b.currency : 'EUR', fxRate: register === 'purchase' ? s(b.fxRate, 20) : '', fxRateSource: b.fxRate ? 'manual' : '', counterparty,
       paymentReference: s(b.paymentReference), orderReference: s(b.orderReference), relatedDocument: '', relatedInvoiceId: null,
       lines, sourceTotals: {net: '', vat: '', gross: '', vatByRate: []}, acknowledgements: {}, confirmations: {}, provenance: {}, splitHint: null, extractionNotes: [], notes: s(b.notes, 1000),
     };

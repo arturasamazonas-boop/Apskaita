@@ -1,4 +1,5 @@
 // Invoice inbox workflow: processing jobs, versioned proposals, edits, approval, corrections.
+import {rateFor} from '../fx/rates.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {execFile} from 'node:child_process';
@@ -6,7 +7,7 @@ import {promisify} from 'node:util';
 import {AppError, tx} from '../db.mjs';
 import {audit} from '../audit.mjs';
 import {requireCap} from '../auth/auth.mjs';
-import {money} from '../lib/money.mjs';
+import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
 import {postEntry} from '../ledger/ledger.mjs';
 import {extractPdf, extractImage, extractDocx, plainText} from '../extraction/text.mjs';
 import {parseInvoice, PROVIDER} from '../extraction/invoice-parser.mjs';
@@ -113,6 +114,7 @@ async function differsFromPosted(db, invoiceId, data, ctx) {
 /** Insert a new proposal version (superseding the open one) with server-computed validation. */
 export async function createProposalVersion(db, {documentId = null, externalOrderId = null, kind, data, userId = null, extractionId = null, correctsInvoiceId = null, fileSha}) {
   const ctx = await loadContext(db);
+  data = await withFxRate(db, data);
   const first = computeProposal(data, {...ctx, duplicates: {}});
   if (fileSha === undefined && documentId) fileSha = (await currentOriginal(db, documentId))?.sha256;
   const duplicates = kind === 'correction' ? {} : await findDuplicates(db, {data, computed: first.computed, documentId, fileSha});
@@ -129,6 +131,16 @@ export async function createProposalVersion(db, {documentId = null, externalOrde
   [documentId, externalOrderId, kind, Number(prev.v || 0) + 1, extractionId, correctsInvoiceId, data, {issues, computed}, blocking, contentHash(data), userId]);
   if (documentId) await db.query(`UPDATE documents SET processing_status=$2, updated_at=now() WHERE id=$1 AND processing_status<>'posted'`, [documentId, blocking ? 'needs_review' : 'ready']);
   return r.rows[0];
+}
+
+/** Foreign-currency documents: the rate of the VAT point / issue date from the rates table (fetched from LB if missing). */
+async function withFxRate(db, data) {
+  if (!data?.currency || data.currency === 'EUR') return data.fxRate ? {...data, fxRate: '', fxRateDate: '', fxRateSource: ''} : data;
+  if (data.fxRateSource === 'manual' && Number(data.fxRate) > 0) return data;
+  const date = data.vatPointDate || data.issueDate;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return data;
+  const r = await rateFor(db, data.currency, date);
+  return r ? {...data, fxRate: r.rate, fxRateDate: r.date, fxRateSource: r.source === 'manual' ? 'table' : 'LB'} : {...data, fxRate: '', fxRateDate: '', fxRateSource: ''};
 }
 
 async function findRelatedInvoice(db, data) {
@@ -157,6 +169,9 @@ function sanitizeData(input, prev) {
     registerReason: prev.registerReason,
     series: str(d.series, 20).toUpperCase(), number: str(d.number, 60), issueDate: str(d.issueDate, 10), dueDate: str(d.dueDate, 10), vatPointDate: str(d.vatPointDate, 10),
     currency: str(d.currency, 3).toUpperCase(),
+    // Exchange rate (units of the currency per 1 EUR). A rate typed by the user is kept; otherwise it follows the date.
+    fxRate: /^\d+([.,]\d{1,6})?$/.test(str(d.fxRate, 20)) ? str(d.fxRate, 20).replace(',', '.') : '', fxRateDate: str(d.fxRateDate, 10),
+    fxRateSource: d.fxRateSource === 'manual' || (d.fxRate && String(d.fxRate) !== String(prev.fxRate || '')) ? 'manual' : (prev.fxRateSource || ''),
     counterparty: {id: d.counterparty?.id ? String(d.counterparty.id) : null, name: str(d.counterparty?.name), companyCode: str(d.counterparty?.companyCode, 20).replace(/\s/g, ''), vatCode: normalizeVat(str(d.counterparty?.vatCode, 20)), address: str(d.counterparty?.address), country: str(d.counterparty?.country || 'LT', 2).toUpperCase(), iban: normalizeIban(str(d.counterparty?.iban, 40))},
     paymentReference: str(d.paymentReference), orderReference: str(d.orderReference), relatedDocument: str(d.relatedDocument), relatedInvoiceId: d.relatedInvoiceId ? String(d.relatedInvoiceId) : null,
     lines: lines.map((l, i) => {
@@ -300,9 +315,22 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
       documentId = (await createDocument(db, {kind: 'generated_invoice', title: `Pardavimo sąskaita ${series} ${number} – ${data.counterparty.name}`, workflow: 'generated', processing_status: 'posted'}, user.id)).id;
     }
     const docType = p.kind === 'correction' ? 'correction' : data.docType;
-    let lines = computed.lines.map((cl) => ({...data.lines[cl.index], ...cl}));
-    let totals = {net: computed.net, vat: computed.vat, gross: computed.gross, deductible: computed.deductibleVat};
-    let vatRows = computed.vatGroups.map((g) => ({taxCode: g.taxCode, isafCode: g.isafCode, rate: g.taxCode === 'BE_PVM' ? null : g.rate, taxable: g.taxable, vat: g.vat,
+    // Foreign currency: lines, VAT rows, totals and the entry are in EUR (computed.fx); the invoice keeps the rate and its own amounts.
+    const fx = computed.fx || null;
+    const eurPrice = (v, scale) => fromUnits(divRound(toUnits(v || '0', scale) * 1000000n, toUnits(String(fx.rate), 6)), scale);
+    let lines = computed.lines.map((cl) => {
+      const base = {...data.lines[cl.index], ...cl};
+      if (!fx) return base;
+      const e = fx.lines.find((x) => x.index === cl.index);
+      return {...base, net: e.net, vat: e.vat, gross: e.gross, unitPrice: eurPrice(base.unitPrice, 4), discount: eurPrice(base.discount, 2)};
+    });
+    let totals = fx ? {net: fx.net, vat: fx.vat, gross: fx.gross, deductible: fx.deductibleVat} : {net: computed.net, vat: computed.vat, gross: computed.gross, deductible: computed.deductibleVat};
+    let orig = fx ? {net: computed.net, vat: computed.vat, gross: computed.gross} : null;
+    if (fx && p.kind === 'correction') {
+      const g = (await db.query(`SELECT coalesce(sum(orig_net),0) AS n, coalesce(sum(orig_vat),0) AS v, coalesce(sum(orig_gross),0) AS g FROM invoices WHERE id=$1 OR (related_invoice_id=$1 AND doc_type='correction')`, [p.corrects_invoice_id])).rows[0];
+      orig = {net: money.sub(orig.net, g.n), vat: money.sub(orig.vat, g.v), gross: money.sub(orig.gross, g.g)};
+    }
+    let vatRows = (fx ? fx.vatGroups : computed.vatGroups).map((g) => ({taxCode: g.taxCode, isafCode: g.isafCode, rate: g.taxCode === 'BE_PVM' ? null : g.rate, taxable: g.taxable, vat: g.vat,
       deductible: data.register === 'purchase' ? money.sum(lines.filter((l) => l.taxCode === g.taxCode && l.vatTreatment === 'deductible').map((l) => l.vat)) : '0.00'}));
     let entryLines = computed.entries.map((e) => ({account: e.account, debit: e.debit, credit: e.credit, counterpartyId: e.counterparty ? cpId : null, description: `${series} ${number}`.trim()}));
     let relatedId = data.relatedInvoiceId || null;
@@ -324,11 +352,12 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     const external = p.external_order_id ? (await db.query('SELECT store_id FROM external_orders WHERE id=$1', [p.external_order_id])).rows[0] : null;
     await db.query(`INSERT INTO invoices(id, register, doc_type, series, number, number_key, issue_date, vat_point_date, due_date, currency, counterparty_id, counterparty_key,
         counterparty_snapshot, company_snapshot, net_total, vat_total, gross_total, deductible_vat, document_id, proposal_id, journal_entry_id, related_invoice_id,
-        store_id, external_order_id, order_reference, payment_reference, approved_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
+        store_id, external_order_id, order_reference, payment_reference, approved_by, fx_rate, fx_date, orig_net, orig_vat, orig_gross)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)`,
     [invoiceId, data.register, docType, series, number, issuedHere ? numberKey(series, number) : numberKeyValue, data.issueDate, data.vatPointDate || null, data.dueDate || null, data.currency,
       cpId, computed.counterpartyKey, cpSnapshot, companySnapshot, totals.net, totals.vat, totals.gross, totals.deductible, documentId, p.id, entry.id, relatedId,
-      external?.store_id || null, p.external_order_id, data.orderReference || '', data.paymentReference || '', user.id]);
+      external?.store_id || null, p.external_order_id, data.orderReference || '', data.paymentReference || '', user.id,
+      fx ? fx.rate : null, fx ? (data.fxRateDate || data.vatPointDate || data.issueDate) : null, orig?.net ?? null, orig?.vat ?? null, orig?.gross ?? null]);
     let n = 0;
     for (const l of lines) {
       n++;

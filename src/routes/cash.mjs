@@ -91,7 +91,7 @@ export function register(r, {pool}) {
   r.get('/api/cash/open-invoices', async ({user, query}) => {
     requireCap(user, 'read');
     const register = query.kind === 'payment' ? 'purchase' : 'sales';
-    return (await invoiceBalances(pool, {register, openOnly: true, limit: 500})).filter((x) => money.cmp(x.outstanding, '0') > 0)
+    return (await invoiceBalances(pool, {register, openOnly: true, limit: 500})).filter((x) => x.currency === 'EUR' && money.cmp(x.outstanding, '0') > 0)
       .map((x) => ({id: String(x.id), label: `${x.series || ''} ${x.number}`.trim(), counterparty: x.counterparty_name, outstanding: money.norm(x.outstanding), issue_date: x.issue_date}));
   });
   r.get('/api/cash/orders/:id', async ({user, params}) => { requireCap(user, 'read'); return loadOrder(pool, params.id); });
@@ -123,6 +123,7 @@ export function register(r, {pool}) {
         const inv = (await invoiceBalances(db, {ids: [String(b.invoiceId)]}))[0];
         if (!inv) throw new AppError(400, 'invoice', 'Pasirinkite sąskaitą.');
         if (inv.register !== (kind === 'receipt' ? 'sales' : 'purchase')) throw new AppError(400, 'invoice', kind === 'receipt' ? 'KPO apmokama pardavimo sąskaita.' : 'KIO apmokama pirkimo sąskaita.');
+        if (inv.currency !== 'EUR') throw new AppError(422, 'currency', `Sąskaita ${inv.currency} valiuta – apmokėjimą registruokite per banką (kursų skirtumas skaičiuojamas automatiškai).`);
         if (money.cmp(amount, inv.outstanding) > 0) throw new AppError(400, 'amount', `Suma ${amount} viršija sąskaitos likutį ${money.norm(inv.outstanding)}.`);
         account = kind === 'receipt' ? roles.receivable : roles.payable;
         invoiceId = String(inv.id); counterpartyId = inv.counterparty_id ? String(inv.counterparty_id) : null;

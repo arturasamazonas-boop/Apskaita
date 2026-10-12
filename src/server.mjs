@@ -22,7 +22,7 @@ if (config.runWorkerInProcess) {
     const r = await app.pool.query(`UPDATE jobs SET status='queued', locked_by=NULL, run_at=now() WHERE status='running'`);
     if (r.rowCount) console.log(`[jobs] grąžinta į eilę nutrauktų užduočių: ${r.rowCount}`);
   }
-  app.worker.start(); startScheduler(app.pool);
+  app.worker.start(); startScheduler(app.pool, {fxUrl: app.config?.fxUrl || ''});
 }
 const stop = async () => { server.close(); await app.close(); process.exit(0); };
 process.on('SIGINT', stop); process.on('SIGTERM', stop);

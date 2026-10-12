@@ -5,7 +5,7 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | Command | What it does |
 |---|---|
 | `npm run check` | `node --check` on all JS modules, `php -l` on the OpenCart extension |
-| `npm test` | 92 `node:test` tests across 23 files |
+| `npm test` | 96 `node:test` tests across 24 files |
 | `npm run test:browser` | Chromium (Playwright) UI smoke test of the real UI and server |
 | `node test-browser/rekvizitai.mjs [dir]` | Runs the "→ Apskaita" bookmarklet on a company page. Checks the review screen (filled fields, VIES stub), counterparty creation, and the paste dialog in the company settings. |
 | `node test-browser/statements.mjs [dir]` | Statement forms page: opens a form from the menu, shows the balance check, saves a hand-entered previous-period amount and downloads the PDF. Also checks the second-level menu by mouse, keyboard and on a phone, plus the cash flow and equity pages |
@@ -13,6 +13,7 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | `node test-browser/rc-package.mjs [dir]` | Annual set for RC: from the menu, size cards, required forms, copyable amounts, switching the category, set PDF |
 | `node test-browser/new-modules.mjs [dir]` | Fixed asset card from the menu, depreciation run, register with reconciliation, year-end closing, SEPA file for a supplier invoice, GPM313 form and .ffdata |
 | `node test-browser/tax-cash.mjs [dir]` | PLN204 from the menu: values in the form cells, a typed loss carry-forward recalculated, .ffdata; SAM on the official Sodra form, .ffdata; a KPO entered from the menu, its PDF and the cash book |
+| `node test-browser/fx.mjs [dir]` | Exchange rates from a Lietuvos bankas stub, a USD invoice review with EUR amounts, period-end revaluation |
 | `node test-browser/open-access.mjs` | With `OPEN_ACCESS=true` the app opens without the login form |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 
@@ -172,3 +173,7 @@ The PDF and the web form were also checked visually: characters fall into the fo
   - The cash book by day.
   - Cancellation makes the invoice unpaid again; cancelling a KPO that would leave cash negative is refused.
   - The PDF.
+
+## Exchange rates and revaluation (`23-fx`)
+
+See [FX.md](FX.md#tests).

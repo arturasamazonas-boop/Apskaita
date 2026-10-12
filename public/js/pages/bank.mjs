@@ -57,11 +57,15 @@ async function txDetail(main, id, state) {
     const list = h('div');
     const load = async () => {
       const rows = await get(`/api/bank/open-invoices?q=${encodeURIComponent(q.value)}`);
-      clear(list, table([{label: 'Registras', render: (r) => (r.register === 'sales' ? 'Pardavimas' : 'Pirkimas')}, {label: 'Numeris', render: (r) => `${r.series} ${r.number}`}, {label: 'Kontrahentas', key: 'counterparty_name'}, {label: 'Data', render: (r) => date(r.issue_date)}, {label: 'Likutis', num: true, render: (r) => money(r.outstanding)}],
+      clear(list, table([{label: 'Registras', render: (r) => (r.register === 'sales' ? 'Pardavimas' : 'Pirkimas')}, {label: 'Numeris', render: (r) => `${r.series} ${r.number}`}, {label: 'Kontrahentas', key: 'counterparty_name'}, {label: 'Data', render: (r) => date(r.issue_date)}, {label: 'Likutis', num: true, render: (r) => `${money(r.outstanding)}${r.currency !== 'EUR' ? ` (${money(r.orig_outstanding)} ${r.currency})` : ''}`}],
         rows.sort((a, b) => (a.register === reg ? -1 : 1) - (b.register === reg ? -1 : 1)), {onRow: (r) => {
           const left = Math.abs(Number(t.amount)) - allocs.reduce((s, a) => s + Math.abs(Number(a.amount || 0)), 0);
-          const amt = Math.min(Math.abs(Number(r.outstanding)), Math.max(left, 0)).toFixed(2);
-          allocs.push({kind: 'invoice', invoiceId: String(r.id), label: `${r.series} ${r.number}`, amount: Number(r.outstanding) < 0 ? `-${amt}` : amt, evidence: ['Pasirinkta naudotojo.']});
+          // Invoice in another currency paid in EUR: the EUR actually paid settles the invoice's own-currency balance;
+          // the difference to its booked EUR balance becomes an exchange difference.
+          const foreign = r.currency !== 'EUR' && t.currency === 'EUR';
+          const amt = (foreign ? Math.max(left, 0) : Math.min(Math.abs(Number(r.outstanding)), Math.max(left, 0))).toFixed(2);
+          allocs.push({kind: 'invoice', invoiceId: String(r.id), label: `${r.series} ${r.number}${foreign ? ` (${money(r.orig_outstanding)} ${r.currency})` : ''}`, amount: Number(r.outstanding) < 0 ? `-${amt}` : amt,
+            ...(foreign && {origAmount: String(r.orig_outstanding)}), evidence: ['Pasirinkta naudotojo.']});
           m.close(); drawAllocs();
         }}));
     };

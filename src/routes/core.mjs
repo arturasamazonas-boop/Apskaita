@@ -387,6 +387,10 @@ export async function sourceLink(db, e) {
     const r = (await db.query('SELECT id, period FROM depreciation_runs WHERE id=$1', [e.source_id])).rows[0];
     return r ? {type: 'depreciation', id: r.id, label: `Nusidėvėjimas ${r.period}`, href: '#/turtas/nusidevejimas'} : null;
   }
+  if (e.source_type === 'fx_revaluation') {
+    const r = (await db.query('SELECT id, as_of FROM fx_revaluations WHERE id=$1', [e.source_id])).rows[0];
+    return r ? {type: 'fx_revaluation', id: r.id, label: `Valiutų perkainojimas ${String(r.as_of instanceof Date ? r.as_of.toISOString() : r.as_of).slice(0, 10)}`, href: '#/valiutos/perkainojimas'} : null;
+  }
   if (e.source_type === 'cash_order') {
     const o = (await db.query('SELECT id, series, number FROM cash_orders WHERE id=$1', [e.source_id])).rows[0];
     return o ? {type: 'cash_order', id: o.id, label: `Kasos orderis ${o.series} ${o.number}`, href: `#/kasa/${o.id}`} : null;
