@@ -44,6 +44,9 @@ export function loadConfig(env = process.env) {
     // Fictional demo data generated once into a test environment: "test:<tag>" (SEED_DEMO). Production default: /test.
     seedDemo: String(env.SEED_DEMO ?? (production ? 'test:gamyba-v1' : '')).split(',').map((x) => x.trim()).filter((x) => /^[a-z][a-z0-9-]{1,30}:[\w.-]{1,40}$/.test(x))
       .map((x) => ({tenant: x.split(':')[0], tag: x.split(':')[1]})),
+    // "/" serves this test environment's database and "/<name>/" the main one (SWAP_MAIN_WITH). Production default:
+    // test – the address without a suffix shows the demo company, the data entered so far is at /test.
+    swapMainWith: String(env.SWAP_MAIN_WITH ?? (production ? 'test' : '')).trim().toLowerCase(),
     basePath: '',
     envLabel: '',
     cookieName: 'sid',

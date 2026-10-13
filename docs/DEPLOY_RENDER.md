@@ -91,6 +91,18 @@ Pirmą kartą paleidus programą, į tuščią `/test` duomenų bazę automatiš
 
 Generavimas trunka apie minutę. Tuo metu `/test` rodo pranešimą „ruošiama“. Kintamasis `SEED_DEMO` (numatyta `test:gamyba-v1`) nurodo, į kurią aplinką ir su kokia žyme kurti. Ta pati žymė kuriama tik kartą, o jei duomenų bazėje jau yra duomenų, nieko nekuriama.
 
+### Apkeistos aplinkos: `/` rodo demonstracinę įmonę
+
+Kintamasis `SWAP_MAIN_WITH=test` (numatyta gamyboje) apkeičia `/` ir `/test` duomenų bazes:
+
+| Adresas | Duomenų bazė |
+|---|---|
+| `https://<programa>.onrender.com/` | `neondb_test` – demonstracinė „UAB Ąžuolo dirbtuvės (DEMO)“ |
+| `https://<programa>.onrender.com/test/` | `neondb` – iki šiol suvesti tikri duomenys (rodomas ženklas „Testinė aplinka: Test“) |
+
+- Pačios duomenų bazės nekeičiamos, keičiasi tik tai, kuris adresas kurią rodo. Kintamąjį pašalinus arba nustačius tuščią (`SWAP_MAIN_WITH=`), viskas grįžta atgal.
+- Kopijos į `/ieva` (`COPY_MAIN_TO`) visada daromos iš tikrosios pagrindinės duomenų bazės (`neondb`), o ne iš demonstracinės.
+
 ### Pagrindinės aplinkos duomenų kopija į testinę aplinką
 
 Kintamasis `COPY_MAIN_TO` (pvz. `ieva:2026-10-13`) nurodo, kad paleidus programą visi pagrindinės aplinkos duomenys
