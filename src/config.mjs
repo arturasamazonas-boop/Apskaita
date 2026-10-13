@@ -34,12 +34,15 @@ export function loadConfig(env = process.env) {
     fxUrl: (env.FX_URL ?? 'https://www.lb.lt/webservices/FxRates/FxRates.asmx').replace(/\/$/, ''),
     viesUrl: (env.VIES_URL || 'https://ec.europa.eu/taxation_customs/vies/rest-api').replace(/\/$/, ''),
     // Separate test environments served by the same process under /<name>/, each with its own database
-    // (DATABASE_URL_<NAME>, or the main database name + "_<name>"). Production default: /ieva and /sonata.
-    tenants: String(env.TENANTS ?? (production ? 'ieva,sonata' : '')).split(',').map((t) => t.trim().toLowerCase()).filter((t) => /^[a-z][a-z0-9-]{1,30}$/.test(t)),
+    // (DATABASE_URL_<NAME>, or the main database name + "_<name>"). Production default: /ieva, /sonata and /test.
+    tenants: String(env.TENANTS ?? (production ? 'ieva,sonata,test' : '')).split(',').map((t) => t.trim().toLowerCase()).filter((t) => /^[a-z][a-z0-9-]{1,30}$/.test(t)),
     // Set per environment by src/tenants.mjs; empty for the main one.
     // One-time copies of the main environment's data into a test environment: "ieva:<tag>" copies once per tag
     // (the tag is remembered in that environment's database). Production default: the copy requested on 2026-10-13.
     copyMainTo: String(env.COPY_MAIN_TO ?? (production ? 'ieva:2026-10-13' : '')).split(',').map((x) => x.trim()).filter((x) => /^[a-z][a-z0-9-]{1,30}:[\w.-]{1,40}$/.test(x))
+      .map((x) => ({tenant: x.split(':')[0], tag: x.split(':')[1]})),
+    // Fictional demo data generated once into a test environment: "test:<tag>" (SEED_DEMO). Production default: /test.
+    seedDemo: String(env.SEED_DEMO ?? (production ? 'test:gamyba-v1' : '')).split(',').map((x) => x.trim()).filter((x) => /^[a-z][a-z0-9-]{1,30}:[\w.-]{1,40}$/.test(x))
       .map((x) => ({tenant: x.split(':')[0], tag: x.split(':')[1]})),
     basePath: '',
     envLabel: '',

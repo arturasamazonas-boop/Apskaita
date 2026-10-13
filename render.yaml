@@ -49,4 +49,4 @@ services:
         value: "true"
       # Test environments at /ieva/ and /sonata/: same code, own databases (neondb_ieva, neondb_sonata, created automatically).
       - key: TENANTS
-        value: ieva,sonata
+        value: ieva,sonata,test

@@ -54,7 +54,7 @@ Kai prireiks tikro naudojimo, Render → **apskaita** → **Environment**:
 
 Kolegoms prisijungimus kuriate *Nustatymai → Naudotojai*.
 
-## Testinės aplinkos `/ieva` ir `/sonata`
+## Testinės aplinkos `/ieva`, `/sonata` ir `/test`
 
 Ta pati Render programa aptarnauja tris atskiras aplinkas:
 
@@ -63,6 +63,7 @@ Ta pati Render programa aptarnauja tris atskiras aplinkas:
 | `https://<programa>.onrender.com/` | pagrindinė (`DATABASE_URL`, pvz. `neondb`) |
 | `https://<programa>.onrender.com/ieva/` | `neondb_ieva` |
 | `https://<programa>.onrender.com/sonata/` | `neondb_sonata` |
+| `https://<programa>.onrender.com/test/` | `neondb_test` – su fiktyviais demonstraciniais duomenimis |
 
 - Visos aplinkos veikia tuo pačiu kodu. Kiekvienas įkėlimas į `main` atnaujina visas tris vienu metu.
 - Duomenys, įkelti failai, naudotojai ir sesijos atskiri: kas suvesta `/ieva`, nesimato nei `/sonata`, nei pagrindinėje aplinkoje.
@@ -71,9 +72,24 @@ Ta pati Render programa aptarnauja tris atskiras aplinkas:
 - Jei sukurti nepavyksta, tos aplinkos adresas rodo klaidos pranešimą, o kitos aplinkos veikia toliau. Tada:
   1. Neon → **Databases** → **New database** – sukurkite `neondb_ieva` ir `neondb_sonata`; arba
   2. Render → **Environment** – įrašykite `DATABASE_URL_IEVA` ir `DATABASE_URL_SONATA` (atskiri prisijungimo adresai).
-- Aplinkų sąrašą keičia kintamasis `TENANTS`. Numatytasis sąrašas – `ieva,sonata`. Tuščia reikšmė išjungia testines aplinkas.
+- Aplinkų sąrašą keičia kintamasis `TENANTS`. Numatytasis sąrašas – `ieva,sonata,test`. Tuščia reikšmė išjungia testines aplinkas.
 - Naujoje aplinkoje pradžioje reikia suvesti įmonės duomenis, kaip ir pirmą kartą.
 - Neon nemokamo plano 0,5 GB tenka visoms trims duomenų bazėms kartu.
+
+### `/test` – fiktyvi gamybos įmonė
+
+Pirmą kartą paleidus programą, į tuščią `/test` duomenų bazę automatiškai sukuriami **fiktyvūs** metų duomenys. Įmonė – baldų gamintoja „UAB Ąžuolo dirbtuvės (DEMO)“; visi pavadinimai, kodai ir IBAN išgalvoti. Duomenys kuriami per tą pačią programos sąsają, kaip suvedant ranka, todėl DK, PVM, sandėlis ir mokėjimai dera tarpusavyje. Sukuriama:
+
+- 9 tiekėjai, 12 pirkėjų;
+- 12 žaliavų ir 8 gaminiai su rodikliais (medienos rūšis, matmenys, spalva);
+- apie 220 pirkimo ir pardavimo sąskaitų;
+- mėnesiniai banko išrašai (apie 300 operacijų, visos suderintos su sąskaitomis);
+- 8 darbuotojai su patvirtintais žiniaraščiais, GPM ir Sodros mokėjimai;
+- 4 ilgalaikio turto vienetai su nusidėvėjimu;
+- banko paskola su grąžinimais ir palūkanų kaupimu;
+- gamybos aktai, savikaina ir PVM sudengimas.
+
+Generavimas trunka apie minutę. Tuo metu `/test` rodo pranešimą „ruošiama“. Kintamasis `SEED_DEMO` (numatyta `test:gamyba-v1`) nurodo, į kurią aplinką ir su kokia žyme kurti. Ta pati žymė kuriama tik kartą, o jei duomenų bazėje jau yra duomenų, nieko nekuriama.
 
 ### Pagrindinės aplinkos duomenų kopija į testinę aplinką
 

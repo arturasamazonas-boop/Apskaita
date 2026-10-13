@@ -47,6 +47,16 @@ test('interest: day-count bases', () => {
   assert.equal(simpleInterest({amount: '1000', from: '2026-01-01', to: '2026-12-31', rate: '12', basis: '30e360', includeLastDay: true}).interest, '120.00'); // a whole year is 360 days in 30E/360
 });
 
+test('interest: leap years (366 days) for every basis', () => {
+  const y = {amount: '10000', from: '2028-01-01', to: '2028-12-31', rate: '5', includeLastDay: true};
+  // 2028 has 366 days: actual/365 charges them all over 365, actual/actual over 366, 30E/360 counts 360.
+  assert.deepEqual(['act365', 'act360', 'actact', '30e360'].map((basis) => { const r = simpleInterest({...y, basis}); return [r.days, r.interest]; }),
+    [[366, '501.37'], [366, '508.33'], [366, '500.00'], [360, '500.00']]);
+  assert.equal(simpleInterest({amount: '10000', from: '2028-02-28', to: '2028-03-01', rate: '5', includeLastDay: true}).days, 3, '29 February counts');
+  // Across 1 January: 184 days of 2027 over 365 plus 182 days of 2028 over 366.
+  assert.equal(simpleInterest({amount: '10000', from: '2027-07-01', to: '2028-06-30', rate: '5', includeLastDay: true, basis: 'actact'}).interest, '500.69');
+});
+
 test('reading a loan agreement: amount, annual rate (not the penalty rate), basis, dates, parties and direction', () => {
   assert.deepEqual(['10 000,00', '10.000,00', '10,000.50', '25 000', '8.000'].map(parseAmount), ['10000.00', '10000.00', '10000.50', '25000.00', '8000.00']);
   const co = {name: COMPANY.name, company_code: COMPANY.company_code};
