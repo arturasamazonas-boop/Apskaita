@@ -75,6 +75,18 @@ Ta pati Render programa aptarnauja tris atskiras aplinkas:
 - Naujoje aplinkoje pradžioje reikia suvesti įmonės duomenis, kaip ir pirmą kartą.
 - Neon nemokamo plano 0,5 GB tenka visoms trims duomenų bazėms kartu.
 
+### Pagrindinės aplinkos duomenų kopija į testinę aplinką
+
+Kintamasis `COPY_MAIN_TO` (pvz. `ieva:2026-10-13`) nurodo, kad paleidus programą visi pagrindinės aplinkos duomenys
+būtų vieną kartą nukopijuoti į `/ieva`. Kopijuojami žinynai, dokumentai, failai, DK, paskolos ir naudotojai, išskyrus sesijas ir
+foninių užduočių eilę.
+
+- **Tai, kas buvo `/ieva`, pakeičiama kopija.**
+- Ta pati žymė (`2026-10-13`) kopijuojama tik kartą: ji įrašoma į `/ieva` duomenų bazę, todėl paleidus programą iš naujo kopija nekartojama.
+- Norint nukopijuoti dar kartą, nurodykite naują žymę, pvz. `COPY_MAIN_TO=ieva:2026-11-01` (keli – per kablelį: `ieva:x,sonata:y`).
+- Numatyta reikšmė gamyboje – `ieva:2026-10-13` (2026-10-13 prašyta kopija).
+- Kopijavimas vyksta vienoje transakcijoje: jei kas nepavyksta, `/ieva` lieka nepakeista, o klaida įrašoma Render žurnale („[aplinkos] … kopijuoti nepavyko“).
+
 ## Pakeitimai
 
 Kiekvienas įkėlimas į `main` šaką automatiškai įdiegiamas per ~10 min. Atnaujinimo metu programa trumpai nepasiekiama.

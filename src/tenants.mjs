@@ -4,7 +4,9 @@
 import pg from 'pg';
 import path from 'node:path';
 import {createApp} from './app.mjs';
+import fs from 'node:fs/promises';
 import {send} from './http.mjs';
+import {copyDatabase} from './env-copy.mjs';
 
 const label = (name) => name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -31,7 +33,28 @@ export async function ensureDatabase(mainUrl, tenantUrl) {
 
 export function tenantConfig(config, name, env = process.env) {
   return {...config, databaseUrl: tenantDatabaseUrl(config.databaseUrl, name, env), basePath: `/${name}`, envLabel: label(name), cookieName: `sid_${name.replace(/-/g, '_')}`,
-    storageDir: path.join(config.storageDir, 'tenants', name), dbPoolMax: Math.min(config.dbPoolMax || 10, 4), tenants: []};
+    storageDir: path.join(config.storageDir, 'tenants', name), dbPoolMax: Math.min(config.dbPoolMax || 10, 4), tenants: [], copyMainTo: []};
+}
+
+/** A requested one-time copy of the main environment into this one (COPY_MAIN_TO="ieva:<tag>"). */
+async function copyMainIfRequested(main, app, name, config, log) {
+  for (const {tenant, tag} of config.copyMainTo || []) {
+    if (tenant !== name) continue;
+    if ((await app.pool.query('SELECT 1 FROM environment_copies WHERE tag=$1', [tag])).rowCount) continue;
+    log.info?.(`[aplinkos] /${name}/: kopijuojami pagrindinės aplinkos duomenys (${tag})…`);
+    try {
+      const r = await copyDatabase(main.pool, app.pool, {log, tag});
+      if (config.storageBackend !== 'postgres') {
+        // Files on disk: everything except the test environments' own folders (they live inside the main one).
+        for (const entry of await fs.readdir(config.storageDir).catch(() => [])) {
+          if (entry !== 'tenants') await fs.cp(path.join(config.storageDir, entry), path.join(app.config.storageDir, entry), {recursive: true, force: true});
+        }
+      }
+      log.info?.(`[aplinkos] /${name}/: nukopijuota ${r.rows} eilučių iš ${r.tables} lentelių.`);
+    } catch (e) {
+      log.error?.(`[aplinkos] /${name}/: kopijuoti nepavyko: ${e.message}`);
+    }
+  }
 }
 
 export async function createEnvironments(config, {log = console, env = process.env, onApp = async () => {}} = {}) {
@@ -43,6 +66,7 @@ export async function createEnvironments(config, {log = console, env = process.e
     try {
       if (!env[`DATABASE_URL_${name.toUpperCase().replace(/-/g, '_')}`]) await ensureDatabase(config.databaseUrl, cfg.databaseUrl);
       const app = await createApp(cfg, {log});
+      await copyMainIfRequested(main, app, name, config, log);
       await onApp(app, name);
       tenants.push({name, app});
       log.info?.(`[aplinkos] /${name}/ – duomenų bazė ${new URL(cfg.databaseUrl).pathname.slice(1)}`);

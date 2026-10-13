@@ -37,6 +37,10 @@ export function loadConfig(env = process.env) {
     // (DATABASE_URL_<NAME>, or the main database name + "_<name>"). Production default: /ieva and /sonata.
     tenants: String(env.TENANTS ?? (production ? 'ieva,sonata' : '')).split(',').map((t) => t.trim().toLowerCase()).filter((t) => /^[a-z][a-z0-9-]{1,30}$/.test(t)),
     // Set per environment by src/tenants.mjs; empty for the main one.
+    // One-time copies of the main environment's data into a test environment: "ieva:<tag>" copies once per tag
+    // (the tag is remembered in that environment's database). Production default: the copy requested on 2026-10-13.
+    copyMainTo: String(env.COPY_MAIN_TO ?? (production ? 'ieva:2026-10-13' : '')).split(',').map((x) => x.trim()).filter((x) => /^[a-z][a-z0-9-]{1,30}:[\w.-]{1,40}$/.test(x))
+      .map((x) => ({tenant: x.split(':')[0], tag: x.split(':')[1]})),
     basePath: '',
     envLabel: '',
     cookieName: 'sid',
