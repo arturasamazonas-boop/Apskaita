@@ -22,6 +22,7 @@ import * as yearEndRoutes from './routes/yearend.mjs';
 import * as paymentRoutes from './routes/payments.mjs';
 import * as cashRoutes from './routes/cash.mjs';
 import * as fxRoutes from './routes/fx.mjs';
+import * as loanRoutes from './routes/loans.mjs';
 import {configureFx} from './fx/rates.mjs';
 import {renderAndStorePdf} from './sales/service.mjs';
 import {integrationJobHandlers} from './integrations/sync.mjs';
@@ -35,7 +36,7 @@ export async function createApp(config, {pool: givenPool, log = console} = {}) {
   const llm = createLlmProvider(config, pool);
   const deps = {pool, storage, config, auth, llm, log};
   const router = createRouter();
-  for (const m of [coreRoutes, docRoutes, bankRoutes, reportRoutes, salesRoutes, integrationRoutes, productRoutes, payrollRoutes, assetRoutes, yearEndRoutes, paymentRoutes, cashRoutes, fxRoutes]) m.register(router, deps);
+  for (const m of [coreRoutes, docRoutes, bankRoutes, reportRoutes, salesRoutes, integrationRoutes, productRoutes, payrollRoutes, assetRoutes, yearEndRoutes, paymentRoutes, cashRoutes, fxRoutes, loanRoutes]) m.register(router, deps);
 
   const handlers = {
     extract_invoice: (p) => processInvoiceDocument(deps, p.documentId, {force: !!p.force}),
