@@ -1,5 +1,5 @@
 // App shell: login, navigation, hash router, onboarding wizard.
-import {h, clear, get, post, put, setCsrf, toast, showError, guard, field, input, select, pageHeader, section, can} from './core.mjs';
+import {h, clear, get, post, put, setCsrf, toast, showError, guard, field, input, select, pageHeader, section, can, ENV_LABEL} from './core.mjs';
 import {rekvizitaiButton} from './lib/company-fill.mjs';
 
 export const state = {user: null, company: null};
@@ -137,7 +137,7 @@ function shell() {
     TOOLBAR.filter((t) => !t[2] || can(state.user, t[2])).map(([label, path]) => h('a', {class: 'tool', href: `#/${path}`}, label)));
   clear(root,
     h('a', {class: 'skip', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); }}, 'Pereiti prie turinio'),
-    h('header', {class: 'topbar'}, toggle, h('a', {class: 'brand', href: '#/apzvalga'}, 'Apskaita', state.company?.name ? h('span', {class: 'brand-company'}, state.company.name) : null),
+    h('header', {class: 'topbar'}, toggle, h('a', {class: 'brand', href: '#/apzvalga'}, 'Apskaita', ENV_LABEL ? h('span', {class: 'env-badge', title: 'Atskira testinė aplinka su savo duomenimis'}, `Testinė aplinka: ${ENV_LABEL}`) : null, state.company?.name ? h('span', {class: 'brand-company'}, state.company.name) : null),
       h('div', {class: 'userbox'}, h('span', null, `${state.user.name || state.user.email} · ${{admin: 'Administratorius', accountant: 'Buhalteris', readonly: 'Tik skaitymas'}[state.user.role]}`),
         h('button', {class: 'btn btn-small', onclick: logout}, 'Atsijungti'))),
     menubar, toolbar, main);
@@ -186,7 +186,7 @@ async function route() {
     if (!entry) { clear(main, pageHeader('Puslapis nerastas')); return; }
     const mod = await entry[1]();
     await mod.render(main, rest, state);
-    document.title = `${entry[0]} – Apskaita`;
+    document.title = `${entry[0]} – Apskaita${ENV_LABEL ? ` (${ENV_LABEL})` : ''}`;
   } catch (e) {
     if (e.status === 401) return;
     showError(e);

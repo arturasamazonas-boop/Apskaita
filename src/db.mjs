@@ -9,8 +9,8 @@ pg.types.setTypeParser(1700, (v) => v);
 pg.types.setTypeParser(1082, (v) => v);
 pg.types.setTypeParser(20, (v) => v); // bigint as string
 
-export function createPool(databaseUrl) {
-  const pool = new pg.Pool({connectionString: databaseUrl, max: 10});
+export function createPool(databaseUrl, {max = 10} = {}) {
+  const pool = new pg.Pool({connectionString: databaseUrl, max});
   pool.on('error', (e) => console.error('[db] idle client error', e.message));
   return pool;
 }

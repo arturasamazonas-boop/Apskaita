@@ -74,13 +74,17 @@ export function send(res, status, body, headers = {}) {
 
 const STATIC_TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2'};
 
-export async function serveStatic(res, publicDir, pathname) {
+const escAttr = (v) => String(v).replace(/[&"<>]/g, (c) => ({'&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;'}[c]));
+
+/** Static files; index.html gets the environment's base path (e.g. "/ieva") and label in its meta tags. */
+export async function serveStatic(res, publicDir, pathname, {basePath = '', envLabel = ''} = {}) {
   let rel = decodeURIComponent(pathname);
   if (rel === '/' || !path.extname(rel)) rel = '/index.html';
   const file = path.resolve(publicDir, '.' + rel);
   if (!file.startsWith(path.resolve(publicDir) + path.sep)) return send(res, 404, 'Nerasta');
   try {
-    const buf = await fs.readFile(file);
+    let buf = await fs.readFile(file);
+    if (rel === '/index.html') buf = Buffer.from(buf.toString('utf8').replace('<meta name="app-base" content="">', `<meta name="app-base" content="${escAttr(basePath)}">`).replace('<meta name="app-env" content="">', `<meta name="app-env" content="${escAttr(envLabel)}">`));
     res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': STATIC_TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': rel === '/index.html' ? 'no-cache' : 'public, max-age=300'});
     res.end(buf);
   } catch {

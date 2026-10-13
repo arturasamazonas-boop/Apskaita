@@ -54,6 +54,27 @@ Kai prireiks tikro naudojimo, Render → **apskaita** → **Environment**:
 
 Kolegoms prisijungimus kuriate *Nustatymai → Naudotojai*.
 
+## Testinės aplinkos `/ieva` ir `/sonata`
+
+Ta pati Render programa aptarnauja tris atskiras aplinkas:
+
+| Adresas | Duomenų bazė (Neon) |
+|---|---|
+| `https://<programa>.onrender.com/` | pagrindinė (`DATABASE_URL`, pvz. `neondb`) |
+| `https://<programa>.onrender.com/ieva/` | `neondb_ieva` |
+| `https://<programa>.onrender.com/sonata/` | `neondb_sonata` |
+
+- Visos aplinkos veikia tuo pačiu kodu. Kiekvienas įkėlimas į `main` atnaujina visas tris vienu metu.
+- Duomenys, įkelti failai, naudotojai ir sesijos atskiri: kas suvesta `/ieva`, nesimato nei `/sonata`, nei pagrindinėje aplinkoje.
+- Viršutinėje juostoje rodomas ženklas „Testinė aplinka: Ieva“ arba „Sonata“.
+- Duomenų bazės `neondb_ieva` ir `neondb_sonata` sukuriamos automatiškai pirmo paleidimo metu, per tą patį Neon prisijungimą. Neon vartotojas tam turi teisę.
+- Jei sukurti nepavyksta, tos aplinkos adresas rodo klaidos pranešimą, o kitos aplinkos veikia toliau. Tada:
+  1. Neon → **Databases** → **New database** – sukurkite `neondb_ieva` ir `neondb_sonata`; arba
+  2. Render → **Environment** – įrašykite `DATABASE_URL_IEVA` ir `DATABASE_URL_SONATA` (atskiri prisijungimo adresai).
+- Aplinkų sąrašą keičia kintamasis `TENANTS`. Numatytasis sąrašas – `ieva,sonata`. Tuščia reikšmė išjungia testines aplinkas.
+- Naujoje aplinkoje pradžioje reikia suvesti įmonės duomenis, kaip ir pirmą kartą.
+- Neon nemokamo plano 0,5 GB tenka visoms trims duomenų bazėms kartu.
+
 ## Pakeitimai
 
 Kiekvienas įkėlimas į `main` šaką automatiškai įdiegiamas per ~10 min. Atnaujinimo metu programa trumpai nepasiekiama.

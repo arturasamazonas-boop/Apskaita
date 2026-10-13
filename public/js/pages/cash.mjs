@@ -1,5 +1,5 @@
 // Kasa: kasos pajamų (KPO) ir išlaidų (KIO) orderiai, kasos knyga.
-import {h, clear, get, post, pageHeader, section, table, money, date, guard, select, input, field, can, today, toast, badge, promptDialog} from '../core.mjs';
+import {h, clear, get, post, pageHeader, section, table, money, date, guard, select, input, field, can, today, toast, badge, promptDialog, apiUrl} from '../core.mjs';
 
 const KIND = {receipt: 'Kasos pajamų orderis (KPO)', payment: 'Kasos išlaidų orderis (KIO)'};
 const PURPOSE = {
@@ -8,7 +8,7 @@ const PURPOSE = {
 };
 const STATUS = {posted: ['Užregistruotas', 'done'], cancelled: ['Anuliuotas', 'muted']};
 const tabs = (cur) => h('div', {class: 'tabs'}, [['', 'Orderiai'], ['knyga', 'Kasos knyga']].map(([k, t]) => h('a', {class: ['tab', cur === k && 'active'], href: `#/kasa${k ? '/' + k : ''}`}, t)));
-const pdf = (id) => { location.href = `/api/cash/orders/${id}/pdf`; };
+const pdf = (id) => { location.href = apiUrl(`/api/cash/orders/${id}/pdf`); };
 
 export async function render(main, rest, state) {
   if (rest[0] === 'knyga') return book(main);

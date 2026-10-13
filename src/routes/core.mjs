@@ -13,7 +13,8 @@ const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
 const page = (q) => ({limit: Math.min(Math.max(Number(q.limit) || 50, 1), 200), offset: Math.max(Number(q.offset) || 0, 0)});
 
 export function register(r, {pool, auth, config}) {
-  const setSessionCookie = (res, token) => res.setHeader('Set-Cookie', `sid=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${config.sessionHours * 3600}${config.secureCookies ? '; Secure' : ''}`);
+  const cookiePath = `${config.basePath || ''}/`, cookieName = config.cookieName || 'sid';
+  const setSessionCookie = (res, token) => res.setHeader('Set-Cookie', `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=${cookiePath}; Max-Age=${config.sessionHours * 3600}${config.secureCookies ? '; Secure' : ''}`);
   // ---------------------------------------------------------------- auth
   r.post('/api/login', async ({req, res}) => {
     const b = await readJson(req);
@@ -31,7 +32,7 @@ export function register(r, {pool, auth, config}) {
   }, {public: true});
   r.post('/api/logout', async ({res, token}) => {
     await auth.logout(token);
-    res.setHeader('Set-Cookie', 'sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+    res.setHeader('Set-Cookie', `${cookieName}=; HttpOnly; SameSite=Strict; Path=${cookiePath}; Max-Age=0`);
     return {ok: true};
   });
   r.get('/api/me', async ({user, session}) => {

@@ -22,6 +22,7 @@ code { font-size: .85em; }
 #app { min-height: 100vh; }
 .topbar { display: flex; align-items: center; gap: 1rem; padding: .5rem 1rem; background: linear-gradient(90deg, var(--brand-dark), var(--brand)); color: var(--brand-ink); border-bottom: 1px solid var(--brand-dark); }
 .brand { font-weight: 700; font-size: 1.1rem; display: flex; gap: .6rem; align-items: baseline; color: var(--brand-ink); text-decoration: none; letter-spacing: .01em; } .brand-company { font-weight: 400; color: rgba(255,255,255,.78); font-size: .9rem; }
+.env-badge { align-self: center; font-size: .75rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; background: #f2c25c; color: #1d2733; border-radius: 4px; padding: .1rem .45rem; }
 .userbox { margin-left: auto; display: flex; gap: .75rem; align-items: center; color: rgba(255,255,255,.82); font-size: .9rem; }
 .topbar .btn { background: transparent; border-color: rgba(255,255,255,.45); color: var(--brand-ink); }
 .topbar .btn:hover:not(:disabled) { background: rgba(255,255,255,.12); border-color: #fff; }

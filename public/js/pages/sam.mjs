@@ -1,6 +1,6 @@
 // SAM – pranešimas Sodrai apie apdraustuosius (v07), shown on the official Sodra form pages, from the month's payroll sheet;
 // FFData file for upload to Sodra EDAS and a PDF.
-import {h, clear, get, pageHeader, section, guard, input, field, today, table, money} from '../core.mjs';
+import {h, clear, get, pageHeader, section, guard, input, field, today, table, money, apiUrl} from '../core.mjs';
 import {edsFormView} from '../lib/eds-form.mjs';
 
 const prevMonth = () => { const [y, m] = today().split('-').map(Number); return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7); };
@@ -27,7 +27,7 @@ export async function render(main, rest, state) {
       edsFormView({layout: d.layouts[p.code], values: p.values, label: p.code})]));
   };
   const dl = (format) => guard(async () => {
-    const res = await fetch(`/api/sodra/sam/file?${q()}&format=${format}`, {credentials: 'same-origin'});
+    const res = await fetch(apiUrl(`/api/sodra/sam/file?${q()}&format=${format}`), {credentials: 'same-origin'});
     if (!res.ok) throw new Error((await res.json()).error);
     const name = (res.headers.get('content-disposition') || '').match(/filename="([^"]+)"/)?.[1] || `SAM.${format}`;
     const a = h('a', {href: URL.createObjectURL(await res.blob()), download: name}); document.body.append(a); a.click(); a.remove();

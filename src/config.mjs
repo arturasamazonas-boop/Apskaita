@@ -33,6 +33,14 @@ export function loadConfig(env = process.env) {
     // Lietuvos bankas FxRates web service; empty = rates only from the database (entered by hand).
     fxUrl: (env.FX_URL ?? 'https://www.lb.lt/webservices/FxRates/FxRates.asmx').replace(/\/$/, ''),
     viesUrl: (env.VIES_URL || 'https://ec.europa.eu/taxation_customs/vies/rest-api').replace(/\/$/, ''),
+    // Separate test environments served by the same process under /<name>/, each with its own database
+    // (DATABASE_URL_<NAME>, or the main database name + "_<name>"). Production default: /ieva and /sonata.
+    tenants: String(env.TENANTS ?? (production ? 'ieva,sonata' : '')).split(',').map((t) => t.trim().toLowerCase()).filter((t) => /^[a-z][a-z0-9-]{1,30}$/.test(t)),
+    // Set per environment by src/tenants.mjs; empty for the main one.
+    basePath: '',
+    envLabel: '',
+    cookieName: 'sid',
+    dbPoolMax: Number(env.DB_POOL_MAX || 10),
   };
   if (production && cfg.secretKey.length < 32) throw new Error('APP_SECRET_KEY must be set (>= 32 chars) in production');
   return cfg;

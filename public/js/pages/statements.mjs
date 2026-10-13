@@ -1,5 +1,5 @@
 // Finansinės ataskaitos pagal VAS formas: balansas (2 VAS 1–3 priedai), pelno (nuostolių) ataskaita (3 VAS 1–2 priedai), PDF.
-import {h, clear, get, put, pageHeader, section, guard, select, input, field, can, today, toast} from '../core.mjs';
+import {h, clear, get, put, pageHeader, section, guard, select, input, field, can, today, toast, apiUrl} from '../core.mjs';
 
 const nf0 = new Intl.NumberFormat('lt-LT', {maximumFractionDigits: 0}), nf2 = new Intl.NumberFormat('lt-LT', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const fmt = (v, cents) => { if (v === null || v === undefined) return ''; const n = Number(v); if (!n) return '–'; const s = (cents ? nf2 : nf0).format(Math.abs(n)); return n < 0 ? `(${s})` : s; };
@@ -26,8 +26,8 @@ export async function render(main, rest, state) {
   const out = h('div');
   let st = null, editPrior = false;
   const qs = () => new URLSearchParams({...(isBal ? {to: f.to.value, ...(f.prevTo.value && {prevTo: f.prevTo.value})} : isEq ? {to: f.to.value} : {from: f.from.value, to: f.to.value}), precision: f.precision.value});
-  const pdfUrl = (inline) => `/api/statements/${key}/pdf?${qs()}&${new URLSearchParams({compiled: f.compiled.value, number: f.number.value, status: f.status.value, managerTitle: f.managerTitle.value,
-    managerName: f.managerName.value, accountantTitle: f.accountantTitle.value, accountantName: f.accountantName.value, ...(inline && {inline: '1'})})}`;
+  const pdfUrl = (inline) => apiUrl(`/api/statements/${key}/pdf?${qs()}&${new URLSearchParams({compiled: f.compiled.value, number: f.number.value, status: f.status.value, managerTitle: f.managerTitle.value,
+    managerName: f.managerName.value, accountantTitle: f.accountantTitle.value, accountantName: f.accountantName.value, ...(inline && {inline: '1'})})}`);
   const priorInputs = new Map();
   const draw = () => {
     const cents = st.precision === 'cents';

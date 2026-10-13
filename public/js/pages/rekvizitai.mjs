@@ -1,6 +1,6 @@
 // Įmonė iš rekvizitai.lt: landing page of the "→ Apskaita" bookmarklet and the paste flow.
 // The page text travels only inside this browser (URL fragment, never sent to the server); it is parsed here.
-import {h, clear, get, post, put, pageHeader, section, guard, input, field, can, toast} from '../core.mjs';
+import {h, clear, get, post, put, pageHeader, section, guard, input, field, can, toast, BASE} from '../core.mjs';
 import {parseCompanyText, bookmarklet} from '../lib/company-parse.mjs';
 import {pasteDialog, vatCheckButton, REKVIZITAI_URL} from '../lib/company-fill.mjs';
 
@@ -15,7 +15,7 @@ export async function render(main, rest, state) {
     history.replaceState(null, '', '#/rekvizitai'); // keep the page text out of history and bookmarks
   }
   if (data) return review(main, data, state);
-  const bm = h('a', {class: 'btn btn-primary bookmarklet', href: bookmarklet(location.origin), onclick: (e) => { e.preventDefault(); toast('Nutempkite šį mygtuką į naršyklės žymių juostą.', 'info'); }}, '→ Apskaita');
+  const bm = h('a', {class: 'btn btn-primary bookmarklet', href: bookmarklet(location.origin + BASE), onclick: (e) => { e.preventDefault(); toast('Nutempkite šį mygtuką į naršyklės žymių juostą.', 'info'); }}, '→ Apskaita');
   clear(main, pageHeader('Įmonė iš rekvizitai.lt'),
     section('Vienu paspaudimu (rekomenduojama kompiuteryje)', h('ol', {class: 'howto'},
       h('li', null, 'Įjunkite žymių juostą (Ctrl+Shift+B).'),

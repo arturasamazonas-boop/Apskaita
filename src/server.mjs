@@ -3,26 +3,28 @@ import http from 'node:http';
 import https from 'node:https';
 import fs from 'node:fs';
 import {loadConfig} from './config.mjs';
-import {createApp} from './app.mjs';
+import {createEnvironments} from './tenants.mjs';
 import {startScheduler} from './scheduler.mjs';
 import {bootstrapAdmin} from './bootstrap.mjs';
 
 const config = loadConfig();
-const app = await createApp(config);
-await bootstrapAdmin(app.pool);
+// The main app at "/" plus the test environments (TENANTS, e.g. /ieva and /sonata), each with its own database.
+const envs = await createEnvironments(config, {onApp: async (a) => { await bootstrapAdmin(a.pool); }});
 const server = config.tlsCert && config.tlsKey
-  ? https.createServer({cert: fs.readFileSync(config.tlsCert), key: fs.readFileSync(config.tlsKey)}, app.handle)
-  : http.createServer(app.handle);
+  ? https.createServer({cert: fs.readFileSync(config.tlsCert), key: fs.readFileSync(config.tlsKey)}, envs.handle)
+  : http.createServer(envs.handle);
 server.requestTimeout = 120000;
-server.listen(config.port, config.host, () => console.log(`Apskaita: ${config.tlsCert ? 'https' : 'http'}://${config.host}:${config.port}`));
+server.listen(config.port, config.host, () => console.log(`Apskaita: ${config.tlsCert ? 'https' : 'http'}://${config.host}:${config.port}${envs.tenants.length ? ` (+ ${envs.tenants.map((t) => `/${t.name}/`).join(', ')})` : ''}`));
 if (config.runWorkerInProcess) {
-  // Single-instance hosts that may be stopped abruptly (e.g. Render free sleeping): jobs left 'running'
-  // by the previous process are requeued immediately instead of waiting for the stale-lock timeout.
-  if (process.env.RECOVER_RUNNING_JOBS_ON_START === 'true') {
-    const r = await app.pool.query(`UPDATE jobs SET status='queued', locked_by=NULL, run_at=now() WHERE status='running'`);
-    if (r.rowCount) console.log(`[jobs] grąžinta į eilę nutrauktų užduočių: ${r.rowCount}`);
+  for (const app of envs.all()) {
+    // Single-instance hosts that may be stopped abruptly (e.g. Render free sleeping): jobs left 'running'
+    // by the previous process are requeued immediately instead of waiting for the stale-lock timeout.
+    if (process.env.RECOVER_RUNNING_JOBS_ON_START === 'true') {
+      const r = await app.pool.query(`UPDATE jobs SET status='queued', locked_by=NULL, run_at=now() WHERE status='running'`);
+      if (r.rowCount) console.log(`[jobs] ${app.config.basePath || '/'}: grąžinta į eilę nutrauktų užduočių: ${r.rowCount}`);
+    }
+    app.worker.start(); startScheduler(app.pool, {fxUrl: app.config?.fxUrl || ''});
   }
-  app.worker.start(); startScheduler(app.pool, {fxUrl: app.config?.fxUrl || ''});
 }
-const stop = async () => { server.close(); await app.close(); process.exit(0); };
+const stop = async () => { server.close(); await envs.close(); process.exit(0); };
 process.on('SIGINT', stop); process.on('SIGTERM', stop);

@@ -1,5 +1,5 @@
 // Shared invoice list, detail and manual invoice form (used by Pardavimai and Pirkimai).
-import {h, clear, get, post, pageHeader, section, table, badge, PAY, DOC_TYPE, eur, money, date, dateTime, guard, select, input, field, pager, debounce, can, openFile, toast, LINE_TYPE, VAT_T, yearStart, today} from '../core.mjs';
+import {h, clear, get, post, pageHeader, section, table, badge, PAY, DOC_TYPE, eur, money, date, dateTime, guard, select, input, field, pager, debounce, can, openFile, toast, LINE_TYPE, VAT_T, yearStart, today, apiUrl} from '../core.mjs';
 
 export async function invoiceList(main, register, state, extraTabs = null) {
   const base = register === 'sales' ? 'pardavimai' : 'pirkimai';
@@ -37,7 +37,7 @@ export async function invoiceDetail(main, id, state) {
   const actions = [];
   if (inv.register === 'sales' && ['vat_invoice', 'invoice'].includes(inv.doc_type) && can(state.user, 'write')) actions.push(h('button', {class: 'btn', onclick: () => creditNote(inv)}, 'Kreditinė sąskaita / grąžinimas'));
   if (inv.document_id) actions.push(h('a', {class: 'btn', href: inv.register === 'sales' && !inv.document_id ? '#' : `#/dokumentai/${inv.document_id}`}, 'Dokumentas ir failai'));
-  if (inv.register === 'sales') actions.push(h('button', {class: 'btn', onclick: () => guard(async () => { const {url} = await get(`/api/invoices/${inv.id}/pdf-link`); window.open(url, '_blank', 'noopener'); })}, 'PDF'));
+  if (inv.register === 'sales') actions.push(h('button', {class: 'btn', onclick: () => guard(async () => { const {url} = await get(`/api/invoices/${inv.id}/pdf-link`); window.open(apiUrl(url), '_blank', 'noopener'); })}, 'PDF'));
   const cp = inv.counterparty_snapshot || {};
   clear(main, pageHeader(`${DOC_TYPE[inv.doc_type] || ''} ${inv.series} ${inv.number}`, h('a', {class: 'btn btn-small', href: `#/${base}`}, '‹ Sąrašas'), ...actions),
     h('div', {class: 'cols'},

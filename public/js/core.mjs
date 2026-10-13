@@ -26,6 +26,11 @@ function append(el, children) {
 export const clear = (el, ...children) => { el.replaceChildren(); append(el, children); return el; };
 
 // ---------------------------------------------------------------- API
+// Test environments live under a path prefix (e.g. /ieva); the server writes it into <meta name="app-base">.
+export const BASE = document.querySelector('meta[name="app-base"]')?.content || '';
+export const ENV_LABEL = document.querySelector('meta[name="app-env"]')?.content || '';
+/** Server path ("/api/…") → URL in this environment ("/ieva/api/…"). */
+export const apiUrl = (u) => (typeof u === 'string' && u.startsWith('/') && !u.startsWith('//') ? BASE + u : u);
 let csrf = '';
 export const setCsrf = (v) => { csrf = v; };
 export class ApiError extends Error { constructor(status, body) { super(body?.error || `Klaida ${status}`); this.status = status; this.body = body; } }
@@ -35,7 +40,7 @@ export async function api(method, url, body, {raw = false} = {}) {
   if (method !== 'GET') opts.headers['x-csrf-token'] = csrf;
   if (body instanceof FormData) opts.body = body;
   else if (body !== undefined) { opts.headers['content-type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  const res = await fetch(url, opts);
+  const res = await fetch(apiUrl(url), opts);
   if (res.status === 401 && !url.endsWith('/api/login')) { window.dispatchEvent(new CustomEvent('unauthenticated')); throw new ApiError(401, {error: 'Prisijunkite iš naujo.'}); }
   if (raw) return res;
   const text = await res.text();
@@ -51,7 +56,7 @@ export const del = (u) => api('DELETE', u);
 export function upload(url, formData, onProgress) {
   return new Promise((resolve, reject) => {
     const x = new XMLHttpRequest();
-    x.open('POST', url);
+    x.open('POST', apiUrl(url));
     x.setRequestHeader('x-csrf-token', csrf);
     x.upload.onprogress = (e) => e.lengthComputable && onProgress?.(Math.round((e.loaded / e.total) * 100));
     x.onload = () => { let d; try { d = JSON.parse(x.responseText); } catch { d = {error: x.responseText}; } x.status < 300 ? resolve(d) : reject(new ApiError(x.status, d)); };
@@ -62,10 +67,10 @@ export function upload(url, formData, onProgress) {
 
 /** Open a protected file via a short-lived signed link. */
 export async function openFile(fileId, {download = false} = {}) {
-  const {url} = await post(`/api/files/${fileId}/link`);
+  const url = apiUrl((await post(`/api/files/${fileId}/link`)).url);
   if (download) { const a = h('a', {href: url + '&download=1'}); document.body.append(a); a.click(); a.remove(); } else window.open(url, '_blank', 'noopener');
 }
-export async function fileUrl(fileId) { return (await post(`/api/files/${fileId}/link`)).url; }
+export async function fileUrl(fileId) { return apiUrl((await post(`/api/files/${fileId}/link`)).url); }
 
 // ---------------------------------------------------------------- formatting
 const nf = new Intl.NumberFormat('lt-LT', {minimumFractionDigits: 2, maximumFractionDigits: 2});

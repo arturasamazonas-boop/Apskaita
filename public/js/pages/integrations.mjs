@@ -1,5 +1,5 @@
 // Integracijos: Saleor and OpenCart connections, sync status, counts, errors, retry, status mapping, setup instructions.
-import {h, clear, get, post, put, pageHeader, section, table, dateTime, guard, select, input, field, can, modal, toast} from '../core.mjs';
+import {h, clear, get, post, put, pageHeader, section, table, dateTime, guard, select, input, field, can, modal, toast, apiUrl} from '../core.mjs';
 
 export async function render(main, rest, state) {
   const [stores, defaults, jobs] = await Promise.all([get('/api/stores'), get('/api/stores/defaults'), get('/api/jobs?status=dead')]);
@@ -25,7 +25,7 @@ export async function render(main, rest, state) {
 
 function storeCard(s, defaults, state, reload) {
   const run = s.last_run;
-  const hookUrl = `${location.origin}/api/webhooks/${s.platform}/${s.id}`;
+  const hookUrl = `${location.origin}${apiUrl(`/api/webhooks/${s.platform}/${s.id}`)}`;
   return section(`${s.name} (${s.platform === 'saleor' ? 'Saleor' : 'OpenCart'})${s.is_demo ? ' — DEMO' : ''}`,
     s.is_demo ? h('div', {class: 'banner'}, 'DEMONSTRACINĖ jungtis: naudojami testiniai duomenys iš fixtures/stores, ne tikra parduotuvė.') : null,
     h('dl', {class: 'dl'}, h('dt', null, 'Adresas'), h('dd', null, s.base_url), h('dt', null, 'Sąskaitos'), h('dd', null, s.invoice_mode === 'issue_here' ? 'Išrašo ši programa (parduotuvė sąskaitų neišrašo)' : 'Importuojamos parduotuvės sąskaitos (ši programa numerių nesuteikia)'),

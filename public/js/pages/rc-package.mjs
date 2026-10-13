@@ -1,5 +1,5 @@
 // Finansinių ataskaitų rinkinys Registrų centrui: forms by company size, RC checks, the set as one PDF, line data for the RC e-form.
-import {h, clear, get, pageHeader, section, guard, select, input, field, toast, today} from '../core.mjs';
+import {h, clear, get, pageHeader, section, guard, select, input, field, toast, today, apiUrl} from '../core.mjs';
 
 const nf0 = new Intl.NumberFormat('lt-LT', {maximumFractionDigits: 0});
 const plain = (v) => (v === null || v === undefined || v === '' ? '' : String(Number(v) === 0 ? 0 : v).replace(/\.00$/, '').replace('.', ','));
@@ -50,7 +50,7 @@ export async function render(main) {
     const p = await get(`/api/rc-package?${qs()}`);
     if (my === seq) draw(p); // ignore an answer for an older choice
   };
-  const dl = (format) => { location.href = `/api/rc-package/file?${qs({format, number: number.value, compiled: today()})}`; };
+  const dl = (format) => { location.href = apiUrl(`/api/rc-package/file?${qs({format, number: number.value, compiled: today()})}`); };
   year.addEventListener('change', () => { chosen = null; guard(load); });
   category.addEventListener('change', () => { chosen = null; guard(load); });
   clear(main, pageHeader('Rinkinys Registrų centrui',

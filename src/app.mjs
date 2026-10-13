@@ -29,7 +29,7 @@ import {integrationJobHandlers} from './integrations/sync.mjs';
 
 export async function createApp(config, {pool: givenPool, log = console} = {}) {
   configureFx(config.fxUrl);
-  const pool = givenPool || createPool(config.databaseUrl);
+  const pool = givenPool || createPool(config.databaseUrl, {max: config.dbPoolMax || 10});
   await migrate(pool, (m) => log.info?.(`[db] ${m}`));
   const storage = createStorage(config.storageDir, {backend: config.storageBackend, pool});
   const auth = createAuth({pool, sessionHours: config.sessionHours});
@@ -54,13 +54,13 @@ export async function createApp(config, {pool: givenPool, log = console} = {}) {
 
   async function handle(req, res) {
     const url = new URL(req.url, 'http://localhost');
-    if (!url.pathname.startsWith('/api/')) return serveStatic(res, path.join(ROOT, 'public'), url.pathname);
+    if (!url.pathname.startsWith('/api/')) return serveStatic(res, path.join(ROOT, 'public'), url.pathname, {basePath: config.basePath || '', envLabel: config.envLabel || ''});
     const started = Date.now();
     try {
       const m = router.match(req.method, url.pathname);
       if (!m) throw new AppError(404, 'not_found', 'Maršrutas nerastas.');
       const cookies = parseCookies(req.headers.cookie);
-      const token = cookies.sid || '';
+      const token = cookies[config.cookieName || 'sid'] || '';
       const session = await auth.session(token);
       const ctx = {req, res, url, params: m.params, query: Object.fromEntries(url.searchParams), user: session?.user || null, session, token, deps};
       if (!m.route.opts.public && !ctx.user) throw new AppError(401, 'unauthenticated', 'Prisijunkite.');
