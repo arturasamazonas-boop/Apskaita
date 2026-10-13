@@ -20,7 +20,7 @@ Menu: **Finansai → Palūkanos** (`#/palukanos`).
 
 ## Reading the agreement
 
-Upload the agreement (PDF, DOCX, JPG/PNG) with **Įkelti paskolos sutartį**. The file is stored in the document
+Drag the agreement (PDF, DOCX, JPG/PNG) onto the drop area on the Palūkanos page, or click the area to choose the file. The file is stored in the document
 vault as a contract tagged `paskola`, and its text is read (PDF text layer, DOCX, or OCR for scans).
 `src/loans/contract-parser.mjs` then finds the following:
 
@@ -43,8 +43,27 @@ agreements but have no loan yet are listed on the Palūkanos page with **Nuskait
 **Skaičiavimas ranka** takes an amount, the day the money arrived, an end date, the rate and the year basis, plus the
 same repayment-day checkbox. The result can be saved as a loan.
 
+## Accrual to the ledger (palūkanų kaupimas DK)
+
+The loan card and the list have **Kaupti palūkanas DK iki …**. The list version accrues every active loan, one entry
+per loan. An accrual books the interest calculated to that date minus the interest already accrued, using the loan's
+own repayment-day setting. A repayment or rate change entered later is therefore caught up by the next accrual; a
+negative difference books the opposite entry (a correction).
+
+| Loan | Entry | Posting roles (Nustatymai → Kontavimo susiejimai) |
+|---|---|---|
+| Received (gauta) | D 6802 Palūkanų sąnaudos / K 491 Sukauptos sąnaudos | `interest_expense`, `interest_accrued` |
+| Granted (suteikta) | D 292 Sukauptos pajamos / K 5802 Palūkanų pajamos | `interest_receivable`, `interest_income` |
+
+A loan can override both accounts (**Keisti sąlygas**), for example 6800 for a group company. Rules:
+- One accrual per loan and date. A new accrual must be later than the last one.
+- Only the latest accrual can be cancelled, and cancelling posts a reversing entry.
+- A loan with accruals in the ledger cannot be deleted.
+- A foreign-currency loan is converted at the Lietuvos bankas rate of the accrual date.
+
+When the interest is paid, book the bank payment against 491 (received loans) or 292 (granted loans).
+
 ## Not included
 
-Interest is calculated, not posted. Accrual entries (D 68xx / K 44xx, or D 24xx / K 58xx for granted loans),
-compound interest, annuity schedules and automatic EURIBOR rates are not done. A EURIBOR change is entered as a
+Compound interest, annuity schedules and automatic EURIBOR rates are not done. A EURIBOR change is entered as a
 rate-change event.

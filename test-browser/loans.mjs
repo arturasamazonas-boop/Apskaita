@@ -27,7 +27,11 @@ try {
   await page.click('.menu-top:text("Finansai")');
   await page.getByRole('menuitem', {name: 'Palūkanos', exact: true}).click();
   await page.waitForSelector('h1:text("Palūkanos")');
-  await page.setInputFiles('input[type=file]', file);
+  // Drag the agreement onto the drop zone.
+  const b64 = (await fs.readFile(file)).toString('base64');
+  const dt = await page.evaluateHandle((b) => { const d = new DataTransfer(); d.items.add(new File([Uint8Array.from(atob(b), (c) => c.charCodeAt(0))], 'paskolos-sutartis.docx')); return d; }, b64);
+  await page.dispatchEvent('.dropzone', 'dragover', {dataTransfer: dt});
+  await page.dispatchEvent('.dropzone', 'drop', {dataTransfer: dt});
   await page.waitForSelector('h1:text("Paskolos sutarties sąlygos")');
   const val = async (label) => page.inputValue('#' + await page.$eval(`label:text-is("${label}")`, (l) => l.htmlFor));
   assert.equal(await val('Palūkanos, % per metus'), '6');
@@ -44,6 +48,13 @@ try {
   await page.waitForFunction(() => /797,26/.test(document.body.textContent));
   await page.check('label:has-text("Įskaičiuoti grąžinimo") input');
   await page.waitForFunction(() => /801,37/.test(document.body.textContent));
+  // Accrue the interest to the ledger (the loan's own setting: without the last day → 797,26).
+  await page.waitForSelector('text=Bus užregistruota');
+  assert.match(await page.textContent('section:has(h2:text("Palūkanų kaupimas DK"))'), /D 6802 .* \/ K 491 .*797,26/);
+  await page.click('button:text("Kaupti palūkanas DK iki 2026-09-30")');
+  await page.click('.modal button.btn-primary');
+  await page.waitForSelector('text=Palūkanos jau sukauptos iki 2026-09-30');
+  await page.waitForSelector('td:text("Užregistruota")');
   if (out) await page.screenshot({path: `${out}/loan-card.png`, fullPage: true});
   // List and the manual calculator.
   await page.click('a:text("← Palūkanos")'); await page.waitForSelector('h1:text("Palūkanos")');

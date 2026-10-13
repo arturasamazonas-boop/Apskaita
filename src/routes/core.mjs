@@ -392,6 +392,10 @@ export async function sourceLink(db, e) {
     const r = (await db.query('SELECT id, as_of FROM fx_revaluations WHERE id=$1', [e.source_id])).rows[0];
     return r ? {type: 'fx_revaluation', id: r.id, label: `Valiutų perkainojimas ${String(r.as_of instanceof Date ? r.as_of.toISOString() : r.as_of).slice(0, 10)}`, href: '#/valiutos/perkainojimas'} : null;
   }
+  if (e.source_type === 'loan_accrual') {
+    const a = (await db.query('SELECT a.id, a.loan_id, a.as_of, l.contract_no FROM loan_accruals a JOIN loans l ON l.id=a.loan_id WHERE a.id=$1', [e.source_id])).rows[0];
+    return a ? {type: 'loan_accrual', id: a.id, label: `Palūkanų kaupimas ${a.as_of}${a.contract_no ? ` (sutartis ${a.contract_no})` : ''}`, href: `#/palukanos/${a.loan_id}`} : null;
+  }
   if (e.source_type === 'cash_order') {
     const o = (await db.query('SELECT id, series, number FROM cash_orders WHERE id=$1', [e.source_id])).rows[0];
     return o ? {type: 'cash_order', id: o.id, label: `Kasos orderis ${o.series} ${o.number}`, href: `#/kasa/${o.id}`} : null;

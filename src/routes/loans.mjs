@@ -10,6 +10,7 @@ import {uploadFiles, indexVaultDocument} from '../vault/upload.mjs';
 import {loadDocumentForUser, visibilitySql} from '../vault/documents.mjs';
 import {calcInterest, simpleInterest, BASES} from '../loans/interest.mjs';
 import {parseLoanContract, parseAmount} from '../loans/contract-parser.mjs';
+import {loadLoanForAccrual, accrualPreview, postAccrual, cancelAccrual} from '../loans/accrual.mjs';
 
 const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
 const s = (v, n = 300) => (v === null || v === undefined ? '' : String(v).trim().slice(0, n));
@@ -31,6 +32,7 @@ function loanFields(b, partial = false) {
   for (const k of ['include_last_day', 'rate_variable']) if (has(k)) v[k] = b[k] === true || b[k] === 'true';
   if (has('counterparty_id')) v.counterparty_id = b.counterparty_id ? String(b.counterparty_id) : null;
   if (has('status')) v.status = b.status === 'closed' ? 'closed' : 'active';
+  for (const k of ['interest_account', 'accrual_account']) if (has(k)) v[k] = s(b[k], 10) || null;
   return v;
 }
 
@@ -43,10 +45,20 @@ function eventFields(e) {
   return {kind: e.kind, date: e.date, amount: a, rate: null, note: s(e.note, 300), bank_transaction_id: e.bank_transaction_id ? String(e.bank_transaction_id) : null};
 }
 
+async function checkAccounts(db, v) {
+  for (const k of ['interest_account', 'accrual_account']) {
+    if (v[k] && !(await db.query('SELECT 1 FROM accounts WHERE code=$1 AND active AND postable', [v[k]])).rowCount) throw new AppError(400, k, `Sąskaita ${v[k]} nerasta arba į ją kontuoti negalima.`);
+  }
+}
+
 async function loadLoan(db, id) {
   const l = (await db.query(`SELECT l.*, c.name AS cp_name, c.company_code AS cp_code, d.title AS document_title FROM loans l LEFT JOIN counterparties c ON c.id=l.counterparty_id LEFT JOIN documents d ON d.id=l.document_id WHERE l.id=$1`, [id])).rows[0];
   if (!l) throw new AppError(404, 'not_found', 'Paskola nerasta.');
   l.events = (await db.query(`SELECT * FROM loan_events WHERE loan_id=$1 ORDER BY event_date, id`, [id])).rows;
+  l.accruals = (await db.query(`SELECT a.*, u.name AS user_name FROM loan_accruals a LEFT JOIN users u ON u.id=a.created_by WHERE a.loan_id=$1 ORDER BY a.as_of, a.id`, [id])).rows;
+  const posted = l.accruals.filter((a) => a.status === 'posted');
+  l.accrued = posted.reduce((t, a) => t + Number(a.amount), 0).toFixed(2);
+  l.lastAccrual = posted.at(-1)?.as_of || null;
   return l;
 }
 
@@ -115,7 +127,7 @@ export function register(r, deps) {
     for (const {id} of ids) {
       const l = await loadLoan(pool, id);
       const c = interestFor(l, asOf, boolQ(query.includeLastDay, l.include_last_day));
-      items.push({...l, events: undefined, calc: {...c, periods: undefined}});
+      items.push({...l, events: undefined, accruals: undefined, calc: {...c, periods: undefined}});
     }
     return {asOf, items, bases: BASES};
   });
@@ -147,13 +159,50 @@ export function register(r, deps) {
     return proposalFor(deps, user, res.documentId);
   });
   r.post('/api/loans/read-document/:id', async ({user, params}) => { requireCap(user, 'write'); return proposalFor(deps, user, params.id); });
+  // ------------------------------------------------------------ palūkanų kaupimas DK
+  r.post('/api/loans/accruals', async ({req, user}) => {
+    requireCap(user, 'approve');
+    const b = await readJson(req);
+    if (!isDate(b.asOf)) throw new AppError(400, 'date', 'Nurodykite datą.');
+    const ids = (await pool.query(`SELECT id, contract_no, counterparty_name FROM loans WHERE status='active' ORDER BY id`)).rows;
+    const results = [];
+    for (const l of ids) {
+      const label = `${l.contract_no || `#${l.id}`}${l.counterparty_name ? ` – ${l.counterparty_name}` : ''}`;
+      const p = await accrualPreview(pool, await loadLoanForAccrual(pool, l.id), b.asOf);
+      if (p.blockers.length) { results.push({loanId: String(l.id), label, status: 'skipped', message: p.blockers.join(' ')}); continue; }
+      try {
+        const r2 = await tx(pool, (db) => postAccrual(db, user, l.id, b.asOf));
+        await audit(pool, {userId: user.id, action: 'loan.accrual', entityType: 'loan', entityId: l.id, details: r2});
+        results.push({loanId: String(l.id), label, status: 'posted', ...r2});
+      } catch (e) { results.push({loanId: String(l.id), label, status: 'error', message: e.message}); }
+    }
+    return {asOf: b.asOf, results};
+  });
+  r.post('/api/loans/:id/accruals', async ({req, user, params}) => {
+    requireCap(user, 'approve');
+    const b = await readJson(req);
+    if (!isDate(b.asOf)) throw new AppError(400, 'date', 'Nurodykite datą.');
+    const r2 = await tx(pool, (db) => postAccrual(db, user, params.id, b.asOf));
+    await audit(pool, {userId: user.id, action: 'loan.accrual', entityType: 'loan', entityId: params.id, details: r2});
+    return r2;
+  });
+  r.post('/api/loans/:id/accruals/:aid/cancel', async ({req, user, params}) => {
+    requireCap(user, 'approve');
+    const reason = s((await readJson(req)).reason, 300);
+    if (reason.length < 5) throw new AppError(400, 'reason', 'Nurodykite priežastį (bent 5 simboliai).');
+    const r2 = await tx(pool, (db) => cancelAccrual(db, user, params.id, params.aid, reason));
+    await audit(pool, {userId: user.id, action: 'loan.accrual_cancel', entityType: 'loan', entityId: params.id, details: {accrualId: params.aid, reason}});
+    return r2;
+  });
   r.get('/api/loans/:id', async ({user, params, query}) => {
     requireCap(user, 'read');
     const l = await loadLoan(pool, params.id);
     const asOf = isDate(query.asOf) ? query.asOf : todayVilnius();
     const calc = interestFor(l, asOf, boolQ(query.includeLastDay, l.include_last_day));
     const matches = await bankMatches(pool, {direction: l.direction, principal: l.principal, counterpartyCode: l.cp_code, counterpartyName: l.counterparty_name || l.cp_name, from: l.contract_date});
-    return {...l, calc, bankMatches: matches, bases: BASES};
+    const accrual = await accrualPreview(pool, l, asOf);
+    const names = Object.fromEntries((await pool.query('SELECT code, name FROM accounts WHERE code = ANY($1)', [[accrual.debit, accrual.credit]])).rows.map((a) => [a.code, a.name]));
+    return {...l, calc, bankMatches: matches, bases: BASES, accrual: {...accrual, debitName: names[accrual.debit] || '', creditName: names[accrual.credit] || ''}};
   });
   r.post('/api/loans', async ({req, user}) => {
     requireCap(user, 'write');
@@ -161,6 +210,7 @@ export function register(r, deps) {
     const v = loanFields(b);
     const events = (Array.isArray(b.events) ? b.events : []).map(eventFields);
     return tx(pool, async (db) => {
+      await checkAccounts(db, v);
       let documentId = null;
       if (b.document_id) documentId = (await loadDocumentForUser(db, user, b.document_id)).id;
       if (!v.counterparty_id && b.counterparty_code) v.counterparty_id = (await db.query('SELECT id FROM counterparties WHERE company_code=$1 LIMIT 1', [s(b.counterparty_code, 20)])).rows[0]?.id || null;
@@ -175,6 +225,7 @@ export function register(r, deps) {
   r.put('/api/loans/:id', async ({req, user, params}) => {
     requireCap(user, 'write');
     const v = loanFields(await readJson(req), true);
+    await checkAccounts(pool, v);
     const keys = Object.keys(v);
     if (!keys.length) return loadLoan(pool, params.id);
     const row = (await pool.query(`UPDATE loans SET ${keys.map((k, i) => `${k}=$${i + 2}`).join(', ')}, updated_at=now() WHERE id=$1 RETURNING id`, [params.id, ...keys.map((k) => v[k])])).rows[0];
@@ -185,6 +236,8 @@ export function register(r, deps) {
   r.delete('/api/loans/:id', async ({user, params}) => {
     requireCap(user, 'write');
     const l = await loadLoan(pool, params.id);
+    if (l.accruals.some((a) => a.status === 'posted')) throw new AppError(409, 'accrued', 'Paskolos palūkanos sukauptos DK – pirmiausia atšaukite kaupimus.');
+    await pool.query('DELETE FROM loan_accruals WHERE loan_id=$1', [l.id]);
     await pool.query('DELETE FROM loans WHERE id=$1', [l.id]);
     await audit(pool, {userId: user.id, action: 'loan.delete', entityType: 'loan', entityId: l.id, details: {contract_no: l.contract_no, principal: l.principal, events: l.events.length}});
     return {ok: true};

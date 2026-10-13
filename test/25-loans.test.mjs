@@ -121,3 +121,40 @@ test('loans API: read an uploaded agreement, match the bank receipt, interest to
   assert.equal((await acc.del(`/api/loans/${l.body.id}`)).status, 200);
   assert.equal((await acc.get('/api/loans/candidates')).body.length, 1, 'after deleting the loan the agreement is listed again');
 });
+
+test('interest accrual to the ledger: catch-up amounts, received and granted loans, one accrual per date, cancel the latest, bulk', async () => {
+  const pool = t.app.pool;
+  const mk = async (b) => { const r = await acc.post('/api/loans', {annual_rate: '6', basis: 'act365', include_last_day: true, ...b}); assert.equal(r.status, 200, JSON.stringify(r.body)); return r.body.id; };
+  const recv = await mk({direction: 'received', principal: '25000', contract_no: 'K-1', counterparty_name: 'UAB Bankelis', events: [{kind: 'disbursement', date: '2026-03-20', amount: '25000'}]});
+  const lent = await mk({direction: 'granted', principal: '10000', annual_rate: '5', contract_no: 'S-1', counterparty_name: 'MB Draugas', events: [{kind: 'disbursement', date: '2026-01-01', amount: '10000'}]});
+  const lines = async (entryId) => (await pool.query('SELECT account_code, debit, credit FROM journal_lines WHERE entry_id=$1 ORDER BY debit DESC', [entryId])).rows.map((l) => [l.account_code, l.debit, l.credit]);
+
+  const pv = (await acc.get(`/api/loans/${recv}?asOf=2026-06-30`)).body.accrual;
+  assert.deepEqual([pv.interestTotal, pv.booked, pv.amount, pv.debit, pv.credit, pv.from], ['423.29', '0.00', '423.29', '6802', '491', '2026-03-20']); // 25 000 × 6 % × 103 / 365
+  assert.equal((await ro.post(`/api/loans/${recv}/accruals`, {asOf: '2026-06-30'})).status, 403);
+  const a1 = await acc.post(`/api/loans/${recv}/accruals`, {asOf: '2026-06-30'});
+  assert.equal(a1.status, 200, JSON.stringify(a1.body));
+  assert.deepEqual(await lines(a1.body.entryId), [['6802', '423.29', '0.00'], ['491', '0.00', '423.29']]);
+  assert.equal((await acc.post(`/api/loans/${recv}/accruals`, {asOf: '2026-06-30'})).status, 422, 'already accrued to that date');
+  // A repayment of 5 000 on 30.06 (the day itself is charged); the next accrual books only the rest to 30.09.
+  await acc.post(`/api/loans/${recv}/events`, {kind: 'repayment', date: '2026-06-30', amount: '5000'});
+  const a2 = await acc.post(`/api/loans/${recv}/accruals`, {asOf: '2026-09-30'});
+  assert.deepEqual([a2.body.amount, a2.body.from], ['302.46', '2026-07-01']); // 725.75 − 423.29
+  // Granted loan: accrued income.
+  const g = await acc.post(`/api/loans/${lent}/accruals`, {asOf: '2026-03-31'});
+  assert.deepEqual(await lines(g.body.entryId), [['292', '123.29', '0.00'], ['5802', '0.00', '123.29']]); // 10 000 × 5 % × 90 / 365
+  // Only the latest accrual can be cancelled; cancelling reverses the entry.
+  const list = (await acc.get(`/api/loans/${recv}?asOf=2026-09-30`)).body;
+  assert.deepEqual(list.accruals.map((x) => [x.as_of, x.amount]), [['2026-06-30', '423.29'], ['2026-09-30', '302.46']]);
+  assert.equal((await acc.post(`/api/loans/${recv}/accruals/${list.accruals[0].id}/cancel`, {reason: 'bandymas'})).status, 409);
+  assert.equal((await acc.post(`/api/loans/${recv}/accruals/${list.accruals[1].id}/cancel`, {reason: 'klaidinga data'})).status, 200);
+  assert.equal((await acc.get(`/api/loans/${recv}?asOf=2026-09-30`)).body.accrual.booked, '423.29');
+  assert.equal((await acc.del(`/api/loans/${recv}`)).status, 409, 'a loan with accruals in the ledger cannot be deleted');
+  // Bulk accrual to the year end: one entry per loan, the rest since the last accrual.
+  const bulk = await acc.post('/api/loans/accruals', {asOf: '2026-12-31'});
+  assert.deepEqual(bulk.body.results.map((x) => [x.label.split(' ')[0], x.status, x.amount]), [['K-1', 'posted', '604.93'], ['S-1', 'posted', '376.71']]); // 500.00 for the year − 123.29
+  // 6802 balance = interest to 31.12 on the received loan: 25 000 × 6 % × 103 / 365 + 20 000 × 6 % × 184 / 365.
+  const bal = (await pool.query(`SELECT sum(debit - credit) AS s FROM journal_lines WHERE account_code='6802'`)).rows[0].s;
+  assert.equal(bal, '1028.22');
+  assert.equal((await acc.get(`/api/loans?asOf=2026-12-31&includeLastDay=true`)).body.items.find((x) => x.id === recv).accrued, '1028.22');
+});
