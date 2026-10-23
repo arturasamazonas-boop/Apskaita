@@ -45,7 +45,7 @@ try {
   await page.waitForSelector('h1:text("SAM pranešimas Sodrai")');
   await page.fill('input[type=month]', '2026-09'); await page.dispatchEvent('input[type=month]', 'change');
   await page.waitForFunction(() => document.querySelectorAll('.eds-form').length === 2);
-  assert.equal(await chars(page, '.eds-form >> nth=1 >> .eds-field[data-field="PaymentSum_1"]'), '28580');
+  assert.equal(await chars(page, '.eds-form >> nth=1 >> .eds-field[data-field="PaymentSum_1"]'), '42540');
   if (out) await page.screenshot({path: `${out}/sam.png`, fullPage: true});
   const [f2] = await Promise.all([page.waitForEvent('download'), page.click('button:text("EDAS failas (.ffdata)")')]);
   assert.equal(f2.suggestedFilename(), 'SAM_2026-09.ffdata');

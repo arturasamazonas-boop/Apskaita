@@ -79,9 +79,11 @@ export function register(r, {pool}) {
   r.get('/api/fixed-assets/candidates', async ({user}) => {
     requireCap(user, 'read');
     // Purchase invoice lines booked to 11/12 accounts that have no asset card yet.
-    return (await pool.query(`SELECT l.id, l.description, l.net, l.account_code, i.issue_date, i.series, i.number, (i.counterparty_snapshot->>'name') AS supplier
+    // The cost is what was booked to the asset account: net plus non-deductible VAT (credit notes are not candidates).
+    return (await pool.query(`SELECT l.id, l.description, l.quantity, l.account_code, i.issue_date, i.series, i.number, (i.counterparty_snapshot->>'name') AS supplier,
+        l.net + CASE WHEN l.vat_treatment = 'non_deductible' THEN l.vat ELSE 0 END AS net
       FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id LEFT JOIN fixed_assets a ON a.invoice_line_id=l.id
-      WHERE i.register='purchase' AND (l.account_code LIKE '11%' OR l.account_code LIKE '12%') AND a.id IS NULL ORDER BY i.issue_date DESC LIMIT 200`)).rows;
+      WHERE i.register='purchase' AND i.doc_type <> 'credit_note' AND l.net > 0 AND (l.account_code LIKE '11%' OR l.account_code LIKE '12%') AND a.id IS NULL ORDER BY i.issue_date DESC LIMIT 200`)).rows;
   });
   r.get('/api/fixed-assets/:id', async ({user, params}) => {
     requireCap(user, 'read');

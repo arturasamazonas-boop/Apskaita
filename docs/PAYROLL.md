@@ -26,6 +26,7 @@ All amounts are exact decimals, rounded half-up to cents on each tax line (`src/
   - zero if the employee has not applied for it;
   - a fixed amount if one is set on the card (reduced working capacity, e.g. 1127 € or 1057 €);
   - otherwise 747 € when gross ≤ MMA, or 747 − 0.49 × (gross − MMA) above it.
+  - Where the year's tariff row has a second tier (2025: above 2387.29 €, NPD = 400 − 0.18 × (gross − 642)), that formula applies above the threshold.
   - NPD is never below 0 and never more than gross.
 - **GPM** = (gross − NPD) × 20 %.
 - **Employee Sodra:** VSD = gross × 12.52 % and PSD = gross × 6.98 %. The extra pension contribution is gross × 3 % if the employee joined it.

@@ -47,8 +47,10 @@ function pieces(a, b, basis) {
  * events: [{date, kind: 'disbursement'|'repayment'|'rate_change'|'interest_payment', amount?, rate?}]
  * Returns periods [{from, to (inclusive), days, balance, rate, basisDays, interest}], total, paid, due, balance.
  */
-export function calcInterest({events = [], rate, basis = 'act365', asOf, includeLastDay = false}) {
-  const end = toDay(asOf) + (includeLastDay ? 1 : 0);
+export function calcInterest({events = [], rate, basis = 'act365', asOf, includeLastDay = false, includeEndDay = includeLastDay}) {
+  // includeLastDay: a repayment day still earns interest on the repaid amount. includeEndDay: the "to" date itself
+  // earns interest (always for ledger accruals – the last day of the month belongs to that month).
+  const end = toDay(asOf) + (includeEndDay ? 1 : 0);
   const changes = [];
   let paid = 0n;
   for (const e of events) {

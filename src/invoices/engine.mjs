@@ -5,6 +5,8 @@ import {money, toUnits, qty as normQty, divRound, fromUnits} from '../lib/money.
 import {normalizeVat, normalizeName, numberKey, ltVatValid} from '../extraction/ids.mjs';
 import {classifyLine} from './classify.mjs';
 
+const EU = new Set(['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'XI']);
+
 export const DOC_TYPES = ['vat_invoice', 'invoice', 'credit_note', 'debit_note', 'proforma', 'contract', 'receipt', 'unknown'];
 export const POSTABLE = ['vat_invoice', 'invoice', 'credit_note', 'debit_note'];
 export const LINE_TYPES = ['expense', 'inventory', 'service', 'asset', 'prepaid', 'revenue_goods', 'revenue_services', 'other'];
@@ -80,7 +82,7 @@ export function proposalFromExtraction(ex, ctx) {
     let quantity = fv(l.quantity), unitPrice = fv(l.unitPrice), net = fv(l.net);
     if (!quantity && net) { quantity = '1'; provenance[`lines.${i}.quantity`] = {status: 'defaulted', reason: 'Kiekis nenurodytas – laikoma 1.'}; }
     if (!unitPrice && net && quantity) unitPrice = fromUnits(divRound(toUnits(net, 4) * 10000n, toUnits(quantity, 4)), 4);
-    return {description: fv(l.description), sku: fv(l.sku), quantity, unit: fv(l.unit), unitPrice, discount, sourceNet: net, vatRate, taxCode: '', accountCode: '', lineType: '', vatTreatment: '', productId: null, suggestion: null, sourceRef: l.rowSource || null};
+    return {lineId: `x${i + 1}`, description: fv(l.description), sku: fv(l.sku), quantity, unit: fv(l.unit), unitPrice, discount, sourceNet: net, vatRate, taxCode: '', accountCode: '', lineType: '', vatTreatment: '', productId: null, suggestion: null, sourceRef: l.rowSource || null};
   });
   const data = {
     docType, register, registerReason,
@@ -95,6 +97,15 @@ export function proposalFromExtraction(ex, ctx) {
     splitHint: ex.splitHint || null,
     extractionNotes: ex.notes || [],
   };
+  // Credit notes often print positive amounts ("Kredituojama suma 100,00"): booked as negative, with a note.
+  const neg = (v) => (v === '' || v === null || v === undefined || !/^-?\d+(\.\d+)?$/.test(String(v)) ? v : String(v).startsWith('-') ? String(v).slice(1) : `-${v}`);
+  const pos = (v) => /^\d+(\.\d+)?$/.test(String(v || '')) && Number(v) > 0;
+  if (docType === 'credit_note' && (pos(data.sourceTotals.gross) || (!data.sourceTotals.gross && data.lines.some((l) => pos(l.sourceNet))))) {
+    for (const l of data.lines) { if (pos(l.quantity)) l.quantity = neg(l.quantity); else if (pos(l.sourceNet)) l.unitPrice = neg(l.unitPrice); l.sourceNet = pos(l.sourceNet) ? neg(l.sourceNet) : l.sourceNet; }
+    for (const k of ['net', 'vat', 'gross']) if (pos(data.sourceTotals[k])) data.sourceTotals[k] = neg(data.sourceTotals[k]);
+    data.sourceTotals.vatByRate = data.sourceTotals.vatByRate.map((r) => ({...r, amount: pos(r.amount) ? neg(r.amount) : r.amount}));
+    data.extractionNotes = [...data.extractionNotes, 'Kreditinėje sąskaitoje sumos nurodytos teigiamos – apskaitoje jos įrašytos su minuso ženklu (kiekiai neigiami).'];
+  }
   return applyClassification(data, ctx);
 }
 
@@ -225,6 +236,7 @@ export function computeProposal(data, ctx) {
     if (l.lineType === 'prepaid') info(f('lineType'), 'prepaid', `${i + 1} eilutė: ateinančių laikotarpių sąnaudos – paskirstymą registruokite rankiniu įrašu.`);
     // Tax.
     const rate = l.vatRate === '' || l.vatRate === null || l.vatRate === undefined ? null : l.vatRate;
+    if (data.register === 'sales' && !company.vat_registered && l.taxCode && l.taxCode !== 'BE_PVM') err(f('taxCode'), 'not_vat_payer', `${i + 1} eilutė: įmonė nėra PVM mokėtoja – pardavimo sąskaitoje PVM neskaičiuojamas (pasirinkite „Be PVM“).`);
     if (l.taxCode === 'BE_PVM') {
       if (rate !== null && Number(rate) !== 0) err(f('taxCode'), 'tax', `${i + 1} eilutė: „be PVM“, bet nurodytas tarifas ${rate} %.`);
       out.rate = '0';
@@ -233,6 +245,12 @@ export function computeProposal(data, ctx) {
       if (!l.taxCode) err(f('taxCode'), 'tax', `${i + 1} eilutė: nenustatytas PVM kodas${rate !== null ? ` tarifui ${rate} %` : ''}. ${rate !== null && Number(rate) === 9 && data.issueDate >= '2026-01-01' ? '9 % tarifas (PVM2) galiojo iki 2025-12-31 – patikrinkite dokumentą.' : 'Pasirinkite PVM kodą.'}`);
       else if (!tc) err(f('taxCode'), 'tax', `${i + 1} eilutė: PVM kodas ${l.taxCode} negalioja ${data.issueDate} datai.`);
       else if (tc.rate !== null && rate !== null && Number(tc.rate) !== Number(rate)) err(f('taxCode'), 'tax', `${i + 1} eilutė: kodas ${l.taxCode} (${tc.rate} %) nesutampa su tarifu ${rate} %.`);
+      if (tc && tc.applies_to && tc.applies_to !== 'both' && tc.applies_to !== data.register) err(f('taxCode'), 'tax', `${i + 1} eilutė: PVM kodas ${l.taxCode} skirtas tik ${tc.applies_to === 'sales' ? 'pardavimams' : 'pirkimams'}.`);
+      // 0 % supply of goods to another EU member state (PVMĮ 49 str.) needs the buyer's VAT code of that state.
+      if (data.register === 'sales' && l.taxCode === 'PVM13') {
+        const cc = (cpVat.match(/^[A-Z]{2}/) || [''])[0];
+        if (!cpVat || cc === 'LT' || !EU.has(cc === 'EL' ? 'GR' : cc)) err('counterparty.vatCode', 'eu_vat_required', `${i + 1} eilutė: PVM13 (0 % tiekimas į ES) taikomas tik pirkėjui, turinčiam kitos ES valstybės PVM mokėtojo kodą (PVMĮ 49 str.). Įrašykite pirkėjo PVM kodą arba taikykite 21 %.`);
+      }
       out.rate = tc?.rate ?? (rate || '0');
       out.isafCode = tc?.isaf_code || '';
     }
@@ -308,7 +326,7 @@ export function computeProposal(data, ctx) {
   for (const d of dup.posted || []) err('number', 'duplicate_posted', `Dublikatas: ši sąskaita jau užregistruota (${d.label}). Antrą kartą registruoti negalima.`);
   if (dup.sameFile) err('file', 'duplicate_file', `Identiškas failas jau įkeltas (dokumentas #${dup.sameFile}).`);
   for (const d of dup.open || []) if (!ack[`dup:${d.documentId}`]) err('number', 'duplicate_open', `Galimas dublikatas: kitas dokumentas #${d.documentId} turi tą patį tiekėją ir numerį (${d.label}). Atmeskite vieną iš jų arba patvirtinkite, kad tai skirtingi dokumentai.`);
-  for (const d of dup.near || []) if (!ack[`near:${d.id}`]) err('number', 'duplicate_near', `Galimas dublikatas: ${d.label} – tas pats kontrahentas, data ir suma, bet kitas numeris. Patikrinkite ir patvirtinkite, kad tai skirtingi dokumentai.`);
+  for (const d of dup.near || []) if (!ack[`near:${d.id}`]) err('number', 'duplicate_near', `Galimas dublikatas: ${d.label} (sąskaita #${d.id}) – tas pats kontrahentas, data ir suma, bet kitas numeris. Patikrinkite ir patvirtinkite, kad tai skirtingi dokumentai.`);
 
   // Foreign currency: every amount converted to EUR; lines, VAT and the entry are then built from the EUR amounts.
   const fx = data.currency && data.currency !== 'EUR' && Number(data.fxRate) > 0 && lines.length && lines.every((l) => l.net !== null)

@@ -179,6 +179,7 @@ async function route() {
   });
   closeMenus();
   document.body.classList.remove('nav-open');
+  main.onkeydown = null; // page-specific shortcuts (e.g. Ctrl+Enter in the review) never outlive their page
   clear(main, h('div', {class: 'loading'}, 'Kraunama…'));
   try {
     if (key === 'pradzia') return onboarding();

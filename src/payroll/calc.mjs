@@ -7,12 +7,15 @@ export function pct(amount, rate) { return fromUnits(divRound(toUnits(amount, 2)
 /** a × b / c rounded to cents (a in cents-precision money, b and c plain decimals up to 4 places). */
 export function mulDiv(a, b, c) { return fromUnits(divRound(toUnits(a, 2) * toUnits(b, 4), toUnits(c, 4)), 2); }
 
-/** Monthly NPD: npd_max when DU ≤ MMA, otherwise npd_max − coef × (DU − MMA), never below 0 or above DU. */
+/** Monthly NPD: npd_max when DU ≤ MMA, otherwise npd_max − coef × (DU − MMA) (2025: above npd2_from the second tier), never below 0 or above DU. */
 export function npdFor(gross, p, {apply = true, fixed = null} = {}) {
   if (!apply || money.cmp(gross, '0') <= 0) return '0.00';
   if (fixed !== null && fixed !== undefined && fixed !== '') return money.min(money.norm(fixed), gross);
   let npd = money.norm(p.npd_max);
-  if (money.cmp(gross, p.mma) > 0) npd = money.sub(npd, fromUnits(divRound(toUnits(money.sub(gross, p.mma), 2) * toUnits(p.npd_coef, 4), 10000n), 2));
+  if (p.npd2_from && money.cmp(gross, p.npd2_from) > 0) {
+    // Second tier (2025): npd2_max − npd2_coef × (DU − npd2_base).
+    npd = money.sub(money.norm(p.npd2_max), fromUnits(divRound(toUnits(money.sub(gross, p.npd2_base), 2) * toUnits(p.npd2_coef, 4), 10000n), 2));
+  } else if (money.cmp(gross, p.mma) > 0) npd = money.sub(npd, fromUnits(divRound(toUnits(money.sub(gross, p.mma), 2) * toUnits(p.npd_coef, 4), 10000n), 2));
   return money.min(money.max(npd, '0'), gross);
 }
 

@@ -27,6 +27,10 @@ export function register(r, deps) {
     if (!ibanValid(iban)) throw new AppError(400, 'bad_iban', 'Netinkamas IBAN (patikrinkite kontrolinius skaitmenis).');
     const acc = (await pool.query('SELECT code FROM accounts WHERE code=$1 AND active', [b.ledger_account || '2710'])).rows[0];
     if (!acc) throw new AppError(400, 'bad_account', 'Didžiosios knygos sąskaita nerasta.');
+    // A foreign-currency account needs its own ledger account: revaluation restates the whole account balance.
+    const ccy = (b.currency || 'EUR').toUpperCase().slice(0, 3);
+    const shared = (await pool.query('SELECT name, currency FROM bank_accounts WHERE ledger_account=$1', [acc.code])).rows;
+    if (shared.some((x) => x.currency !== ccy || ccy !== 'EUR')) throw new AppError(409, 'shared_ledger', `Sąskaita ${acc.code} jau priskirta banko sąskaitai „${shared[0].name}“ (${shared[0].currency}). Valiutinei banko sąskaitai pasirinkite atskirą DK sąskaitą (pvz. 2711).`);
     const row = (await pool.query(`INSERT INTO bank_accounts(iban, name, bank_name, currency, ledger_account, kind) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
       [iban, String(b.name || iban).slice(0, 100), String(b.bank_name || '').slice(0, 100), (b.currency || 'EUR').toUpperCase().slice(0, 3), acc.code, b.kind === 'processor' ? 'processor' : 'bank'])).rows[0];
     await audit(pool, {userId: user.id, action: 'bank_account.create', entityType: 'bank_account', entityId: row.id, details: {iban}});

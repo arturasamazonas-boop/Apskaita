@@ -79,15 +79,18 @@ export async function manualForm(main, register, state) {
   const cpNew = {name: input(), companyCode: input(), vatCode: input(), address: input(), country: input({value: 'LT'})};
   const f = {issueDate: input({type: 'date', value: today()}), dueDate: input({type: 'date'}), seriesCode: select(series.filter((s) => s.doc_type === 'invoice').map((s) => [s.code, `${s.code} (${s.description})`]), 'PP'),
     series: input(), number: input(), orderReference: input(), notes: input()};
-  const taxOpts = [...new Set(taxCodes.filter((t) => t.active).map((t) => t.code))].map((c) => [c, c]);
-  if (register === 'purchase') taxOpts.unshift(['BE_PVM', 'Be PVM']);
+  // Only codes for this register; a company that is not a VAT payer issues sales invoices without VAT.
+  const noVat = register === 'sales' && !state.company?.vat_registered;
+  const taxOpts = noVat ? [] : [...new Set(taxCodes.filter((t) => t.active && (!t.applies_to || t.applies_to === 'both' || t.applies_to === register)).map((t) => t.code))].map((c) => [c, c]);
+  if (register === 'purchase' || noVat) taxOpts.unshift(['BE_PVM', 'Be PVM']);
+  const defaultTax = noVat ? 'BE_PVM' : 'PVM1';
   const lines = [];
   const linesBox = h('tbody');
   const accOpts = [['', 'Pagal taisykles / pasirinkite'], ...accounts.filter((a) => a.active && (register === 'sales' ? a.type === 'revenue' : ['expense', 'asset'].includes(a.type))).map((a) => [a.code, `${a.code} ${a.name}`])];
   const addLine = () => {
     const l = {product: select([['', '—'], ...products.items.map((p) => [p.id, `${p.sku ? p.sku + ' ' : ''}${p.name}`])], ''), description: input({'aria-label': 'Aprašymas'}), quantity: input({value: '1', inputmode: 'decimal', 'aria-label': 'Kiekis'}),
-      unitPrice: input({inputmode: 'decimal', 'aria-label': 'Kaina'}), taxCode: select(taxOpts, 'PVM1', {'aria-label': 'PVM'}), accountCode: select(accOpts, '', {'aria-label': 'Sąskaita'})};
-    l.product.onchange = () => { const p = products.items.find((x) => String(x.id) === l.product.value); if (p) { l.description.value = p.name; if (p.unit_price) l.unitPrice.value = p.unit_price; l.taxCode.value = p.tax_code; } };
+      unitPrice: input({inputmode: 'decimal', 'aria-label': 'Kaina'}), taxCode: select(taxOpts, defaultTax, {'aria-label': 'PVM'}), accountCode: select(accOpts, '', {'aria-label': 'Sąskaita'})};
+    l.product.onchange = () => { const p = products.items.find((x) => String(x.id) === l.product.value); if (p) { l.description.value = p.name; if (p.unit_price) l.unitPrice.value = p.unit_price; if (!noVat) l.taxCode.value = p.tax_code; } };
     lines.push(l);
     linesBox.append(h('tr', null, h('td', null, l.product), h('td', null, l.description), h('td', null, l.quantity), h('td', null, l.unitPrice), h('td', null, l.taxCode), h('td', null, l.accountCode)));
   };

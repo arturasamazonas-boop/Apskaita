@@ -48,9 +48,9 @@ try {
   await page.waitForFunction(() => /797,26/.test(document.body.textContent));
   await page.check('label:has-text("Įskaičiuoti grąžinimo") input');
   await page.waitForFunction(() => /801,37/.test(document.body.textContent));
-  // Accrue the interest to the ledger (the loan's own setting: without the last day → 797,26).
+  // Accrue the interest to the ledger: the accrual date itself always counts (cut-off) → 801,37.
   await page.waitForSelector('text=Bus užregistruota');
-  assert.match(await page.textContent('section:has(h2:text("Palūkanų kaupimas DK"))'), /D 6802 .* \/ K 491 .*797,26/);
+  assert.match(await page.textContent('section:has(h2:text("Palūkanų kaupimas DK"))'), /D 6802 .* \/ K 491 .*801,37/);
   await page.click('button:text("Kaupti palūkanas DK iki 2026-09-30")');
   await page.click('.modal button.btn-primary');
   await page.waitForSelector('text=Palūkanos jau sukauptos iki 2026-09-30');

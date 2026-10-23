@@ -31,12 +31,15 @@ async function reportView(body, [key, name, title, mode], rest) {
   const out = h('div');
   const qs = () => new URLSearchParams(mode === 'asOf' ? {asOf: f.asOf.value} : {from: f.from.value, to: f.to.value, ...(mode === 'ledger' && {account: f.account.value}), ...(['sales', 'purchases'].includes(mode) && {groupBy: f.groupBy.value})});
   const load = async () => {
+    // Keep the period in the address, so Back, bookmarks and shared links show the same report.
+    history.replaceState(null, '', `${location.hash.split('?')[0]}?${qs()}`);
     const r = await get(`/api/reports/${name}?${qs()}`);
     const drill = r.drill;
     const cols = r.columns.map(([k, label, type]) => ({label, num: type === 'money', render: (row) => {
       const v = row[k];
       if (drill && k === drill.column && v) {
-        if (drill.to === 'ledger') return h('a', {href: `#/ataskaitos/knyga/${v}?from=${f.from.value}&to=${f.to.value || f.asOf.value}`}, v);
+        // A balance "as of" a date opens the account card for that year up to that date (opening balance included).
+        if (drill.to === 'ledger') return h('a', {href: mode === 'asOf' ? `#/ataskaitos/knyga/${v}?from=${f.asOf.value.slice(0, 4)}-01-01&to=${f.asOf.value}` : `#/ataskaitos/knyga/${v}?from=${f.from.value}&to=${f.to.value}`}, v);
         if (drill.to === 'entry') return h('button', {class: 'link', onclick: () => entryModal(v)}, `#${v}`);
       }
       if (k === 'description' && row.document_id) return h('a', {href: `#/dokumentai/${row.document_id}`}, v);
@@ -64,7 +67,7 @@ async function entryModal(id) {
   const e = await get(`/api/journal/${id}`);
   modal(`Įrašas #${e.id}`, h('div', null, h('p', null, `${date(e.entry_date)} · ${e.description} · šaltinis: ${e.source?.label || e.source_type}`),
     e.source?.documentId ? h('a', {class: 'btn btn-small', href: `#/dokumentai/${e.source.documentId}`}, 'Šaltinio dokumentas') : null,
-    e.source?.type === 'invoice' ? h('a', {class: 'btn btn-small', href: `#/pirkimai/s/${e.source.id}`}, 'Sąskaita') : null,
+    e.source?.type === 'invoice' ? h('a', {class: 'btn btn-small', href: `#/${e.source.register === 'sales' ? 'pardavimai' : 'pirkimai'}/s/${e.source.id}`}, 'Sąskaita') : null,
     e.source?.type === 'bank_transaction' ? h('a', {class: 'btn btn-small', href: `#/bankas/tx/${e.source.id}`}, 'Banko operacija') : null,
     e.source?.type === 'payroll' ? h('a', {class: 'btn btn-small', href: e.source.href}, 'DU žiniaraštis') : null,
     ['depreciation', 'asset_disposal', 'cash_order', 'fx_revaluation'].includes(e.source?.type) ? h('a', {class: 'btn btn-small', href: e.source.href}, e.source.label) : null,
@@ -104,11 +107,29 @@ async function journal(body, state) {
     const d = await get('/api/journal?limit=100');
     clear(list, table([{label: 'Data', render: (e) => date(e.entry_date)}, {label: '#', key: 'id'}, {label: 'Aprašymas', key: 'description'}, {label: 'Šaltinis', key: 'source_type'}, {label: 'Suma', num: true, render: (e) => money(e.amount)},
       {label: 'Eilutės', render: (e) => (e.lines || []).map((l) => `${l.account} ${Number(l.debit) ? 'D ' + l.debit : 'K ' + l.credit}`).join('; ')}, {label: 'Atšauktas', render: (e) => (e.reversed_by ? `#${e.reversed_by}` : '')},
-      {label: '', render: (e) => (can(state.user, 'approve') && ['manual', 'opening', 'cogs', 'adjustment', 'year_close', 'year_transfer'].includes(e.source_type) && !e.reversed_by ? h('button', {class: 'btn btn-small', onclick: () => guard(() => post(`/api/journal/${e.id}/reverse`, {date: today(), reason: 'Atšaukta'}), 'Atšaukta atvirkštiniu įrašu.').then(load)}, 'Atšaukti') : '')}],
+      {label: '', render: (e) => (can(state.user, 'approve') && ['manual', 'opening', 'cogs', 'adjustment', 'year_close', 'year_transfer'].includes(e.source_type) && !e.reversed_by ? h('button', {class: 'btn btn-small', onclick: () => reverseDialog(e)}, 'Atšaukti') : '')},
+      {label: '', render: (e) => (can(state.user, 'approve') && ['manual', 'opening', 'adjustment'].includes(e.source_type) ? h('button', {class: 'btn btn-small', title: 'Užpildyti naujo įrašo formą šio įrašo eilutėmis', onclick: () => copyEntry(e)}, 'Kopijuoti') : '')}],
     d.items, {onRow: (e) => entryModal(e.id)}));
+  };
+  // Reversal: dated on the original entry's date by default (never earlier), with a required reason.
+  const reverseDialog = (e) => {
+    const d = input({type: 'date', value: String(e.entry_date).slice(0, 10), min: String(e.entry_date).slice(0, 10)}), reason = input({required: true, minlength: 5, placeholder: 'Kodėl atšaukiama'});
+    const m = modal(`Atšaukti įrašą #${e.id}`, h('form', {onsubmit: (ev) => guard(async () => {
+      ev.preventDefault();
+      await post(`/api/journal/${e.id}/reverse`, {date: d.value, reason: reason.value});
+      m.close(); toast('Atšaukta atvirkštiniu įrašu.', 'ok'); load();
+    })}, h('p', null, e.description), h('div', {class: 'form-grid'}, field('Atšaukimo data', d, 'Įprastai – ta pati, kaip įrašo'), field('Priežastis', reason)),
+    h('div', {class: 'actions'}, h('button', {class: 'btn btn-primary'}, 'Atšaukti įrašą'))));
   };
   const lines = [];
   const linesBox = h('tbody');
+  let entryKey = crypto.randomUUID(); // one key per filled-in form: a double click cannot post twice
+  const copyEntry = (e) => {
+    linesBox.replaceChildren(); lines.length = 0;
+    for (const l of e.lines || []) { addLine(); const x = lines.at(-1); x.account.value = l.account; x.debit.value = Number(l.debit) ? String(l.debit) : ''; x.credit.value = Number(l.credit) ? String(l.credit) : ''; }
+    addLine(); desc.value = e.description; kind.value = ['manual', 'opening', 'adjustment'].includes(e.source_type) ? e.source_type : 'manual'; entryKey = crypto.randomUUID();
+    desc.scrollIntoView({behavior: 'smooth', block: 'center'}); desc.focus();
+  };
   const accOpts = [['', '—'], ...accounts.filter((a) => a.active).map((a) => [a.code, `${a.code} ${a.name}`])];
   const addLine = () => { const l = {account: select(accOpts, ''), debit: input({inputmode: 'decimal', class: 'w-num'}), credit: input({inputmode: 'decimal', class: 'w-num'}), description: input()}; lines.push(l); linesBox.append(h('tr', null, h('td', null, l.account), h('td', null, l.debit), h('td', null, l.credit), h('td', null, l.description))); };
   addLine(); addLine();
@@ -116,8 +137,10 @@ async function journal(body, state) {
   clear(body, h('h2', null, 'Žurnalas'),
     can(state.user, 'approve') ? section('Naujas rankinis įrašas', h('form', {onsubmit: async (e) => {
       e.preventDefault();
-      const r = await guard(() => post('/api/journal', {date: dt.value, description: desc.value, kind: kind.value, lines: lines.filter((l) => l.account.value).map((l) => ({account: l.account.value, debit: l.debit.value, credit: l.credit.value, description: l.description.value}))}), 'Įrašas užregistruotas.');
-      if (r) load();
+      const btn = e.submitter; if (btn) btn.disabled = true;
+      const r = await guard(() => post('/api/journal', {date: dt.value, description: desc.value, kind: kind.value, idempotencyKey: entryKey, lines: lines.filter((l) => l.account.value).map((l) => ({account: l.account.value, debit: l.debit.value, credit: l.credit.value, description: l.description.value}))}), 'Įrašas užregistruotas.');
+      if (btn) btn.disabled = false;
+      if (r) { linesBox.replaceChildren(); lines.length = 0; addLine(); addLine(); desc.value = ''; entryKey = crypto.randomUUID(); load(); }
     }}, h('div', {class: 'form-grid'}, field('Data', dt), field('Aprašymas', desc), field('Tipas', kind)),
     h('table', {class: 'grid'}, h('thead', null, h('tr', null, ['Sąskaita', 'Debetas', 'Kreditas', 'Pastaba'].map((t) => h('th', null, t)))), linesBox),
     h('div', {class: 'actions'}, h('button', {type: 'button', class: 'btn btn-small', onclick: addLine}, '+ Eilutė'), h('button', {class: 'btn btn-primary'}, 'Registruoti')),

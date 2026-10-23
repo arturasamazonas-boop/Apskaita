@@ -168,3 +168,12 @@ test('interest accrual to the ledger: catch-up amounts, received and granted loa
   assert.equal(bal, '1028.22');
   assert.equal((await acc.get(`/api/loans?asOf=2026-12-31&includeLastDay=true`)).body.items.find((x) => x.id === recv).accrued, '1028.22');
 });
+
+test('accrual counts the accrual date itself (cut-off), and an accrued loan keeps its accounts', async () => {
+  const id = (await acc.post('/api/loans', {direction: 'received', principal: '36500', annual_rate: '10', basis: 'act365', include_last_day: false, events: [{kind: 'disbursement', date: '2027-01-01', amount: '36500'}]})).body.id;
+  // 1–31 January = 31 days × 10 € even though repayment days are not counted for this loan.
+  assert.equal((await acc.get(`/api/loans/${id}?asOf=2027-01-31`)).body.accrual.amount, '310.00');
+  assert.equal((await acc.post(`/api/loans/${id}/accruals`, {asOf: '2027-01-31'})).status, 200);
+  assert.equal((await acc.put(`/api/loans/${id}`, {interest_account: '6800'})).status, 409);
+  assert.equal((await acc.put(`/api/loans/${id}`, {notes: 'Pastaba'})).status, 200, 'other fields still editable');
+});

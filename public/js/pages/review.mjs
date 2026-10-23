@@ -133,9 +133,10 @@ export async function render(main, [docId], state) {
     if (!editable) return null;
     let key = null;
     if (i.code === 'duplicate_open') key = `dup:${(/#(\d+)/.exec(i.message) || [])[1]}`;
-    if (i.code === 'duplicate_near') return null;
-    if (i.code === 'split') return h('button', {type: 'button', class: 'btn btn-small', onclick: splitDoc}, 'Padalinti failą');
-    if (!key) return null;
+    if (i.code === 'duplicate_near') key = `near:${(/sąskaita #(\d+)/.exec(i.message) || [])[1]}`;
+    if (i.code === 'split') return h('span', null, h('button', {type: 'button', class: 'btn btn-small', onclick: splitDoc}, 'Padalinti failą'), ' ',
+      h('button', {type: 'button', class: 'btn btn-small', title: 'Pvz. sąskaita su priedu (aktu, važtaraščiu) – registruojama kaip vienas dokumentas', onclick: () => { model.acknowledgements = {...model.acknowledgements, splitReviewed: true}; markDirty(); toast('Pažymėta kaip vienas dokumentas – išsaugokite.', 'info'); }}, 'Tai vienas dokumentas'));
+    if (!key || /undefined$/.test(key)) return null;
     return h('label', {class: 'check small'}, h('input', {type: 'checkbox', checked: !!model.acknowledgements?.[key], onchange: (e) => { model.acknowledgements = {...model.acknowledgements, [key]: e.target.checked}; markDirty(); }}), ' Patvirtinu, kad tai skirtingi dokumentai');
   }
   function computedBox(v) {
@@ -270,7 +271,13 @@ export async function render(main, [docId], state) {
 
   clear(main, pageHeader(doc.title || `Dokumentas #${doc.id}`, badge(STATUS, doc.processing_status), h('a', {class: 'btn btn-small', href: '#/deze'}, '‹ Atgal į dėžutę')),
     h('div', {class: 'review'}, viewer, h('div', null, form)), bar);
-  main.onkeydown = (e) => { if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); approve(); } };
+  // Ctrl+Enter approves only while this very review is on screen (the handler lives on the shared <main>).
+  const myHash = location.hash;
+  main.onkeydown = (e) => {
+    if (!(e.ctrlKey && e.key === 'Enter')) return;
+    if (location.hash !== myHash || !form.isConnected) { main.onkeydown = null; return; }
+    e.preventDefault(); approve();
+  };
   drawViewer();
   drawForm(p.validation);
   drawBar();

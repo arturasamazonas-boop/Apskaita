@@ -182,6 +182,10 @@ function sanitizeData(input, prev) {
         sourceNet: amt(l.sourceNet), vatRate: amt(l.vatRate), taxCode: str(l.taxCode, 10), accountCode: str(l.accountCode, 8),
         lineType: LINE_TYPES.includes(l.lineType) ? l.lineType : '', vatTreatment: VAT_TREATMENTS.includes(l.vatTreatment) ? l.vatTreatment : '',
         productId: l.productId ? String(l.productId) : null,
+        // Stable line identity: edits, flags and provenance follow the line even when another line is deleted.
+        lineId: str(l.lineId, 24) || old.lineId || `n${Date.now().toString(36)}${i}`,
+        // A tax code chosen by the user stays until the rate changes again.
+        userTax: !!((l.taxCode && l.taxCode !== (old.taxCode || '')) || (old.userTax && l.vatRate === old.vatRate && l.taxCode === old.taxCode)),
         userClassified: !!(old.userClassified || (accountChanged && l.accountCode)),
         suggestion: accountChanged && l.accountCode ? {source: 'manual', explanation: 'Pasirinkta naudotojo.'} : old.suggestion || null,
         sourceRef: old.sourceRef || null,
@@ -195,6 +199,25 @@ function sanitizeData(input, prev) {
   };
   for (const k of ['sourceTotals.net', 'sourceTotals.vat', 'sourceTotals.gross']) if (!/^(-?\d+(\.\d{1,2})?)?$/.test(k.split('.').reduce((o, p) => o?.[p], out) || '')) throw new AppError(400, 'bad_amount', `Netinkama suma: ${k}`);
   return out;
+}
+
+/**
+ * The previous data aligned to the incoming lines by lineId: prev.lines[i] is the old version of incoming line i
+ * (or {} for a new line) and line provenance keys are renumbered, so deleting or reordering lines never moves one
+ * line's flags, corrections or OCR status onto another. Lines without an id (older proposals) align by position.
+ */
+export function alignPrev(prev, inLines) {
+  const old = prev.lines || [];
+  const byId = new Map(old.map((l, i) => [l.lineId, i]).filter(([k]) => k));
+  const map = (inLines || []).map((l, i) => (l?.lineId ? (byId.has(l.lineId) ? byId.get(l.lineId) : -1) : (i < old.length && !old[i]?.lineId ? i : -1)));
+  const provenance = {};
+  for (const [k, v] of Object.entries(prev.provenance || {})) {
+    const m = /^lines\.(\d+)\.(.+)$/.exec(k);
+    if (!m) { provenance[k] = v; continue; }
+    const n = map.indexOf(Number(m[1]));
+    if (n >= 0) provenance[`lines.${n}.${m[2]}`] = v;
+  }
+  return {...prev, lines: map.map((j) => (j >= 0 ? old[j] : {})), provenance};
 }
 
 /** Mark provenance for every changed field; the extracted value is preserved. */
@@ -224,14 +247,15 @@ export async function editProposal(pool, user, proposalId, {contentHash: baseHas
     if (p.document_id) await loadDocumentForUser(db, user, p.document_id);
     if (p.status !== 'open') throw new AppError(409, 'stale', 'Pasiūlymas jau pasikeitė arba užbaigtas. Atnaujinkite puslapį.');
     if (p.content_hash !== baseHash) throw new AppError(409, 'stale', 'Pasiūlymą ką tik pakeitė kitas veiksmas. Atnaujinkite ir pakartokite.');
-    let next = sanitizeData(data, p.data);
-    next.provenance = trackCorrections(p.data, next, user, new Date().toISOString());
+    const prev = alignPrev(p.data, data?.lines);
+    let next = sanitizeData(data, prev);
+    next.provenance = trackCorrections(prev, next, user, new Date().toISOString());
     const ctx = await loadContext(db);
     if (next.register !== p.data.register) next.lines = next.lines.map((l) => ({...l, userClassified: false, taxCode: ''}));
     if (next.issueDate !== p.data.issueDate) next.lines = next.lines.map((l) => ({...l, taxCode: l.taxCode && !String(l.taxCode).startsWith('PVM') ? l.taxCode : ''}));
     next.lines = next.lines.map((l, i) => {
-      const o = p.data.lines?.[i];
-      return (!o || o.vatRate !== l.vatRate) && !l.userTax ? {...l, taxCode: ''} : l;
+      const o = prev.lines?.[i];
+      return (!o?.description && !o?.lineId || o.vatRate !== l.vatRate) && !l.userTax ? {...l, taxCode: ''} : l;
     });
     if (next.counterparty.id) {
       const cp = (await db.query('SELECT id FROM counterparties WHERE id=$1', [next.counterparty.id])).rows[0];

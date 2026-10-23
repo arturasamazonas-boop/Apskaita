@@ -28,8 +28,9 @@ export async function samData(db, {year, month, revised = false, preparator = ''
   const notes = [], errors = [];
   if (!run) errors.push(`Nėra ${period} darbo užmokesčio žiniaraščio.`);
   else if (run.status !== 'approved') errors.push(`${period} žiniaraštis nepatvirtintas – SAM formuojamas iš patvirtinto žiniaraščio.`);
-  const p = run ? (await db.query('SELECT * FROM payroll_params WHERE effective_from <= $1 ORDER BY effective_from DESC LIMIT 1', [`${period}-01`])).rows[0] : null;
   const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10), monthStart = `${period}-01`;
+  // The same parameters as the payroll sheet: those in force on the last day of the month.
+  const p = run ? (await db.query('SELECT * FROM payroll_params WHERE effective_from <= $1 ORDER BY effective_from DESC LIMIT 1', [monthEnd])).rows[0] : null;
   const lines = run && run.status === 'approved' ? (await db.query(`SELECT l.*, e.first_name, e.last_name, e.personal_code, e.sodra_no, e.contract_type, e.pension_extra, e.employment_end
     FROM payroll_lines l JOIN employees e ON e.id=l.employee_id WHERE l.run_id=$1 ORDER BY e.last_name, e.first_name`, [run.id])).rows : [];
   const rows = [], left = [];
@@ -38,8 +39,9 @@ export async function samData(db, {year, month, revised = false, preparator = ''
     // Income of a person who left during the month is reported in the 2-SD notice, not in SAM3SD (rules p. 48–55).
     if (end && end >= monthStart && end <= monthEnd) { left.push(`${l.first_name} ${l.last_name}`); continue; }
     if (money.cmp(l.gross, '0') <= 0) continue;
-    // Combined rate at the start of the month: employee VSD + employer contributions (+ pension accumulation if joined).
-    const rate = money.add(money.add(p.vsd_rate, l.contract_type === 'fixed_term' ? p.employer_rate_fixed : p.employer_rate), l.pension_extra ? p.pension_extra_rate : '0');
+    // Combined rate (P3, "bendras įmokų tarifas", insurer + insured): employee VSD + PSD + employer contributions
+    // (+ pension accumulation if joined), e.g. 12.52 + 6.98 + 1.77 = 21.27 %.
+    const rate = money.add(money.add(money.add(p.vsd_rate, p.psd_rate), l.contract_type === 'fixed_term' ? p.employer_rate_fixed : p.employer_rate), l.pension_extra ? p.pension_extra_rate : '0');
     const income = money.norm(l.gross);
     const pay = fromUnits(divRound(toUnits(income, 2) * toUnits(rate, 2), 10000n), 2);
     const sn = splitSodraNo(l.sodra_no);
@@ -49,7 +51,7 @@ export async function samData(db, {year, month, revised = false, preparator = ''
   }
   if (left.length) notes.push(`Atleisti per mėnesį (pajamos teikiamos 2-SD pranešime, į SAM neįtraukti): ${left.join(', ')}.`);
   if (!company.sodra_code) errors.push('Nenurodytas Sodros draudėjo kodas (Servisas → Įmonės duomenys).');
-  notes.push('Bendras įmokų tarifas = darbuotojo VSD + darbdavio įmokos (+ papildomas pensijų kaupimas, jei dalyvauja). Įmokas nuo pajamų, viršijančių metines lubas, Sodra perskaičiuoja pati (taisyklių 120.4 p.).');
+  notes.push('Bendras įmokų tarifas = darbuotojo VSD + PSD + darbdavio įmokos (+ papildomas pensijų kaupimas, jei dalyvauja). Įmokas nuo pajamų, viršijančių metines lubas, Sodra perskaičiuoja pati (taisyklių 120.4 p.).');
   const totals = {persons: rows.length, income: money.sum(rows.map((r) => r.income)), payment: money.sum(rows.map((r) => r.payment))};
   const pages = Math.ceil(rows.length / PER_PAGE);
   return {period, year, month, company: {name: company.name, code: company.company_code, sodraCode: company.sodra_code, phone: company.phone, email: company.email, manager: company.manager},

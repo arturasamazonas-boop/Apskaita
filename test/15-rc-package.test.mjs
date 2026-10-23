@@ -59,6 +59,19 @@ test('year-end closing into 341 keeps the P&L and the balance consistent; transf
   const bal = (await ro.get('/api/statements/balansas?to=2026-12-31&precision=cents')).body;
   const line = (id) => bal.lines.find((l) => l.id === id).current;
   assert.deepEqual([line('D5.1'), line('D5.2')], ['0.00', '600.00']);
+  // A late correction booked straight into 341 leaves a remainder: a supplementary transfer moves it.
+  const adj = await acc.post('/api/journal', {date: '2025-12-31', description: 'Vėlyvas koregavimas', lines: [{account: '341', debit: '50'}, {account: '2711', credit: '50'}]});
+  assert.equal(adj.status, 200, JSON.stringify(adj.body));
+  assert.equal((await ro.get('/api/year-end?year=2025')).body.remaining341, '-50.00');
+  const t2 = await acc.post('/api/year-end/transfer', {year: 2025});
+  assert.equal(t2.status, 200, JSON.stringify(t2.body));
+  assert.equal(t2.body.supplementary, true);
+  assert.equal((await acc.post('/api/year-end/transfer', {year: 2025})).status, 409);
+  // The closing cannot be reversed while a transfer built on it is live.
+  assert.equal((await acc.post(`/api/journal/${c.body.entryId}/reverse`, {date: '2025-12-31', reason: 'Bandymas'})).status, 409);
+  // Undo the correction so the remaining tests see the original figures.
+  assert.equal((await acc.post(`/api/journal/${t2.body.entryId}/reverse`, {date: '2026-01-01', reason: 'Testo atstatymas'})).status, 200);
+  assert.equal((await acc.post(`/api/journal/${adj.body.id}/reverse`, {date: '2025-12-31', reason: 'Testo atstatymas'})).status, 200);
 });
 
 test('set as one PDF and line data for the RC e-form', async () => {

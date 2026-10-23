@@ -154,6 +154,14 @@ export function register(r, {pool, auth, config}) {
     const b = await readJson(req);
     const used = (await pool.query('SELECT 1 FROM journal_lines WHERE account_code=$1 LIMIT 1', [params.code])).rowCount;
     if (b.type && used) throw new AppError(409, 'used', 'Sąskaita jau naudojama įrašuose – jos tipo keisti negalima.');
+    if (b.active === false) {
+      // A deactivated account cannot be posted to: automatic postings (invoices, bank, payroll, year close) would fail.
+      const a = (await pool.query(`SELECT a.system_role, (SELECT coalesce(sum(debit - credit),0) FROM journal_lines l WHERE l.account_code=a.code) AS bal,
+          (SELECT string_agg(name, ', ') FROM bank_accounts WHERE ledger_account=a.code AND active) AS banks FROM accounts a WHERE a.code=$1`, [params.code])).rows[0];
+      if (a?.system_role) throw new AppError(409, 'role', `Sąskaita ${params.code} naudojama automatiniams įrašams – pirmiausia pakeiskite kontavimo susiejimą (Nustatymai → Kontavimo susiejimai).`);
+      if (a?.banks) throw new AppError(409, 'bank', `Sąskaita ${params.code} priskirta banko sąskaitai (${a.banks}).`);
+      if (a && Number(a.bal) !== 0) throw new AppError(409, 'balance', `Sąskaitos ${params.code} likutis ${money.norm(a.bal)} – išjungti galima tik sąskaitą be likučio.`);
+    }
     const row = (await pool.query('UPDATE accounts SET name=COALESCE($2,name), active=COALESCE($3,active), type=COALESCE($4,type) WHERE code=$1 RETURNING *', [params.code, b.name ? s(b.name, 200) : null, typeof b.active === 'boolean' ? b.active : null, b.type || null])).rows[0];
     await audit(pool, {userId: user.id, action: 'account.update', entityType: 'account', entityId: params.code, details: b});
     return row;
@@ -264,6 +272,13 @@ export function register(r, {pool, auth, config}) {
     if (!s(b.description)) throw new AppError(400, 'description', 'Nurodykite įrašo aprašymą.');
     const key = s(b.idempotencyKey, 100) || `${kind}:${user.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
     return tx(pool, async (db) => {
+      if (kind === 'cogs' && /^\d{4}-\d{2}$/.test(s(b.cogsPeriod, 7))) {
+        // One live COGS entry per month: a second one would count the cost twice.
+        const live = (await db.query(`SELECT c.journal_entry_id FROM cogs_periods c WHERE c.period=$1 FOR UPDATE`, [b.cogsPeriod])).rows[0];
+        if (live && !(await db.query('SELECT 1 FROM journal_entries WHERE reverses_entry_id=$1', [live.journal_entry_id])).rowCount) {
+          throw new AppError(409, 'cogs_exists', `Savikaina už ${b.cogsPeriod} jau užregistruota (įrašas #${live.journal_entry_id}). Jei reikia pataisyti – pirmiausia atšaukite tą įrašą.`);
+        }
+      }
       const e = await postEntry(db, {date: b.date, description: s(b.description, 300), sourceType: kind, idempotencyKey: `manual:${key}`, userId: user.id, lines});
       if (kind === 'cogs' && /^\d{4}-\d{2}$/.test(s(b.cogsPeriod, 7))) {
         await db.query(`INSERT INTO cogs_periods(period, journal_entry_id, confirmed_by, note) VALUES ($1,$2,$3,$4) ON CONFLICT (period) DO UPDATE SET journal_entry_id=EXCLUDED.journal_entry_id, confirmed_by=EXCLUDED.confirmed_by, confirmed_at=now(), note=EXCLUDED.note`,
@@ -281,7 +296,16 @@ export function register(r, {pool, auth, config}) {
       const e = (await db.query('SELECT * FROM journal_entries WHERE id=$1', [params.id])).rows[0];
       if (!e) throw new AppError(404, 'not_found', 'Įrašas nerastas.');
       if (!['manual', 'opening', 'cogs', 'adjustment', 'year_close', 'year_transfer'].includes(e.source_type)) throw new AppError(409, 'linked', 'Dokumento ar mokėjimo įrašą atšaukite per kreditinę sąskaitą arba koregavimą.');
+      const orig = String(e.entry_date instanceof Date ? e.entry_date.toISOString() : e.entry_date).slice(0, 10);
+      if (b.date < orig) throw new AppError(400, 'date', `Atšaukimo data negali būti ankstesnė už įrašo datą (${orig}).`);
+      if (['year_close', 'year_transfer'].includes(e.source_type) && b.date !== orig) throw new AppError(400, 'date', `Metų uždarymo įrašą atšaukite ta pačia data (${orig}), kitaip uždaryti metai liktų neužbaigti.`);
+      if (e.source_type === 'year_close') {
+        const tr = (await db.query(`SELECT t.id FROM journal_entries t WHERE t.source_type='year_transfer' AND t.source_id=$1 AND NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id=t.id)`, [e.source_id])).rows[0];
+        if (tr) throw new AppError(409, 'year_transfer', `Pirmiausia atšaukite ${e.source_id} m. rezultato perkėlimą (įrašas #${tr.id}).`);
+      }
       const r2 = await reverseEntry(db, {entryId: e.id, date: b.date, reason: s(b.reason, 200) || e.description, userId: user.id});
+      // A reversed COGS entry no longer confirms its month.
+      if (e.source_type === 'cogs') await db.query('DELETE FROM cogs_periods WHERE journal_entry_id=$1', [e.id]);
       await audit(db, {userId: user.id, action: 'journal.reverse', entityType: 'journal_entry', entityId: e.id, details: {reversal: r2.id, reason: s(b.reason, 200)}});
       return r2;
     });
@@ -374,7 +398,7 @@ function cpValues(b) {
 export async function sourceLink(db, e) {
   if (e.source_type === 'invoice') {
     const i = (await db.query('SELECT id, register, series, number, document_id FROM invoices WHERE id=$1', [e.source_id])).rows[0];
-    return i ? {type: 'invoice', id: i.id, label: `${i.register === 'sales' ? 'Pardavimas' : 'Pirkimas'} ${i.series} ${i.number}`.trim(), documentId: i.document_id} : null;
+    return i ? {type: 'invoice', id: i.id, register: i.register, label: `${i.register === 'sales' ? 'Pardavimas' : 'Pirkimas'} ${i.series} ${i.number}`.trim(), documentId: i.document_id} : null;
   }
   if (e.source_type === 'bank') {
     const t = (await db.query(`SELECT t.id, s.document_id FROM bank_transactions t JOIN bank_statements s ON s.id=t.first_statement_id WHERE t.id=$1`, [e.source_id])).rows[0];

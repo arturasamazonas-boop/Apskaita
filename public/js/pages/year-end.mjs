@@ -22,11 +22,11 @@ export async function render(main, rest, state) {
             const r = await post('/api/year-end/close', {year: s.year}); toast(`Metai uždaryti (įrašas #${r.entryId}).`, 'ok'); load();
           })}, `Uždaryti ${s.year} m.`) : null] : (!s.closing ? h('p', {class: 'hint'}, 'Pajamų ir sąnaudų likučių nėra.') : null)),
       section(`2. Rezultato perkėlimas į 342 (${Number(s.year) + 1}-01-01)`,
-        s.transfer ? h('p', {class: 'issue issue-ok'}, `✓ Perkelta įrašu #${s.transfer.id}.`)
-          : [h('p', {class: 'hint'}, 'Patvirtinus finansinių ataskaitų rinkinį, ataskaitinių metų rezultatas (341) perkeliamas į ankstesnių metų nepaskirstytąjį pelną (342). Pelno paskirstymą (rezervai, dividendai) įregistruokite rankiniu įrašu pagal dalyvių sprendimą.'),
-            can(state.user, 'approve') && !s.open && Number(s.balance341) ? h('button', {class: 'btn', onclick: () => guard(async () => {
-              const r = await post('/api/year-end/transfer', {year: s.year}); toast(`Perkelta (įrašas #${r.entryId}).`, 'ok'); load();
-            })}, 'Perkelti į 342') : null]),
+        s.transfer ? h('p', {class: 'issue issue-ok'}, `✓ Perkelta įrašu #${s.transfer.id}.`) : h('p', {class: 'hint'}, `Patvirtinus finansinių ataskaitų rinkinį, ataskaitinių metų rezultatas (${s.currentAccount || '341'}) perkeliamas į ankstesnių metų nepaskirstytąjį pelną (${s.retainedAccount || '342'}). Pelno paskirstymą (rezervai, dividendai) įregistruokite rankiniu įrašu pagal dalyvių sprendimą.`),
+        Number(s.remaining341) && s.transfer ? h('p', {class: 'issue issue-warning'}, `Po perkėlimo ${s.currentAccount || '341'} sąskaitoje liko ${money(s.remaining341)} € (vėlesni koregavimai) – reikia papildomo perkėlimo.`) : null,
+        can(state.user, 'approve') && !s.open && Number(s.remaining341) ? h('button', {class: 'btn', onclick: () => guard(async () => {
+          const r = await post('/api/year-end/transfer', {year: s.year}); toast(`Perkelta (įrašas #${r.entryId}).`, 'ok'); load();
+        })}, s.transfer ? 'Papildomai perkelti likutį' : `Perkelti į ${s.retainedAccount || '342'}`) : null),
       h('p', {class: 'hint'}, 'Klaidingą uždarymo ar perkėlimo įrašą galima atšaukti: Finansai → Žurnalas → Atšaukti.'));
   };
   year.addEventListener('change', () => guard(load));

@@ -33,7 +33,7 @@ export async function accrualPreview(db, loan, asOf) {
   const posted = loan.accruals.filter((a) => a.status === 'posted');
   const last = posted.at(-1) || null;
   const booked = money.sum(posted.map((a) => a.amount));
-  const calc = calcInterest({events: loan.events.map((e) => ({date: e.event_date, kind: e.kind, amount: e.amount, rate: e.rate})), rate: loan.annual_rate, basis: loan.basis, asOf, includeLastDay: loan.include_last_day});
+  const calc = calcInterest({events: loan.events.map((e) => ({date: e.event_date, kind: e.kind, amount: e.amount, rate: e.rate})), rate: loan.annual_rate, basis: loan.basis, asOf, includeLastDay: loan.include_last_day, includeEndDay: true});
   const amount = money.sub(calc.interest, booked);
   const acc = await accrualAccounts(db, loan);
   const blockers = [];

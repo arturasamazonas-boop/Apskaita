@@ -16,7 +16,21 @@ import {fold, normalizeName, normalizeIban, numberKey} from '../extraction/ids.m
 import {rateFor, toEur} from '../fx/rates.mjs';
 
 export const PROCESSORS = /(stripe|paypal|paysera|montonio|adyen|klix|braintree|mollie|checkout\.com|makecommerce|neopay)/i;
-const FEE_RE = /(komisin|aptarnavimo mokest|mokestis uz|saskaitos mokest|banko mokest|\bfee\b|charge|commission)/;
+const FEE_RE = /(komisin|aptarnavimo mokest|aptarnavim|saskaitos mokest|banko mokest|\bfee\b|charge|commission)/;
+// Taxes and contributions are never bank fees, whatever the wording ("gyventojų pajamų mokestis už 09").
+const TAX_RE = /(pajamu mokest|\bgpm\b|\bpvm\b|sodra|socialinio draudimo|mokesciu inspekcij|\bvmi\b|imokos kodas|pelno mokest)/;
+
+/** Normalized number keys found in a payment purpose: one per word ("2026-10-25" stays one key, so it never matches
+ * invoice No. 1025), plus a letters-only word joined with the next word ("PP 000012" → PP12). */
+export function referenceKeys(text) {
+  const words = fold(String(text || '')).toUpperCase().split(/[\s,;:()]+/).map((w) => w.replace(/[^A-Z0-9]/g, '').replace(/^NR(?=[A-Z0-9])/, '')).filter((w) => w && w !== 'NR');
+  const keys = new Set();
+  words.forEach((w, i) => {
+    keys.add(numberKey('', w));
+    if (/^[A-Z]+$/.test(w) && words[i + 1]) keys.add(numberKey('', w + words[i + 1]));
+  });
+  return keys;
+}
 const KINDS = ['invoice', 'fee', 'own_transfer', 'advance', 'overpayment', 'other'];
 
 export function cashEffect(a, invRegister) {
@@ -38,11 +52,12 @@ async function openInvoicesFor(db, t) {
 function scoreInvoice(t, inv, cp) {
   const ev = [];
   let score = 0;
-  const ref = numberKey('', fold(`${t.reference} ${t.description}`).toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').split(/\s+/).join(' ')) + '|' + fold(`${t.reference} ${t.description}`).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const keys = referenceKeys(`${t.reference} ${t.description}`);
+  const ref = fold(`${t.reference} ${t.description}`).toUpperCase().replace(/[^A-Z0-9]/g, '');
   const nk = numberKey(inv.series, inv.number);
   const nkNoSeries = numberKey('', inv.number);
-  if (nk.length >= 3 && ref.includes(nk)) { score += 50; ev.push(`Mokėjimo paskirtyje nurodytas sąskaitos numeris ${inv.series} ${inv.number}.`); }
-  else if (nkNoSeries.length >= 4 && ref.includes(nkNoSeries)) { score += 35; ev.push(`Paskirtyje rastas numeris ${inv.number} (be serijos).`); }
+  if (nk.length >= 3 && keys.has(nk)) { score += 50; ev.push(`Mokėjimo paskirtyje nurodytas sąskaitos numeris ${inv.series} ${inv.number}.`); }
+  else if (nkNoSeries.length >= 4 && keys.has(nkNoSeries)) { score += 35; ev.push(`Paskirtyje rastas numeris ${inv.number} (be serijos).`); }
   if (inv.payment_reference && fold(t.reference).includes(fold(inv.payment_reference)) && inv.payment_reference.length > 4) { score += 20; ev.push('Sutampa mokėjimo paskirtis.'); }
   if (inv.order_reference && ref.includes(inv.order_reference.toUpperCase().replace(/[^A-Z0-9]/g, '')) && inv.order_reference.length >= 3) { score += 25; ev.push(`Paskirtyje nurodytas užsakymas ${inv.order_reference}.`); }
   if (cp) {
@@ -67,7 +82,9 @@ export async function suggest(db, t) {
     return {...base, kind: 'own_transfer', status: 'proposed', explanation: `Kita sandorio pusė – jūsų sąskaita ${o.name} (${o.iban}). Pervedimas tarp savų sąskaitų per tarpinę sąskaitą ${roles.transfer_clearing}.`,
       allocations: [{kind: 'own_transfer', amount: money.norm(t.amount), accountCode: roles.transfer_clearing, note: `Vidinis pervedimas ${o.iban}`, evidence: ['Sąskaita priklauso įmonei.']}]};
   }
-  if (!incoming && FEE_RE.test(text) && money.cmp(money.abs(t.amount), '100') <= 0) {
+  // Bank fee: small, described as a fee, not a tax, and not a payment to someone (no counterparty account, or the bank).
+  const toSomeone = !!t.counterparty_iban && !/bank|banka/.test(fold(t.counterparty_name || ''));
+  if (!incoming && FEE_RE.test(text) && !TAX_RE.test(text) && !toSomeone && money.cmp(money.abs(t.amount), '100') <= 0) {
     return {...base, kind: 'fee', status: 'proposed', explanation: 'Banko paslaugų mokestis (pagal aprašymą). Banko mokesčiams PVM netaikomas; išrašas nėra PVM sąskaita.',
       allocations: [{kind: 'fee', amount: money.abs(t.amount), accountCode: roles.bank_fees, note: 'Banko mokestis', evidence: [`Aprašyme: „${(t.reference || t.description).slice(0, 80)}“.`]}]};
   }

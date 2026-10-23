@@ -23,6 +23,15 @@ async function cashBalance(db, account, date) {
   return money.norm((await db.query(`SELECT coalesce(sum(l.debit - l.credit),0) AS b FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code=$1 AND e.entry_date <= $2`, [account, date])).rows[0].b);
 }
 
+/** Lowest end-of-day cash balance on `date` and every later day: a payment on `date` must not make any later day negative. */
+async function lowestBalanceFrom(db, account, date) {
+  const r = (await db.query(`WITH days AS (SELECT e.entry_date AS d, sum(l.debit - l.credit) AS net FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code=$1 GROUP BY 1),
+      run AS (SELECT d, sum(net) OVER (ORDER BY d) AS bal FROM days)
+    SELECT min(bal) AS m FROM run WHERE d > $2`, [account, date])).rows[0].m;
+  const at = await cashBalance(db, account, date);
+  return r === null || r === undefined ? at : money.min(at, money.norm(r));
+}
+
 async function loadOrder(db, id) {
   const o = (await db.query(`SELECT o.*, a.name AS account_name, c.name AS counterparty_name, c.company_code AS counterparty_code, i.series AS invoice_series, i.number AS invoice_number
     FROM cash_orders o JOIN accounts a ON a.code=o.account_code LEFT JOIN counterparties c ON c.id=o.counterparty_id LEFT JOIN invoices i ON i.id=o.invoice_id WHERE o.id=$1`, [id])).rows[0];
@@ -148,8 +157,9 @@ export function register(r, {pool}) {
       if (!personName && counterpartyId) personName = (await db.query('SELECT name FROM counterparties WHERE id=$1', [counterpartyId])).rows[0].name;
       if (!personName) throw new AppError(400, 'person', kind === 'receipt' ? 'Nurodykite, iš ko gauti pinigai.' : 'Nurodykite, kam išmokėti pinigai.');
       if (kind === 'payment') {
-        const bal = await cashBalance(db, cash, date);
+        const bal = await cashBalance(db, cash, date), low = await lowestBalanceFrom(db, cash, date);
         if (money.cmp(amount, bal) > 0) throw new AppError(422, 'cash_negative', `Kasoje ${date} yra ${bal} Eur – negalima išmokėti ${amount} Eur (kasos likutis negali būti neigiamas).`);
+        if (money.cmp(amount, low) > 0) throw new AppError(422, 'cash_negative', `Kasoje ${date} yra ${bal} Eur, bet po vėlesnių išmokėjimų likutis nukristų iki ${low} Eur – išmokėjus ${amount} Eur jis taptų neigiamas.`);
       }
       if (['invoice', 'advance'].includes(purpose) && money.cmp(amount, CASH_LIMIT) > 0) warnings.push(`Atsiskaitymai grynaisiais pinigais virš ${CASH_LIMIT} € pagal vieną sandorį ribojami (Atsiskaitymų grynaisiais pinigais ribojimo įstatymas).`);
       const ser = (await db.query('UPDATE cash_order_series SET next_number = next_number + 1 WHERE kind=$1 RETURNING next_number - 1 AS n, padding, prefix', [kind])).rows[0];
@@ -179,8 +189,8 @@ export function register(r, {pool}) {
       if (o.status === 'cancelled') throw new AppError(409, 'cancelled', 'Orderis jau anuliuotas.');
       const date = String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10);
       if (o.kind === 'receipt') {
-        const after = money.sub(await cashBalance(db, o.cash_account, '9999-12-31'), o.amount);
-        if (money.cmp(after, '0') < 0) throw new AppError(422, 'cash_negative', `Anuliavus KPO kasos likutis taptų neigiamas (${after} Eur) – pirmiausia anuliuokite vėlesnius KIO.`);
+        const after = money.sub(await lowestBalanceFrom(db, o.cash_account, date), o.amount);
+        if (money.cmp(after, '0') < 0) throw new AppError(422, 'cash_negative', `Anuliavus KPO kasos likutis kurią nors dieną taptų neigiamas (${after} Eur) – pirmiausia anuliuokite vėlesnius KIO.`);
       }
       const rev = await reverseEntry(db, {entryId: o.journal_entry_id, date, reason: `${o.series} ${o.number}: ${s(b.reason, 200)}`, userId: user.id});
       if (o.invoice_id) await db.query(`INSERT INTO allocations(cash_order_id, kind, invoice_id, counterparty_id, account_code, amount, journal_entry_id, note, approved_by) VALUES ($1,'invoice',$2,$3,$4,$5,$6,$7,$8)`,

@@ -48,7 +48,8 @@ same repayment-day checkbox. The result can be saved as a loan.
 The loan card and the list have **Kaupti palūkanas DK iki …**. The list version accrues every active loan, one entry
 per loan. An accrual books the interest calculated to that date minus the interest already accrued, using the loan's
 own repayment-day setting. A repayment or rate change entered later is therefore caught up by the next accrual; a
-negative difference books the opposite entry (a correction).
+negative difference books the opposite entry (a correction). The accrual date itself is included: accruing to 31 January
+charges interest for 31 January too, so the next period starts on 1 February.
 
 | Loan | Entry | Posting roles (Nustatymai → Kontavimo susiejimai) |
 |---|---|---|
@@ -58,6 +59,8 @@ negative difference books the opposite entry (a correction).
 A loan can override both accounts (**Keisti sąlygas**), for example 6800 for a group company. Rules:
 - One accrual per loan and date. A new accrual must be later than the last one.
 - Only the latest accrual can be cancelled, and cancelling posts a reversing entry.
+- Once an accrual is posted, the direction, currency and both accounts are locked (cancel the accruals first). The rate,
+  repayments and notes can still be changed.
 - A loan with accruals in the ledger cannot be deleted.
 - A foreign-currency loan is converted at the Lietuvos bankas rate of the accrual date.
 

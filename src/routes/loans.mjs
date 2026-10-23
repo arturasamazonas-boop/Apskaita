@@ -226,6 +226,12 @@ export function register(r, deps) {
     requireCap(user, 'write');
     const v = loanFields(await readJson(req), true);
     await checkAccounts(pool, v);
+    // Once interest is accrued in the ledger, the fields that decide its accounts and currency are fixed.
+    const accrued = (await pool.query(`SELECT 1 FROM loan_accruals WHERE loan_id=$1 AND status='posted' LIMIT 1`, [params.id])).rowCount;
+    if (accrued) {
+      const cur = (await pool.query('SELECT direction, currency, interest_account, accrual_account FROM loans WHERE id=$1', [params.id])).rows[0];
+      for (const k of ['direction', 'currency', 'interest_account', 'accrual_account']) if (k in v && String(v[k] ?? '') !== String(cur?.[k] ?? '')) throw new AppError(409, 'accrued', 'Palūkanos jau sukauptos DK – tipo, valiutos ir sąskaitų keisti negalima. Pirmiausia atšaukite kaupimus.');
+    }
     const keys = Object.keys(v);
     if (!keys.length) return loadLoan(pool, params.id);
     const row = (await pool.query(`UPDATE loans SET ${keys.map((k, i) => `${k}=$${i + 2}`).join(', ')}, updated_at=now() WHERE id=$1 RETURNING id`, [params.id, ...keys.map((k) => v[k])])).rows[0];

@@ -33,8 +33,8 @@ test('rows: income, combined rate, contributions; leavers excluded', async () =>
   const d = r.body;
   assert.equal(d.rows.length, 8);
   const jonas = d.rows.find((x) => x.lastName === 'Jonaitis'), ona = d.rows.find((x) => x.lastName === 'Onaitė');
-  assert.deepEqual([jonas.income, jonas.rate, jonas.payment, jonas.series, jonas.number], ['2000.00', '14.29', '285.80', 'AB', '1234567']);
-  assert.deepEqual([ona.rate, ona.payment], ['18.01', '270.15']); // 12.52 + 2.49 (fixed term) + 3 (pension accumulation)
+  assert.deepEqual([jonas.income, jonas.rate, jonas.payment, jonas.series, jonas.number], ['2000.00', '21.27', '425.40', 'AB', '1234567']);
+  assert.deepEqual([ona.rate, ona.payment], ['24.99', '374.85']); // 12.52 + 6.98 + 2.49 (fixed term) + 3 (pension accumulation)
   assert.ok(d.notes.some((n) => /Petras Petraitis/.test(n)));
   assert.equal(d.pages.length, 3); // title page + 2 SAM3SD pages (6 + 2 persons)
   assert.equal(d.pages[0].values.Apdx2PersonCount, '8');
@@ -53,7 +53,7 @@ test('FFData per the SAM v07 description and PDF', async () => {
   assert.match(xml, /<Page PageDefName="SAM" PageNumber="1">\n<Fields Count="27">/);
   assert.match(xml, /<Page PageDefName="SAM3SD" PageNumber="3">\n<Fields Count="63">/);
   for (const s of ['<Field Name="InsurerCode">1234567</Field>', '<Field Name="CycleMonth">09</Field>', '<Field Name="Appendixes2">1</Field>', '<Field Name="FormVersion">07</Field>',
-    '<Field Name="PersonCode_1">', '<Field Name="TaxRate_1">14,29</Field>', '<Field Name="InsuranceSeries_1">AB</Field>']) assert.ok(xml.includes(s), s);
+    '<Field Name="PersonCode_1">', '<Field Name="TaxRate_1">21,27</Field>', '<Field Name="InsuranceSeries_1">AB</Field>']) assert.ok(xml.includes(s), s);
   const pdf = await ro.get('/api/sodra/sam/file?year=2026&month=9&format=pdf', {raw: true});
   const {PDFDocument} = await import('pdf-lib');
   assert.equal((await PDFDocument.load(Buffer.from(await pdf.arrayBuffer()))).getPageCount(), 3);

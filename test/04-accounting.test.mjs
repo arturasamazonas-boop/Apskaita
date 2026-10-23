@@ -44,6 +44,14 @@ test('14a. missing cost of sales is visible; COGS posting completes profit; stat
   const pl2 = (await acc.get('/api/reports/profit-loss?from=2026-01-01&to=2026-12-31')).body;
   assert.equal(pl2.incomplete, null);
   assert.equal(pl2.totals.result, '48.00');
+  // A second COGS entry for the same month would double the cost; reversing the entry reopens the month.
+  const dup = await acc.post('/api/journal', {date: '2026-09-30', kind: 'cogs', cogsPeriod: '2026-09', description: 'Dar kartą', lines: [{account: '6000', debit: '32.00'}, {account: '204', credit: '32.00'}]});
+  assert.equal(dup.status, 409);
+  assert.equal((await acc.post(`/api/journal/${cogs.body.id}/reverse`, {date: '2026-09-30', reason: 'Klaidinga suma'})).status, 200);
+  assert.deepEqual((await acc.get('/api/reports/profit-loss?from=2026-01-01&to=2026-12-31')).body.incomplete.periods, ['2026-09']);
+  const cogs2 = await acc.post('/api/journal', {date: '2026-09-30', kind: 'cogs', cogsPeriod: '2026-09', description: 'Parduotų prekių savikaina 2026-09 (pataisyta)', lines: [{account: '6000', debit: '32.00'}, {account: '204', credit: '32.00'}]});
+  assert.equal(cogs2.status, 200);
+  assert.equal((await acc.get('/api/reports/profit-loss?from=2026-01-01&to=2026-12-31')).body.totals.result, '48.00');
   const tb = (await acc.get('/api/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;
   assert.equal(tb.balanced, true);
   const bs = (await acc.get('/api/reports/balance-sheet?asOf=2026-12-31')).body;

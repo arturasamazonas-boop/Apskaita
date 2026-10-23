@@ -119,6 +119,13 @@ test('2027 payroll parameters: MMA 1245 €, NPD formula unchanged, VDU left for
   assert.equal(calcLine({pay_type: 'monthly', base_salary: '2770.00', apply_npd: true, contract_type: 'indefinite'}, p, {workedDays: '21', normDays: '21'}).npd, '0.00');
 });
 
+test('2025 NPD second tier: above 2 387,29 € NPD = 400 − 0,18 × (DU − 642)', () => {
+  const p = {mma: '1038.00', npd_max: '747.00', npd_coef: '0.4900', npd2_from: '2387.29', npd2_max: '400.00', npd2_base: '642.00', npd2_coef: '0.1800'};
+  assert.equal(npdFor('2500.00', p), '65.56');
+  assert.equal(npdFor('2000.00', p), '275.62'); // first tier: 747 − 0,49 × 962
+  assert.equal(npdFor('2500.00', {...p, npd2_from: null}), '30.62', 'without the second tier (2026 rows)');
+});
+
 test('payroll calculation: 2026 NPD formula, GPM 20 %, Sodra 19.5 % + employer 1.77 %, working-day norm', () => {
   const p = {mma: '1153.00', npd_max: '747.00', npd_coef: '0.4900', gpm_rate: '20.00', vsd_rate: '12.52', psd_rate: '6.98', pension_extra_rate: '3.00', employer_rate: '1.77', employer_rate_fixed: '2.49'};
   const e = {pay_type: 'monthly', base_salary: '2000.00', apply_npd: true, contract_type: 'indefinite', pension_extra: false};

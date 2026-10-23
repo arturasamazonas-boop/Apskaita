@@ -29,27 +29,31 @@ export async function trialBalance(db, {from, to, today}) {
 /** Non-negative integer from a query value, with a default and an upper bound. */
 const clampInt = (v, def, max) => { const n = Math.trunc(Number(v)); return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : def; };
 
-export async function generalLedger(db, {account, from, to, today, limit = 500, offset = 0}) {
+export async function generalLedger(db, {account, from, to, today, limit = 20000, offset = 0}) {
   from = D(from, yearStart(today)); to = D(to, today);
   const acc = (await db.query('SELECT * FROM accounts WHERE code=$1', [account])).rows[0];
   const opening = (await db.query(`SELECT coalesce(sum(l.debit - l.credit),0) AS v FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code=$1 AND e.entry_date < $2`, [account, from])).rows[0].v;
-  const rows = (await db.query(`SELECT e.id AS entry_id, e.entry_date, e.description, e.source_type, e.source_id, l.debit, l.credit, l.description AS line_description, c.name AS counterparty,
-      i.document_id
+  const lim = clampInt(limit, 20000, 20000), off = clampInt(offset, 0, 1e9);
+  // The running balance is computed over the whole period in SQL, so it stays right on any page.
+  const rows = (await db.query(`SELECT * FROM (SELECT e.id AS entry_id, e.entry_date, e.description, e.source_type, e.source_id, l.debit, l.credit, l.description AS line_description, c.name AS counterparty,
+      i.document_id, sum(l.debit - l.credit) OVER (ORDER BY e.entry_date, e.id, l.id) AS run, row_number() OVER (ORDER BY e.entry_date, e.id, l.id) AS rn
     FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id LEFT JOIN counterparties c ON c.id=l.counterparty_id LEFT JOIN invoices i ON i.journal_entry_id = e.id
-    WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3 ORDER BY e.entry_date, e.id, l.id LIMIT ${clampInt(limit, 500, 5000)} OFFSET ${clampInt(offset, 0, 1e9)}`, [account, from, to])).rows;
-  let bal = opening;
-  for (const r of rows) { bal = money.add(bal, money.sub(r.debit, r.credit)); r.balance = bal; }
+    WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3) x ORDER BY rn LIMIT ${lim + 1} OFFSET ${off}`, [account, from, to])).rows;
+  const hasMore = rows.length > lim;
+  if (hasMore) rows.length = lim;
+  for (const r of rows) { r.balance = money.add(opening, r.run); delete r.run; delete r.rn; }
   const sums = (await db.query(`SELECT coalesce(sum(l.debit),0) AS d, coalesce(sum(l.credit),0) AS c FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3`, [account, from, to])).rows[0];
-  return report(`Didžioji knyga: ${account} ${acc?.name || ''}`, `Visi užregistruoti įrašai sąskaitoje ${account} ${from}–${to}, su einamuoju likučiu ir nuorodomis į šaltinio dokumentus.`,
+  return report(`Didžioji knyga: ${account} ${acc?.name || ''}`, `Visi užregistruoti įrašai sąskaitoje ${account} ${from}–${to}, su einamuoju likučiu ir nuorodomis į šaltinio dokumentus.${hasMore ? ` Rodoma pirmųjų ${lim} eilučių – susiaurinkite laikotarpį.` : ''}`,
     [['entry_date', 'Data', 'date'], ['entry_id', 'Įrašas'], ['description', 'Aprašymas'], ['counterparty', 'Kontrahentas'], ['debit', 'Debetas', 'money'], ['credit', 'Kreditas', 'money'], ['balance', 'Likutis', 'money']],
-    rows, {filters: {account, from, to}, opening, totals: {debit: sums.d, credit: sums.c, closing: money.add(opening, money.sub(sums.d, sums.c))}, drill: {column: 'entry_id', to: 'entry'}});
+    rows, {filters: {account, from, to}, opening, hasMore, totals: {debit: sums.d, credit: sums.c, closing: money.add(opening, money.sub(sums.d, sums.c))}, drill: {column: 'entry_id', to: 'entry'}});
 }
 
 /** Cost-of-sales completeness: months with goods sales but no confirmed COGS posting. */
 export async function cogsGaps(db, from, to) {
   const r = await db.query(`SELECT DISTINCT to_char(i.issue_date, 'YYYY-MM') AS period FROM invoices i JOIN invoice_lines l ON l.invoice_id=i.id
     WHERE i.register='sales' AND l.line_type='revenue_goods' AND i.issue_date BETWEEN $1 AND $2
-      AND NOT EXISTS (SELECT 1 FROM cogs_periods c WHERE c.period = to_char(i.issue_date, 'YYYY-MM')) ORDER BY 1`, [from, to]);
+      AND NOT EXISTS (SELECT 1 FROM cogs_periods c WHERE c.period = to_char(i.issue_date, 'YYYY-MM')
+        AND NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id = c.journal_entry_id)) ORDER BY 1`, [from, to]);
   return r.rows.map((x) => x.period);
 }
 
@@ -178,7 +182,10 @@ export async function paymentsReport(db, {from, to, today}) {
 export async function dashboard(db, {from, to, today}) {
   from = D(from, `${today.slice(0, 7)}-01`); to = D(to, today);
   const sales = (await db.query(`SELECT coalesce(sum(net_total),0) AS net, coalesce(sum(gross_total),0) AS gross, count(*) AS n FROM invoices WHERE register='sales' AND issue_date BETWEEN $1 AND $2`, [from, to])).rows[0];
-  const received = (await db.query(`SELECT coalesce(sum(t.amount),0) AS v, count(*) AS n FROM bank_transactions t WHERE t.amount > 0 AND t.status='approved' AND t.booking_date BETWEEN $1 AND $2`, [from, to])).rows[0];
+  // Money received, in EUR (foreign-currency rows at their booked EUR amount), without transfers between own accounts.
+  const received = (await db.query(`SELECT coalesce(sum(coalesce(t.eur_amount, t.amount)),0) AS v, count(*) AS n FROM bank_transactions t
+    WHERE t.amount > 0 AND t.status='approved' AND t.booking_date BETWEEN $1 AND $2
+      AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.transaction_id=t.id AND a.kind='own_transfer')`, [from, to])).rows[0];
   const unpaid = await invoiceBalances(db, {register: 'sales', asOf: today, openOnly: true, limit: 10000});
   const unpaidP = await invoiceBalances(db, {register: 'purchase', asOf: today, openOnly: true, limit: 10000});
   const review = (await db.query(`SELECT count(*) FILTER (WHERE processing_status='needs_review') AS needs_review, count(*) FILTER (WHERE processing_status='ready') AS ready,
@@ -189,10 +196,10 @@ export async function dashboard(db, {from, to, today}) {
   return {
     period: {from, to},
     cards: [
-      {key: 'sales', title: 'Pardavimai', value: sales.net, unit: 'EUR', definition: `Užregistruotų pardavimo sąskaitų suma be PVM pagal išrašymo datą ${from}–${to} (${sales.n} dok.).`, link: '#/ataskaitos/pardavimai'},
-      {key: 'received', title: 'Gauti mokėjimai', value: received.v, unit: 'EUR', definition: `Patvirtintos gaunamos banko operacijos pagal operacijos datą ${from}–${to} (${received.n}).`, link: '#/bankas'},
-      {key: 'unpaid', title: 'Neapmokėtos pardavimo sąskaitos', value: money.sum(unpaid.map((r) => r.outstanding)), unit: 'EUR', definition: `${unpaid.length} sąskaitų likutis šiandien (${today}); iš jų vėluoja ${overdue.length} (${money.sum(overdue.map((r) => r.outstanding))} EUR).`, link: '#/ataskaitos/gautinos'},
-      {key: 'payables', title: 'Neapmokėti pirkimai', value: money.sum(unpaidP.map((r) => r.outstanding)), unit: 'EUR', definition: `${unpaidP.length} tiekėjų sąskaitų likutis šiandien.`, link: '#/ataskaitos/moketinos'},
+      {key: 'sales', title: 'Pardavimai', value: sales.net, unit: 'EUR', definition: `Užregistruotų pardavimo sąskaitų suma be PVM pagal išrašymo datą ${from}–${to} (${sales.n} dok.).`, link: `#/ataskaitos/pardavimai?from=${from}&to=${to}`},
+      {key: 'received', title: 'Gauti mokėjimai', value: received.v, unit: 'EUR', definition: `Patvirtintos gaunamos banko operacijos eurais pagal operacijos datą ${from}–${to} (${received.n}), be pervedimų tarp savų sąskaitų.`, link: '#/bankas'},
+      {key: 'unpaid', title: 'Neapmokėtos pardavimo sąskaitos', value: money.sum(unpaid.map((r) => r.outstanding)), unit: 'EUR', definition: `${unpaid.length} sąskaitų likutis šiandien (${today}); iš jų vėluoja ${overdue.length} (${money.sum(overdue.map((r) => r.outstanding))} EUR).`, link: `#/ataskaitos/gautinos?asOf=${today}`},
+      {key: 'payables', title: 'Neapmokėti pirkimai', value: money.sum(unpaidP.map((r) => r.outstanding)), unit: 'EUR', definition: `${unpaidP.length} tiekėjų sąskaitų likutis šiandien.`, link: `#/ataskaitos/moketinos?asOf=${today}`},
       {key: 'review', title: 'Laukia peržiūros', value: String(Number(review.needs_review) + Number(review.ready)), definition: `Dokumentų dėžutėje: ${review.needs_review} reikia peržiūros, ${review.ready} paruošta patvirtinti, ${review.processing} apdorojama, ${review.failed} nepavyko.`, link: '#/deze'},
       {key: 'bank', title: 'Nesuderintos banko operacijos', value: bank.unresolved, definition: `Importuotos, dar nepatvirtintos operacijos (suma ${money.norm(bank.amount)} EUR). Išrašų su likučių neatitikimu: ${stmt.n}.`, link: '#/bankas'},
     ],
@@ -200,11 +207,31 @@ export async function dashboard(db, {from, to, today}) {
 }
 
 // ------------------------------------------------------------------ export
+// Totals of a report as label/value pairs (nested objects flattened: "Sumos: debit"), for the export footer.
+const TOTAL_LABELS = {debit: 'Debetas', credit: 'Kreditas', closing: 'Likutis pabaigoje', revenue: 'Pajamos', expenses: 'Sąnaudos', result: 'Rezultatas', assets: 'Turtas', liabilities: 'Įsipareigojimai', equity: 'Nuosavas kapitalas', outstanding: 'Likutis', net: 'Be PVM', vat: 'PVM', gross: 'Su PVM'};
+function totalPairs(t, prefix = '') {
+  const out = [];
+  for (const [k, v] of Object.entries(t || {})) {
+    const label = `${prefix}${TOTAL_LABELS[k] || k}`;
+    if (v && typeof v === 'object' && !Array.isArray(v)) out.push(...totalPairs(v, `${label}: `));
+    else if (v !== null && v !== undefined && typeof v !== 'object') out.push([label, v]);
+  }
+  return out;
+}
+// Text cells that start like a formula are prefixed with ' so a spreadsheet shows them as text (names come from outside).
+const safeText = (v) => (typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
+const isMoney = (v) => typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v);
+
 export function toCsv(rep) {
   const esc = (v) => { const s = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const lines = [rep.columns.map((c) => esc(c[1])).join(';')];
-  for (const r of rep.rows) lines.push(rep.columns.map((c) => esc(c[2] === 'money' && r[c[0]] !== null && r[c[0]] !== undefined ? String(r[c[0]]).replace('.', ',') : r[c[0]])).join(';'));
-  return '﻿' + lines.join('\r\n') + '\r\n';
+  for (const r of rep.rows) lines.push(rep.columns.map((c) => esc(c[2] === 'money' && r[c[0]] !== null && r[c[0]] !== undefined ? String(r[c[0]]).replace('.', ',') : safeText(r[c[0]]))).join(';'));
+  const totals = totalPairs(rep.totals);
+  if (rep.opening !== undefined || totals.length) lines.push('');
+  if (rep.opening !== undefined) lines.push(`${esc('Likutis pradžioje')};${String(rep.opening).replace('.', ',')}`);
+  for (const [l, v] of totals) lines.push(`${esc(l)};${esc(isMoney(String(v)) ? String(v).replace('.', ',') : v)}`);
+  if (rep.incomplete) lines.push(esc(`DĖMESIO: ${rep.incomplete.reason}`));
+  return '\ufeff' + lines.join('\r\n') + '\r\n';
 }
 
 export async function toXlsx(rep) {
@@ -213,10 +240,15 @@ export async function toXlsx(rep) {
   const ws = wb.addWorksheet(rep.title.slice(0, 31).replace(/[\\/?*[\]:]/g, ' '));
   ws.addRow([rep.title]).font = {bold: true, size: 13};
   ws.addRow([rep.definition]);
+  if (rep.filters) ws.addRow([Object.entries(rep.filters).filter(([, v]) => v).map(([k, v]) => `${{from: 'Nuo', to: 'Iki', asOf: 'Dienai', account: 'Sąskaita'}[k] || k}: ${v}`).join('   ')]);
   ws.addRow([]);
   ws.addRow(rep.columns.map((c) => c[1])).font = {bold: true};
-  for (const r of rep.rows) ws.addRow(rep.columns.map((c) => (c[2] === 'money' && r[c[0]] !== null && r[c[0]] !== undefined ? Number(r[c[0]]) : r[c[0]] ?? '')));
+  for (const r of rep.rows) ws.addRow(rep.columns.map((c) => (c[2] === 'money' && r[c[0]] !== null && r[c[0]] !== undefined ? Number(r[c[0]]) : safeText(r[c[0]] ?? ''))));
   rep.columns.forEach((c, i) => { if (c[2] === 'money') ws.getColumn(i + 1).numFmt = '#,##0.00'; ws.getColumn(i + 1).width = Math.max(12, c[1].length + 2); });
+  const totals = totalPairs(rep.totals);
+  if (rep.opening !== undefined || totals.length) ws.addRow([]);
+  if (rep.opening !== undefined) ws.addRow(['Likutis pradžioje', Number(rep.opening)]).font = {bold: true};
+  for (const [l, v] of totals) { const row = ws.addRow([l, isMoney(String(v)) ? Number(v) : v]); row.font = {bold: true}; if (isMoney(String(v))) row.getCell(2).numFmt = '#,##0.00'; }
   if (rep.incomplete) ws.addRow([`DĖMESIO: ${rep.incomplete.reason}`]);
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
