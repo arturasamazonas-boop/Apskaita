@@ -7,7 +7,12 @@ export async function render(main, rest, state) {
   if (rest[0] === 'nauja') return manualForm(main, 'sales', state);
   if (rest[0] === 's') return invoiceDetail(main, rest[1], state);
   if (rest[0] === 'uzsakymai') return orders(main, rest, state);
-  return invoiceList(main, 'sales', state, h('div', {class: 'tabs'}, h('a', {class: 'tab active', href: '#/pardavimai'}, 'Sąskaitos'), h('a', {class: 'tab', href: '#/pardavimai/uzsakymai'}, 'Parduotuvių užsakymai')));
+  if (rest[0] === 'periodines') return (await import('./recurring.mjs')).render(main, salesTabs('periodines'), state);
+  return invoiceList(main, 'sales', state, salesTabs(''));
+}
+
+function salesTabs(cur) {
+  return h('div', {class: 'tabs'}, [['', 'Sąskaitos'], ['uzsakymai', 'Parduotuvių užsakymai'], ['periodines', 'Pasikartojančios']].map(([k, t]) => h('a', {class: ['tab', cur === k && 'active'], href: `#/pardavimai${k ? '/' + k : ''}`}, t)));
 }
 
 async function orders(main, rest) {
@@ -25,7 +30,7 @@ async function orders(main, rest) {
   const storeSel = select([['', 'Visos'], ...stores.map((s) => [s.id, s.name])], '', {onchange: () => { st.store = storeSel.value; st.offset = 0; load(); }});
   const stateSel = select([['', 'Visos'], ...Object.entries(ORDER_STATE).map(([k, v]) => [k, v[0]])], '', {onchange: () => { st.state = stateSel.value; st.offset = 0; load(); }});
   const q = input({type: 'search', oninput: debounce(() => { st.q = q.value; load(); })});
-  clear(main, h('header', {class: 'page-head'}, h('h1', null, 'Pardavimai')), h('div', {class: 'tabs'}, h('a', {class: 'tab', href: '#/pardavimai'}, 'Sąskaitos'), h('a', {class: 'tab active', href: '#/pardavimai/uzsakymai'}, 'Parduotuvių užsakymai')),
+  clear(main, h('header', {class: 'page-head'}, h('h1', null, 'Pardavimai')), salesTabs('uzsakymai'),
     h('p', {class: 'hint'}, 'Užsakymai nėra sąskaitos ir nėra pajamos: sąskaitos pasiūlymas sukuriamas tik kai užsakymo būsena susieta su „išrašyti sąskaitą“, o registruojama tik patvirtinus.'),
     h('div', {class: 'filters'}, field('Parduotuvė', storeSel), field('Būsena', stateSel), field('Užsakymo nr.', q)), box);
   await load();

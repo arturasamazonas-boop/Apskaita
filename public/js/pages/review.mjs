@@ -239,7 +239,7 @@ export async function render(main, [docId], state) {
       dirty ? h('span', {class: 'badge badge-warn'}, 'Yra neišsaugotų pakeitimų') : h('span', {class: 'hint'}, `Versija ${p.version}`),
       editable ? h('button', {class: 'btn', onclick: recompute}, 'Perskaičiuoti') : null,
       editable ? h('button', {class: 'btn', disabled: !dirty, onclick: save}, 'Išsaugoti pakeitimus') : null,
-      p.status === 'open' && can(state.user, 'approve') ? h('button', {class: 'btn btn-primary', disabled: dirty || blocking, title: dirty ? 'Pirmiausia išsaugokite pakeitimus' : blocking ? 'Išspręskite klaidas' : 'Ctrl+Enter', onclick: approve}, 'Patvirtinti') : null,
+      p.status === 'open' && can(state.user, 'approve') ? h('button', {class: 'btn btn-primary', disabled: dirty || blocking, title: dirty ? 'Pirmiausia išsaugokite pakeitimus' : blocking ? 'Išspręskite klaidas' : 'Ctrl+Enter – patvirtina ir atidaro kitą laukiantį dokumentą', onclick: approve}, doc.workflow === 'invoice' ? 'Patvirtinti ir kitas ›' : 'Patvirtinti') : null,
       p.status === 'open' && can(state.user, 'approve') ? h('button', {class: 'btn btn-danger', onclick: reject}, 'Atmesti') : null,
       p.status === 'open' && ['proforma', 'contract', 'receipt'].includes(model.docType) && editable ? h('button', {class: 'btn', onclick: toVault}, 'Perkelti į dokumentų saugyklą') : null,
       doc.workflow === 'invoice' && can(state.user, 'write') && doc.files.some((f) => f.role === 'original') ? h('button', {class: 'btn btn-small', onclick: () => guard(() => post(`/api/documents/${doc.id}/reextract`), 'Atpažinimas paleistas iš naujo. Užregistruoti įrašai nebus keičiami.')}, 'Atpažinti iš naujo') : null);
@@ -257,12 +257,32 @@ export async function render(main, [docId], state) {
     if (dirty) return toast('Pirmiausia išsaugokite pakeitimus.', 'error');
     const btn = bar.querySelector('.btn-primary'); if (btn) btn.disabled = true;
     const r = await guard(() => post(`/api/proposals/${p.id}/approve`, {contentHash: p.content_hash}));
-    if (r) { toast(r.alreadyApproved ? 'Jau buvo patvirtinta.' : `Patvirtinta ir užregistruota${r.number ? ` (${r.number})` : ''}.`, 'ok'); location.hash = '#/deze'; } else drawBar();
+    if (r) { toast(r.alreadyApproved ? 'Jau buvo patvirtinta.' : `Patvirtinta ir užregistruota${r.number ? ` (${r.number})` : ''}.`, 'ok'); await goNext(); } else drawBar();
   }
   async function reject() {
     const reason = await promptDialog('Atmesti dokumentą', 'Priežastis', {minLength: 3, multiline: true});
     if (reason === null) return;
-    if (await guard(() => post(`/api/proposals/${p.id}/reject`, {contentHash: p.content_hash, reason}), 'Atmesta.')) location.hash = '#/deze';
+    if (await guard(() => post(`/api/proposals/${p.id}/reject`, {contentHash: p.content_hash, reason}), 'Atmesta.')) await goNext();
+  }
+  // After a decision open the next document waiting in the inbox (ready ones first), or the inbox when none is left.
+  async function goNext() {
+    if (doc.workflow === 'generated') { // a draft from a recurring template: the next such draft, else the inbox
+      try {
+        const r = await get('/api/recurring-invoices');
+        const next = r.drafts.find((x) => String(x.document_id) !== String(doc.id));
+        if (next) { toast(`Kitas juodraštis: ${next.title}`, 'info'); location.hash = `#/deze/${next.document_id}`; return; }
+        if (r.drafts.length || r.templates.length) { location.hash = '#/pardavimai/periodines'; return; }
+      } catch { /* fall back to the inbox */ }
+    }
+    if (doc.workflow !== 'invoice') { location.hash = '#/deze'; return; } // invoices issued here or store orders: back to the list
+    try {
+      for (const status of ['ready', 'needs_review']) {
+        const d = await get(`/api/inbox?status=${status}&limit=5`);
+        const next = d.items.find((x) => String(x.id) !== String(doc.id));
+        if (next) { toast(`Kitas dokumentas: ${next.title || `#${next.id}`}`, 'info'); location.hash = `#/deze/${next.id}`; return; }
+      }
+    } catch { /* fall back to the inbox */ }
+    location.hash = '#/deze';
   }
   async function toVault() {
     if (!await confirmDialog('Perkelti į saugyklą', 'Dokumentas nebus registruojamas apskaitoje ir bus saugomas „Dokumentai“ skiltyje.')) return;

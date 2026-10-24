@@ -50,7 +50,14 @@ export async function importStatement(deps, user, {documentId, bankAccountId = n
   const doc = await loadDocumentForUser(pool, user, documentId);
   if (doc.workflow !== 'bank') throw new AppError(400, 'not_bank', 'Dokumentas nėra banko išrašas.');
   const file = await currentOriginal(pool, documentId);
-  const st = await parseStatementFile(deps, file, {mapping, opening, closing});
+  let st = await parseStatementFile(deps, file, {mapping, opening, closing});
+  // A column mapping chosen once for this header row (any bank) is remembered and used for the next file.
+  const headerKey = st.headers?.length ? st.headers.map((x) => String(x || '').trim().toLowerCase()).join('|') : null;
+  let savedMapping = false;
+  if (headerKey && !mapping) {
+    const prof = (await pool.query('SELECT mapping FROM bank_csv_profiles WHERE header_key=$1', [headerKey])).rows[0];
+    if (prof) { st = await parseStatementFile(deps, file, {mapping: prof.mapping, opening, closing}); savedMapping = true; }
+  }
   let account = null;
   if (st.iban) account = (await pool.query('SELECT * FROM bank_accounts WHERE iban=$1', [st.iban])).rows[0];
   if (bankAccountId) {
@@ -67,12 +74,15 @@ export async function importStatement(deps, user, {documentId, bankAccountId = n
   const balance = balanceCheck(st, st.rows.filter((r) => r.bookingDate && r.amount !== null && !money.isZero(r.amount)));
   if (balance.status !== 'ok') issues.push({level: 'error', message: balance.message, code: `balance_${balance.status}`});
   if (st.manualBalances) issues.push({level: 'info', message: 'Likučiai įvesti rankiniu būdu (formatas jų neturi).'});
+  if (savedMapping) issues.push({level: 'info', message: 'Pritaikytas anksčiau išsaugotas šio formato stulpelių susiejimas.', code: 'saved_mapping'});
   if (previewOnly || !account) {
     return {preview: true, account, needsAccount: !account, iban: st.iban, format: st.format, statementRef: st.statementRef, periodFrom: st.periodFrom, periodTo: st.periodTo, opening: st.opening, closing: st.closing,
       balance, issues, headers: st.headers, mapping: st.mapping, rows: st.rows.slice(0, 200), totalRows: st.rows.length};
   }
   return tx(pool, async (db) => {
     await db.query('SELECT pg_advisory_xact_lock(727100, $1::int)', [Number(account.id)]);
+    if (headerKey && mapping) await db.query(`INSERT INTO bank_csv_profiles(header_key, headers, mapping, updated_by) VALUES ($1,$2,$3,$4)
+      ON CONFLICT (header_key) DO UPDATE SET mapping=EXCLUDED.mapping, updated_by=EXCLUDED.updated_by, updated_at=now()`, [headerKey, JSON.stringify(st.headers), JSON.stringify(mapping), user.id]);
     const exists = (await db.query('SELECT id FROM bank_statements WHERE file_id=$1', [file.id])).rows[0];
     if (exists) return {statementId: exists.id, alreadyImported: true};
     // Gaps / overlaps with earlier statements of the same account.

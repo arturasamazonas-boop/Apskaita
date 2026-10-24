@@ -51,15 +51,18 @@ try {
     await page.locator('[data-path="number"] input[type="text"]').focus();
     await page.locator('.hl-box').waitFor();
     await page.screenshot({path: path.join(shots, '03-perziura.png'), fullPage: false});
-    await page.getByRole('button', {name: 'Patvirtinti', exact: true}).click();
+    await page.getByRole('button', {name: 'Patvirtinti ir kitas ›', exact: true}).click();
     await page.getByText(/Patvirtinta ir užregistruota/).waitFor();
+    // "Patvirtinti ir kitas": the next waiting document opens by itself.
+    await page.getByText(/Kitas dokumentas:/).waitFor();
+    await page.waitForFunction(() => /^#\/deze\/\d+$/.test(location.hash));
   });
 
   await step('unclear scanned VAT is flagged; correction is saved as new version and recalculated', async () => {
     await page.goto(t.base + '/#/deze');
     await page.getByRole('link', {name: /Švarus biuras/}).click();
     await page.getByText(/PVM suma neįskaitoma/).first().waitFor();
-    const approve = page.getByRole('button', {name: 'Patvirtinti', exact: true});
+    const approve = page.getByRole('button', {name: 'Patvirtinti ir kitas ›', exact: true});
     assert.equal(await approve.isDisabled(), true, 'approval disabled while blocking');
     await page.screenshot({path: path.join(shots, '04-neaiskus-pvm.png')});
     await page.locator('[data-path="sourceTotals.vatByRate.0.amount"] input[type="text"]').fill('42.00');

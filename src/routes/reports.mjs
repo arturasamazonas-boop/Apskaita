@@ -6,6 +6,8 @@ import {audit} from '../audit.mjs';
 import * as R from '../reports/reports.mjs';
 import {managementPL, directorSummary} from '../reports/director.mjs';
 import {monthClose} from '../reports/monthclose.mjs';
+import {taxCalendar, TAX_FORMS} from '../tax/calendar.mjs';
+import {cogsProposal} from '../reports/cogs.mjs';
 import {todayVilnius} from '../invoices/context.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
 import {buildIsaf, validateXsd} from '../isaf/isaf.mjs';
@@ -40,6 +42,7 @@ const REPORTS = {
   payments: (db, q) => R.paymentsReport(db, q),
   'vat-return': (db, q) => R.vatReturn(db, q),
   'management-pl': (db, q) => managementPL(db, q),
+  fr0564: (db, q) => R.euSupplies(db, q),
 };
 
 export function register(r, {pool, storage}) {
@@ -291,6 +294,33 @@ export function register(r, {pool, storage}) {
       ...entries.map((r) => ({type: 'DK įrašas', label: `#${r.id} ${r.description || ''}`.trim(), detail: String(r.entry_date).slice(0, 10), link: `#/ataskaitos/zurnalas/${r.id}`})),
     ];
     return {q, results};
+  });
+  r.get('/api/tax-calendar', async ({user, query}) => {
+    requireCap(user, 'read');
+    const today = todayVilnius();
+    const iso = (v, def) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : def);
+    const back = new Date(Date.parse(today) - 62 * 86400000).toISOString().slice(0, 10), ahead = new Date(Date.parse(today) + 120 * 86400000).toISOString().slice(0, 10);
+    return taxCalendar(pool, {from: iso(query.from, back), to: iso(query.to, ahead), today});
+  });
+  r.post('/api/tax-filings', async ({req, user}) => {
+    requireCap(user, 'approve');
+    const b = await readJson(req);
+    if (!TAX_FORMS.has(b.form) || !/^\d{4}(-\d{2})?$/.test(String(b.period || ''))) throw new AppError(400, 'bad_request', 'Netinkama forma arba laikotarpis.');
+    return tx(pool, async (db) => {
+      if (b.filed === false) await db.query('DELETE FROM tax_filings WHERE form=$1 AND period=$2', [b.form, b.period]);
+      else {
+        const on = /^\d{4}-\d{2}-\d{2}$/.test(String(b.filedOn || '')) ? b.filedOn : todayVilnius();
+        await db.query(`INSERT INTO tax_filings(form, period, filed_on, reference, note, filed_by) VALUES ($1,$2,$3,$4,$5,$6)
+          ON CONFLICT (form, period) DO UPDATE SET filed_on=EXCLUDED.filed_on, reference=EXCLUDED.reference, note=EXCLUDED.note, filed_by=EXCLUDED.filed_by`,
+        [b.form, b.period, on, String(b.reference || '').slice(0, 100), String(b.note || '').slice(0, 500), user.id]);
+      }
+      await audit(db, {userId: user.id, action: b.filed === false ? 'tax.unfiled' : 'tax.filed', entityType: 'tax_filing', entityId: `${b.form}:${b.period}`, details: {reference: b.reference || ''}});
+      return {ok: true};
+    });
+  });
+  r.get('/api/cogs/proposal', async ({user, query}) => {
+    requireCap(user, 'read');
+    try { return await cogsProposal(pool, {period: query.period}); } catch (e) { if (e.status === 400) throw new AppError(400, 'bad_period', e.message); throw e; }
   });
   r.get('/api/month-close', async ({user, query}) => { requireCap(user, 'read'); return monthClose(pool, {period: query.period, today: todayVilnius()}); });
   r.get('/api/director', async ({user}) => { requireCap(user, 'read'); return directorSummary(pool, {today: todayVilnius()}); });

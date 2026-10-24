@@ -1,5 +1,6 @@
 // Atlyginimai: employees, payroll parameters, monthly payroll sheets (draft → approved → posted).
 import {AppError, tx} from '../db.mjs';
+import {averagePay} from '../payroll/vdu.mjs';
 import {requireCap, can} from '../auth/auth.mjs';
 import {readJson} from '../http.mjs';
 import {audit} from '../audit.mjs';
@@ -73,6 +74,14 @@ async function recalcLine(db, run, line, emp, inp, params) {
 }
 
 export function register(r, {pool}) {
+  r.get('/api/payroll/vdu', async ({user, query}) => {
+    requireCap(user, 'read');
+    if (!/^\d{4}-\d{2}$/.test(String(query.period || '')) || !query.employee) throw new AppError(400, 'bad_request', 'Nurodykite darbuotoją ir mėnesį.');
+    if (query.days && !(Number(query.days) > 0 && Number(query.days) <= 60)) throw new AppError(400, 'days', 'Atostogų dienų skaičius – nuo 1 iki 60.');
+    const r2 = await averagePay(pool, {employeeId: query.employee, period: query.period, days: query.days || null});
+    if (!r2) throw new AppError(404, 'not_found', 'Darbuotojas nerastas.');
+    return r2;
+  });
   // ---------------------------------------------------------------- employees
   r.get('/api/employees', async ({user, query}) => {
     requireCap(user, 'read');

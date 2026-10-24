@@ -70,3 +70,74 @@ The search box is in the header (Ctrl+K or "/"). It finds:
 - journal entries by text or number.
 
 Use the arrow keys and Enter to open a result.
+
+## Inbox: approve and next
+
+**Patvirtinti ir kitas ›** (also Ctrl+Enter) approves the document and opens the next one waiting in the inbox: ready ones first, then those that need review. Rejecting does the same. A draft from a recurring template opens the next such draft. An invoice issued here goes back to the list as before.
+
+## Mokesčių kalendorius (Ataskaitos → Mokesčių kalendorius ir pateikimai)
+
+Returns and payments with their deadlines, computed from general rules:
+
+| Obligation | Deadline | Shown when |
+|---|---|---|
+| GPM313, SAM, payment of GPM and Sodra contributions | 15th of the next month | The company has employees or payroll sheets |
+| i.SAF | 20th of the next month | The company is a VAT payer |
+| FR0600 and VAT payment | 25th of the next month | The company is a VAT payer |
+| FR0564 | 25th of the next month | Only for months with PVM13 sales |
+| PLN204 and profit tax | 15 June | Every year |
+| Annual set to Registrų centras | 30 May | Every year (approved within 4 months, filed within 30 days) |
+
+A deadline on a weekend or public holiday moves to the next working day. The program does not file returns.
+
+- After filing in EDS or EDAS, mark the return with **Pateikta** / **Sumokėta**. You can add the registration number.
+- **Pažymėti visas vėluojančias pateiktomis** marks returns filed before the program was used.
+- Overdue and upcoming returns show on the dashboard (*Mokesčių terminai*) and in the month-close checklist.
+- Special regimes (half-yearly VAT, profit tax advances) are **not** in the calendar.
+
+## FR0564 data (Ataskaitos → FR0564 duomenys)
+
+Sales with tax code PVM13, by VAT point month, grouped by buyer country and VAT code, in cents and in whole euros. Buyers without a valid EU VAT code are flagged. Copy the lines into the FR0564 form in EDS: an EDS upload file is not generated for this form.
+
+## Bank: remembered column mapping
+
+- The first time a CSV/XLSX file has headers the program cannot recognise, map the columns in the preview. The mapping is saved for that header row when you import.
+- The next file with the same headers, from any bank (Swedbank, SEB, Luminor…), is mapped automatically. The preview says so.
+- No built-in Swedbank or SEB profile is included, because no sample file was available to test against.
+
+## Savikaina: automatic calculation
+
+**Apskaičiuoti pagal prekių judėjimą** on the Savikaina page calculates the month's cost of sales:
+
+- For each goods product: the quantity sold in the month (net of credit notes) × the weighted average cost of the goods received up to the month end. Goods received means purchases, opening balances and positive adjustments that have a cost.
+- A product with no purchases uses the purchase price on its card. This is flagged.
+- A product with no cost at all is left out and flagged.
+- Goods sales lines without a product card are flagged with their amount, to be added by hand.
+- A negative stock at the month end is flagged.
+
+The amount is filled into the form, and the accountant posts it as before (D 6000 / K 204, one entry per month).
+
+## Pasikartojančios sąskaitos (Prekyba → Pasikartojančios sąskaitos)
+
+A template holds the customer, lines, period (every 1, 2, 3, 6 or 12 months), first date, optional end date, payment term and series. Every day from 06:00, or with **Sukurti suėjusius juodraščius dabar**, it creates a draft sales invoice for each date that has come:
+
+- missed periods are caught up;
+- the day of the month is kept (31 → 28/29 → 31);
+- a draft is never dated in the future.
+
+Drafts are ordinary proposals. The number is given and the invoice is posted only when the draft is approved. Drafts waiting for approval are listed on the same tab.
+
+## Atostoginiai pagal VDU (payroll sheet → VDU)
+
+The **VDU** button next to *Atostoginiai* asks for the number of vacation working days and fills in the amount:
+
+- **average daily pay** = earnings of the last 3 calendar months before the vacation month (base, bonuses and other pay from approved sheets, without earlier vacation or sick pay) / days actually worked in those months;
+- **vacation pay** = average daily pay × vacation days.
+
+When there are no worked months yet, the monthly salary / working days of the month is used.
+
+Simplifications:
+- annual and quarterly bonuses are counted in the month they were paid, not spread over the year;
+- the hourly variant for summed working time is not implemented.
+
+Reduce the worked days and press *Perskaičiuoti*.

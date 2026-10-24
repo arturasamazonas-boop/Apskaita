@@ -2,8 +2,10 @@
 import {money} from '../lib/money.mjs';
 import {roleAccounts} from '../ledger/ledger.mjs';
 import {cogsGaps} from './reports.mjs';
+import {taxCalendar} from '../tax/calendar.mjs';
 
 const OPEN_TX = `('unmatched','proposed','needs_review')`;
+const addMonth = (p) => { const [y, m] = p.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; };
 const lt = (v) => money.norm(v).replace('.', ',');
 
 export async function monthClose(db, {period, today}) {
@@ -83,7 +85,14 @@ export async function monthClose(db, {period, today}) {
   const net = money.sub(out, inp);
   add('PVM', 'info', `PVM už ${period}: ${money.sign(net) >= 0 ? 'mokėti' : 'grąžintinas'} ${lt(money.abs(net))} EUR`, `Pardavimo PVM ${lt(out)} EUR, pirkimo PVM ${lt(inp)} EUR (DK apyvartos). Deklaraciją FR0600 pateikite iki kito mėnesio 25 d.`, `#/fr0600?period=${period}`);
 
-  // 5. Lock.
+  // 5. Returns for the month (deadlines in the next month).
+  const cal = await taxCalendar(db, {from: `${period}-01`, to: `${addMonth(addMonth(period))}-15`, today});
+  for (const i of cal.items.filter((x) => x.period === period)) {
+    add('Deklaracijos ir mokėjimai', i.status === 'filed' ? 'ok' : i.status === 'overdue' ? 'error' : 'info', i.title,
+      i.filed ? `Pateikta ${i.filed.on}${i.filed.reference ? ` (${i.filed.reference})` : ''}.` : `Terminas ${i.due}${i.status === 'overdue' ? ' – praleistas' : ''}. Pateikę pažymėkite mokesčių kalendoriuje.`, i.status === 'filed' ? null : '#/mokesciu-kalendorius');
+  }
+
+  // 6. Lock.
   const company = await one('SELECT locked_through FROM company_settings WHERE id=1');
   const locked = company.locked_through && String(company.locked_through instanceof Date ? company.locked_through.toISOString() : company.locked_through).slice(0, 10);
   add('Užrakinimas', locked && locked >= to ? 'ok' : 'info', locked && locked >= to ? 'Laikotarpis užrakintas' : 'Laikotarpis neužrakintas', locked ? `Užrakinta iki ${locked}.` : 'Laikotarpiai neužrakinti.', '#/nustatymai/laikotarpiai');

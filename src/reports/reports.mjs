@@ -3,6 +3,7 @@
 import {NOT_CLOSING} from '../ledger/closing.mjs';
 import {money} from '../lib/money.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
+import {taxCalendar} from '../tax/calendar.mjs';
 
 const D = (v, def) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : def);
 const yearStart = (today) => `${today.slice(0, 4)}-01-01`;
@@ -109,6 +110,23 @@ export async function vatRegister(db, {register = 'sales', from, to, today}) {
     rows, {filters: {register, from, to}, totals: {byCode, vat: vatTotal}, reconciliation: {ledger, register: vatTotal, ok: money.eq(ledger, vatTotal), note: `Palyginta su ${register === 'purchase' ? 'gautino' : 'mokėtino'} PVM sąskaitos apyvarta iš sąskaitų įrašų.`}, drill: {column: 'id', to: 'invoice'}});
 }
 
+/** FR0564: goods supplied to VAT payers of other EU countries (PVM13), per buyer VAT code, by VAT point month. */
+export async function euSupplies(db, {from, to, today}) {
+  from = D(from, `${today.slice(0, 7)}-01`); to = D(to, today);
+  const rows = (await db.query(`SELECT upper(left(regexp_replace(coalesce(i.counterparty_snapshot->>'vatCode',''), '\\s', '', 'g'), 2)) AS country,
+      upper(substr(regexp_replace(coalesce(i.counterparty_snapshot->>'vatCode',''), '\\s', '', 'g'), 3)) AS vat_number,
+      max(i.counterparty_snapshot->>'name') AS counterparty, sum(v.taxable) AS taxable, count(DISTINCT i.id) AS invoices
+    FROM invoices i JOIN invoice_vat_rows v ON v.invoice_id=i.id
+    WHERE i.register='sales' AND v.tax_code='PVM13' AND coalesce(i.vat_point_date, i.issue_date) BETWEEN $1 AND $2
+    GROUP BY 1, 2 ORDER BY 1, 2`, [from, to])).rows.map((r) => ({...r, taxable: money.norm(r.taxable), taxable_whole: String(Math.round(Number(r.taxable)))}));
+  const missing = rows.filter((r) => !/^[A-Z]{2}$/.test(r.country) || !r.vat_number || r.country === 'LT');
+  return report('FR0564 duomenys: prekių tiekimas ES PVM mokėtojams',
+    `Pardavimai su PVM kodu PVM13 (0 %, PVMĮ 49 str.) pagal PVM apmokestinimo momentą ${from}–${to}, sugrupuoti pagal pirkėjo PVM mokėtojo kodą. FR0564 sumos deklaruojamos sveikais eurais. Formą užpildykite EDS sistemoje pagal šias eilutes.`,
+    [['country', 'Valstybės kodas'], ['vat_number', 'PVM mokėtojo kodas'], ['counterparty', 'Pirkėjas'], ['invoices', 'Sąskaitų sk.'], ['taxable', 'Tiekimo vertė, EUR', 'money'], ['taxable_whole', 'Deklaruojama (sveikais eurais)']],
+    rows, {filters: {from, to}, totals: {net: money.sum(rows.map((r) => r.taxable))},
+      incomplete: missing.length ? {reason: `${missing.length} pirkėjų neturi tinkamo kitos ES valstybės PVM kodo – pataisykite kontrahento duomenis prieš teikdami FR0564.`} : null});
+}
+
 export async function aging(db, {register = 'sales', asOf, today}) {
   asOf = D(asOf, today);
   const rows = (await invoiceBalances(db, {register, asOf, openOnly: true, limit: 5000})).map((r) => {
@@ -193,6 +211,9 @@ export async function dashboard(db, {from, to, today}) {
   const bank = (await db.query(`SELECT count(*) FILTER (WHERE status IN ('unmatched','proposed','needs_review')) AS unresolved, coalesce(sum(abs(amount)) FILTER (WHERE status IN ('unmatched','proposed','needs_review')),0) AS amount FROM bank_transactions`)).rows[0];
   const stmt = (await db.query(`SELECT count(*) AS n FROM bank_statements WHERE balance_status <> 'ok' AND resolved_at IS NULL`)).rows[0];
   const overdue = unpaid.filter((r) => r.due_date && r.due_date < today);
+  const cal = await taxCalendar(db, {from: new Date(Date.parse(today) - 92 * 86400000).toISOString().slice(0, 10), to: new Date(Date.parse(today) + 14 * 86400000).toISOString().slice(0, 10), today});
+  const due = cal.items.filter((i) => i.status === 'overdue' || i.status === 'soon');
+  const nextDue = cal.items.find((i) => i.status !== 'filed');
   return {
     period: {from, to},
     cards: [
@@ -201,6 +222,7 @@ export async function dashboard(db, {from, to, today}) {
       {key: 'unpaid', title: 'Neapmokėtos pardavimo sąskaitos', value: money.sum(unpaid.map((r) => r.outstanding)), unit: 'EUR', definition: `${unpaid.length} sąskaitų likutis šiandien (${today}); iš jų vėluoja ${overdue.length} (${money.sum(overdue.map((r) => r.outstanding))} EUR).`, link: `#/ataskaitos/gautinos?asOf=${today}`},
       {key: 'payables', title: 'Neapmokėti pirkimai', value: money.sum(unpaidP.map((r) => r.outstanding)), unit: 'EUR', definition: `${unpaidP.length} tiekėjų sąskaitų likutis šiandien.`, link: `#/ataskaitos/moketinos?asOf=${today}`},
       {key: 'review', title: 'Laukia peržiūros', value: String(Number(review.needs_review) + Number(review.ready)), definition: `Dokumentų dėžutėje: ${review.needs_review} reikia peržiūros, ${review.ready} paruošta patvirtinti, ${review.processing} apdorojama, ${review.failed} nepavyko.`, link: '#/deze'},
+      {key: 'tax', title: 'Mokesčių terminai', value: String(due.length), definition: cal.summary.overdue ? `Vėluoja ${cal.summary.overdue} (nepažymėtos kaip pateiktos); per 7 d. – ${cal.summary.soon}.` : nextDue ? `Artimiausias: ${nextDue.title} (${nextDue.period}) iki ${nextDue.due}.` : 'Artimiausiu metu terminų nėra.', link: '#/mokesciu-kalendorius'},
       {key: 'bank', title: 'Nesuderintos banko operacijos', value: bank.unresolved, definition: `Importuotos, dar nepatvirtintos operacijos (suma ${money.norm(bank.amount)} EUR). Išrašų su likučių neatitikimu: ${stmt.n}.`, link: '#/bankas'},
     ],
   };

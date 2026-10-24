@@ -1,5 +1,5 @@
 // Atlyginimai: monthly payroll sheets, employees, payroll parameters, payslips.
-import {h, clear, get, post, put, del, pageHeader, section, table, money, eur, date, guard, select, input, field, can, modal, today, confirmDialog, promptDialog, badge} from '../core.mjs';
+import {h, clear, get, post, put, del, pageHeader, section, table, money, eur, date, guard, select, input, field, can, modal, today, confirmDialog, promptDialog, badge, toast} from '../core.mjs';
 
 const STATUS = {draft: ['Juodraštis', 'warn'], approved: ['Patvirtinta ir kontuota', 'done']};
 const tabs = (cur) => h('div', {class: 'tabs'}, [['', 'Žiniaraščiai'], ['darbuotojai', 'Darbuotojai'], ['parametrai', 'Tarifai ir parametrai']].map(([k, t]) => h('a', {class: ['tab', cur === k && 'active'], href: `#/atlyginimai${k ? '/' + k : ''}`}, t)));
@@ -49,7 +49,13 @@ async function runSheet(main, id, state) {
     {label: 'Dirbta d.', render: (l) => inputs.get(l.employee_id).worked_days},
     {label: 'Val.', render: (l) => (l.pay_type === 'hourly' ? inputs.get(l.employee_id).worked_hours : '')},
     {label: 'Priedai', render: (l) => inputs.get(l.employee_id).bonus},
-    {label: 'Atostoginiai', render: (l) => inputs.get(l.employee_id).vacation_pay},
+    {label: 'Atostoginiai', render: (l) => h('span', {class: 'row-actions'}, inputs.get(l.employee_id).vacation_pay, draft ? h('button', {class: 'btn btn-small', type: 'button', title: 'Apskaičiuoti pagal vidutinį darbo užmokestį (3 mėn.)', onclick: () => guard(async () => {
+      const days = await promptDialog(`Atostoginiai – ${fullName(l)}`, 'Kiek atostogų darbo dienų šį mėnesį?', {minLength: 1});
+      if (!days) return;
+      const v = await get(`/api/payroll/vdu?employee=${l.employee_id}&period=${run.period}&days=${encodeURIComponent(String(days).replace(',', '.'))}`);
+      inputs.get(l.employee_id).vacation_pay.value = v.amount;
+      toast(`${v.explanation} Atostoginiai: ${v.daily} × ${v.days} d. = ${v.amount} €. Sumažinkite dirbtų dienų skaičių ir spauskite „Perskaičiuoti“.`, 'info');
+    })}, 'VDU') : null)},
     {label: 'Ligos (darbd.)', render: (l) => inputs.get(l.employee_id).sick_pay},
     {label: 'Kita', render: (l) => inputs.get(l.employee_id).other_pay},
     {label: 'Bruto', num: true, render: (l) => h('strong', null, money(l.gross))},

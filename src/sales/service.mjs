@@ -43,8 +43,13 @@ async function linesData(db, lines, register, taxDefault) {
 /** Create a draft manual invoice (proposal + document). Number is assigned only on approval. */
 export async function createManualInvoice(pool, user, b) {
   requireCap(user, 'write');
+  return tx(pool, (db) => createManualDraft(db, user, b));
+}
+
+/** The draft itself, inside the caller's transaction (also used by recurring invoices). */
+export async function createManualDraft(db, user, b) {
   const register = b.register === 'purchase' ? 'purchase' : 'sales';
-  return tx(pool, async (db) => {
+  {
     const ctx = await loadContext(db);
     const counterparty = await counterpartyData(db, b);
     // A known supplier/customer typed by name: link it, so its earlier invoices can suggest the accounts.
@@ -66,9 +71,9 @@ export async function createManualInvoice(pool, user, b) {
     const doc = await createDocument(db, {kind: register === 'sales' ? 'generated_invoice' : 'purchase_invoice', title: `${register === 'sales' ? 'Pardavimo sąskaita' : 'Pirkimas'} – ${counterparty.name}`,
       workflow: register === 'sales' ? 'generated' : 'invoice', processing_status: 'needs_review'}, user.id);
     const p = await createProposalVersion(db, {documentId: doc.id, kind: register === 'sales' ? 'manual_invoice' : 'invoice', data, userId: user.id, fileSha: null});
-    await audit(db, {userId: user.id, action: 'invoice.manual_draft', entityType: 'document', entityId: doc.id, details: {register, proposalId: p.id}});
+    await audit(db, {userId: user.id, action: 'invoice.manual_draft', entityType: 'document', entityId: doc.id, details: {register, proposalId: p.id, ...(b.recurringId && {recurringId: String(b.recurringId)})}});
     return {documentId: doc.id, proposal: p};
-  });
+  }
 }
 
 /** Sales credit note (return/discount) linked to a posted invoice; lines and prices copied from the snapshot. */

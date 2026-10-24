@@ -6,7 +6,7 @@ const REPORTS = [
   ['pelnas', 'profit-loss', 'Pelnas (nuostoliai) pagal sąskaitas', 'period'], ['balansas', 'balance-sheet', 'Balansas pagal sąskaitas', 'asOf'], ['bandomasis', 'trial-balance', 'Bandomasis balansas', 'period'],
   ['knyga', 'ledger', 'Didžioji knyga', 'ledger'], ['pvm-pardavimai', 'vat-sales', 'Pardavimų PVM registras', 'period'], ['pvm-pirkimai', 'vat-purchases', 'Pirkimų PVM registras', 'period'],
   ['gautinos', 'receivables', 'Pirkėjų skolos', 'asOf'], ['moketinos', 'payables', 'Skolos tiekėjams', 'asOf'], ['pardavimai', 'sales', 'Pardavimai', 'sales'],
-  ['operaciniai', 'sales-operational', 'Užsakymų rodikliai (operaciniai)', 'period'], ['pirkimai', 'purchases', 'Pirkimai ir sąnaudos', 'purchases'], ['mokejimai', 'payments', 'Mokėjimų suvestinė', 'period'], ['pvm-deklaracija', 'vat-return', 'PVM deklaracijos FR0600 duomenys', 'period'],
+  ['operaciniai', 'sales-operational', 'Užsakymų rodikliai (operaciniai)', 'period'], ['pirkimai', 'purchases', 'Pirkimai ir sąnaudos', 'purchases'], ['mokejimai', 'payments', 'Mokėjimų suvestinė', 'period'], ['pvm-deklaracija', 'vat-return', 'PVM deklaracijos FR0600 duomenys', 'period'], ['fr0564', 'fr0564', 'FR0564 duomenys (prekių tiekimas ES PVM mokėtojams)', 'period'],
 ];
 const EXTRA = [['isaf', 'i.SAF eksportas'], ['zurnalas', 'Žurnalas ir rankiniai įrašai'], ['savikaina', 'Savikaina (COGS)']];
 
@@ -152,15 +152,31 @@ async function journal(body, state) {
 async function cogs(body, state) {
   const periods = await get('/api/cogs-periods');
   const month = input({type: 'month', value: today().slice(0, 7)}), amount = input({inputmode: 'decimal'}), note = input();
+  const calcBox = h('div');
+  let accounts = {debit: '6000', credit: '204'};
+  const calc = () => guard(async () => {
+    const c = await get(`/api/cogs/proposal?period=${month.value}`);
+    accounts = c.accounts;
+    amount.value = c.total; note.value = 'apskaičiuota pagal svertinę vidutinę savikainą';
+    clear(calcBox, section(`Apskaičiuota savikaina ${c.period}: ${money(c.total)} €`,
+      c.posted ? h('p', {class: 'issue issue-warning'}, `Šio mėnesio savikaina jau užregistruota (įrašas #${c.posted}). Norėdami pakeisti, pirmiausia atšaukite tą įrašą žurnale.`) : null,
+      h('ul', {class: 'issues'}, c.issues.map((i) => h('li', {class: `issue-${i.level}`}, i.message))),
+      table([{label: 'Kodas', key: 'sku'}, {label: 'Prekė', key: 'name'}, {label: 'Parduota', num: true, render: (r) => `${Number(r.quantity)} ${r.unit || ''}`},
+        {label: 'Vid. savikaina', num: true, render: (r) => (r.unitCost === null ? '—' : money(r.unitCost))}, {label: 'Šaltinis', render: (r) => ({average: 'pirkimų vidurkis', card: 'kortelės kaina', none: 'nežinoma'}[r.source])},
+        {label: 'Savikaina', num: true, render: (r) => (r.amount === null ? '—' : money(r.amount))}], c.rows, {empty: 'Šį mėnesį parduotų prekių su kortelėmis nėra.'}),
+      h('p', {class: 'hint'}, `${c.method} Įrašas: D ${c.accounts.debit} / K ${c.accounts.credit}, ${c.date}. Suma įrašyta į formą žemiau – peržiūrėkite ir registruokite.`)));
+  });
   clear(body, h('h2', null, 'Parduotų prekių savikaina'),
-    h('p', {class: 'hint'}, 'Atsargos apskaitomos pirkimo metu (204), o savikaina registruojama atskirai buhalterio. Kol mėnesio savikaina nepatvirtinta, pelno ataskaita žymima kaip neišsami – savikaina nelaikoma nuliu.'),
+    h('p', {class: 'hint'}, 'Atsargos apskaitomos pirkimo metu (204), o savikaina registruojama atskirai. Ją galima apskaičiuoti automatiškai pagal prekių judėjimą arba įvesti ranka. Kol mėnesio savikaina neužregistruota, pelno ataskaita žymima kaip neišsami.'),
     table([{label: 'Mėnuo', key: 'period'}, {label: 'Įrašas', key: 'journal_entry_id'}, {label: 'Patvirtinta', render: (p) => dateTime(p.confirmed_at)}, {label: 'Pastaba', key: 'note'}], periods, {empty: 'Savikaina dar neregistruota.'}),
     can(state.user, 'approve') ? section('Registruoti savikainą', h('form', {onsubmit: async (e) => {
       e.preventDefault();
       const [y, m] = month.value.split('-');
       const last = new Date(Date.UTC(Number(y), Number(m), 0)).toISOString().slice(0, 10);
       const r = await guard(() => post('/api/journal', {date: last, kind: 'cogs', cogsPeriod: month.value, description: `Parduotų prekių savikaina ${month.value}${note.value ? ' – ' + note.value : ''}`,
-        lines: [{account: '6000', debit: amount.value}, {account: '204', credit: amount.value}]}), 'Savikaina užregistruota.');
+        lines: [{account: accounts.debit, debit: amount.value}, {account: accounts.credit, credit: amount.value}]}), 'Savikaina užregistruota.');
       if (r) cogs(body, state);
-    }}, h('div', {class: 'form-grid'}, field('Mėnuo', month), field('Suma (EUR)', amount, 'Įrašas: D 6000 / K 204 (suma pagal atsargų inventorizaciją ar kitą buhalterio skaičiavimą)'), field('Pastaba', note)), h('button', {class: 'btn btn-primary'}, 'Registruoti'))) : null);
+    }}, h('div', {class: 'form-grid'}, field('Mėnuo', month), field('Suma (EUR)', amount, 'Įrašas: D 6000 / K 204'), field('Pastaba', note)),
+      h('div', {class: 'actions'}, h('button', {type: 'button', class: 'btn', onclick: calc}, 'Apskaičiuoti pagal prekių judėjimą'), h('button', {class: 'btn btn-primary'}, 'Registruoti')))) : null,
+    calcBox);
 }
