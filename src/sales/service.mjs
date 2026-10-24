@@ -9,7 +9,7 @@ import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
 import {createDocument, addFile, loadDocumentForUser} from '../vault/documents.mjs';
 import {createProposalVersion} from '../invoices/service.mjs';
 import {applyClassification} from '../invoices/engine.mjs';
-import {loadContext, todayVilnius} from '../invoices/context.mjs';
+import {loadContext, todayVilnius, findCounterparty} from '../invoices/context.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
 
 const s = (v, n = 300) => (v === null || v === undefined ? '' : String(v).trim().slice(0, n));
@@ -47,6 +47,8 @@ export async function createManualInvoice(pool, user, b) {
   return tx(pool, async (db) => {
     const ctx = await loadContext(db);
     const counterparty = await counterpartyData(db, b);
+    // A known supplier/customer typed by name: link it, so its earlier invoices can suggest the accounts.
+    if (!counterparty.id && counterparty.name) { const known = await findCounterparty(db, counterparty); if (known) counterparty.id = String(known.id); }
     const issueDate = /^\d{4}-\d{2}-\d{2}$/.test(b.issueDate || '') ? b.issueDate : todayVilnius();
     const lines = await linesData(db, b.lines, register, ctx.company.vat_registered ? 'PVM1' : 'BE_PVM');
     let data = {

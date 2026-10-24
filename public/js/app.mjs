@@ -1,11 +1,13 @@
 // App shell: login, navigation, hash router, onboarding wizard.
-import {h, clear, get, post, put, setCsrf, toast, showError, guard, field, input, select, pageHeader, section, can, ENV_LABEL} from './core.mjs';
+import {h, clear, get, post, put, setCsrf, toast, showError, guard, field, input, select, pageHeader, section, can, debounce, ENV_LABEL} from './core.mjs';
 import {rekvizitaiButton} from './lib/company-fill.mjs';
 
 export const state = {user: null, company: null};
 // Page modules by first hash segment.
 const PAGES = {
   apzvalga: ['Apžvalga', () => import('./pages/dashboard.mjs')],
+  vadovas: ['Vadovo suvestinė', () => import('./pages/director.mjs')],
+  'menesio-uzdarymas': ['Mėnesio uždarymas', () => import('./pages/month-close.mjs')],
   deze: ['Dokumentų dėžutė', () => import('./pages/inbox.mjs')],
   pardavimai: ['Pardavimai', () => import('./pages/sales.mjs')],
   pirkimai: ['Pirkimai', () => import('./pages/purchases.mjs')],
@@ -44,9 +46,9 @@ export const MENU = [
   ['Likučiai', [['Prekių likučiai', 'prekes/likuciai'], ['Prekių judėjimas', 'prekes/judejimas'], ['Savikaina (COGS)', 'ataskaitos/savikaina']]],
   ['Turtas', [['Ilgalaikio turto sąrašas', 'turtas'], ['Nauja turto kortelė', 'turtas/naujas', 'write'], ['Nusidėvėjimo skaičiavimas', 'turtas/nusidevejimas']]],
   ['Finansai', [['Kasos orderiai (KPO / KIO)', 'kasa'], ['Naujas KPO (pajamos)', 'kasa/naujas/KPO', 'approve'], ['Naujas KIO (išlaidos)', 'kasa/naujas/KIO', 'approve'], ['Kasos knyga', 'kasa/knyga'], '-', ['Valiutų kursai', 'valiutos'], ['Valiutinių straipsnių perkainojimas', 'valiutos/perkainojimas'], '-', ['Palūkanos', 'palukanos'], ['Mokėjimų ruošimas (SEPA)', 'mokejimai'], ['Banko operacijos', 'bankas'], ['Banko išrašai', 'bankas/israsai'], ['Importuoti išrašą', 'bankas/importas', 'write'], ['Avansai', 'bankas/avansai'], ['Banko sąskaitos', 'bankas/saskaitos'], '-',
-    ['Žurnalas ir rankiniai įrašai', 'ataskaitos/zurnalas'], ['Didžioji knyga', 'ataskaitos/knyga']]],
+    ['Žurnalas ir rankiniai įrašai', 'ataskaitos/zurnalas'], ['Didžioji knyga', 'ataskaitos/knyga'], '-', ['Mėnesio uždarymas', 'menesio-uzdarymas']]],
   ['Atlyginimai', [['Darbo užmokesčio žiniaraščiai', 'atlyginimai'], ['GPM313 deklaracija (EDS forma)', 'gpm313'], ['SAM pranešimas Sodrai', 'sam'], ['Naujas žiniaraštis', 'atlyginimai/naujas', 'write'], ['Darbuotojai', 'atlyginimai/darbuotojai'], ['Tarifai ir parametrai', 'atlyginimai/parametrai']]],
-  ['Ataskaitos', [['Balansas (2 VAS, 1 priedas)', 'finansines/balansas'], ['Sutrumpintas balansas (2 priedas)', 'finansines/balansas-sutrumpintas'], ['Labai mažų įmonių balansas (3 priedas)', 'finansines/balansas-trumpas'],
+  ['Ataskaitos', [['Vadovo suvestinė (rodikliai, P/N pagal mėnesius, pinigų prognozė)', 'vadovas'], '-', ['Balansas (2 VAS, 1 priedas)', 'finansines/balansas'], ['Sutrumpintas balansas (2 priedas)', 'finansines/balansas-sutrumpintas'], ['Labai mažų įmonių balansas (3 priedas)', 'finansines/balansas-trumpas'],
     ['Pelno (nuostolių) ataskaita (3 VAS, 1 priedas)', 'finansines/pelno-nuostoliu'], ['Trumpa pelno (nuostolių) ataskaita (2 priedas)', 'finansines/pelno-nuostoliu-trumpa'],
     ['Pinigų srautų ataskaita (5 VAS, netiesioginis būdas)', 'finansines/pinigu-srautai'], ['Pinigų srautų ataskaita (tiesioginis būdas)', 'finansines/pinigu-srautai-tiesioginis'],
     ['Nuosavo kapitalo pokyčių ataskaita (4 VAS)', 'finansines/nuosavo-kapitalo-pokyciai'], ['Metinis rinkinys Registrų centrui', 'rc-rinkinys'], '-',
@@ -55,11 +57,11 @@ export const MENU = [
       ['Pelnas (nuostoliai) pagal sąskaitas', 'ataskaitos/pelnas'], ['Balansas pagal sąskaitas', 'ataskaitos/balansas'], '-',
       ['Pirkėjų skolos', 'ataskaitos/gautinos'], ['Skolos tiekėjams', 'ataskaitos/moketinos'], ['Skolų suderinimo aktas', 'skolu-aktas'], '-',
       ['Pardavimai', 'ataskaitos/pardavimai'], ['Užsakymų rodikliai', 'ataskaitos/operaciniai'], ['Pirkimai ir sąnaudos', 'ataskaitos/pirkimai'], ['Mokėjimų suvestinė', 'ataskaitos/mokejimai']]]]],
-  ['Servisas', [['Įmonės duomenys', 'nustatymai/imone'], ['Kontavimo susiejimai', 'nustatymai/kontavimas'], ['Laikotarpių užrakinimas', 'nustatymai/laikotarpiai'], ['Metų uždarymas', 'metu-uzdarymas'], ['Integracijos (e. parduotuvės)', 'integracijos'], '-',
+  ['Servisas', [['Įmonės duomenys', 'nustatymai/imone'], ['Kontavimo susiejimai', 'nustatymai/kontavimas'], ['Mėnesio uždarymas (kontrolinis sąrašas)', 'menesio-uzdarymas'], ['Laikotarpių užrakinimas', 'nustatymai/laikotarpiai'], ['Metų uždarymas', 'metu-uzdarymas'], ['Integracijos (e. parduotuvės)', 'integracijos'], '-',
     ['Naudotojai', 'nustatymai/naudotojai'], ['Audito žurnalas', 'nustatymai/auditas'], ['Foninės užduotys', 'nustatymai/uzduotys']]],
 ];
 // Quick actions under the menu bar (like a desktop toolbar).
-const TOOLBAR = [['Apžvalga', 'apzvalga'], ['+ Pardavimas', 'pardavimai/nauja', 'write'], ['+ Pirkimas', 'pirkimai/nauja', 'write'], ['Įkelti dokumentus', 'deze', 'write'], ['Banko išrašas', 'bankas/importas', 'write'], ['+ Prekė', 'prekes/nauja', 'write']];
+const TOOLBAR = [['Apžvalga', 'apzvalga'], ['Vadovo suvestinė', 'vadovas'], ['+ Pardavimas', 'pardavimai/nauja', 'write'], ['+ Pirkimas', 'pirkimai/nauja', 'write'], ['Įkelti dokumentus', 'deze', 'write'], ['Banko išrašas', 'bankas/importas', 'write'], ['+ Prekė', 'prekes/nauja', 'write']];
 
 const root = document.getElementById('app');
 let main, menubar;
@@ -129,6 +131,39 @@ function menuBar() {
   return bar;
 }
 
+let searchKeys = null;
+// Global search in the top bar: Ctrl+K or "/" focuses it; arrows and Enter pick a result.
+function searchBox() {
+  const box = input({type: 'search', class: 'gsearch-input', placeholder: 'Ieškoti (Ctrl+K): sąskaita, kontrahentas, suma…', 'aria-label': 'Paieška visoje sistemoje', autocomplete: 'off'});
+  const list = h('ul', {class: 'gsearch-list', role: 'listbox', hidden: true});
+  let items = [], active = -1, seq = 0;
+  const close = () => { list.hidden = true; active = -1; };
+  const go = (r) => { close(); box.value = ''; location.hash = r.link; };
+  const draw = () => {
+    clear(list, items.length ? items.map((r, i) => h('li', {role: 'option', class: ['gsearch-item', i === active && 'active'], 'aria-selected': String(i === active), onmousedown: (e) => { e.preventDefault(); go(r); }},
+      h('span', {class: 'gsearch-type'}, r.type), h('strong', null, r.label), r.detail ? h('span', {class: 'gsearch-detail'}, r.detail) : null)) : h('li', {class: 'gsearch-empty'}, 'Nieko nerasta.'));
+    list.hidden = false;
+  };
+  box.addEventListener('input', debounce(async () => {
+    const q = box.value.trim(), my = ++seq;
+    if (q.length < 2) return close();
+    try { const r = await get(`/api/search?q=${encodeURIComponent(q)}`); if (my !== seq) return; items = r.results; active = items.length ? 0 : -1; draw(); } catch { close(); }
+  }, 250));
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { close(); box.blur(); }
+    else if (e.key === 'ArrowDown' && items.length) { e.preventDefault(); active = (active + 1) % items.length; draw(); }
+    else if (e.key === 'ArrowUp' && items.length) { e.preventDefault(); active = (active - 1 + items.length) % items.length; draw(); }
+    else if (e.key === 'Enter' && items[active]) { e.preventDefault(); go(items[active]); }
+  });
+  box.addEventListener('blur', () => setTimeout(close, 150));
+  if (!searchKeys) document.addEventListener('keydown', (e) => searchKeys?.(e));
+  searchKeys = (e) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable;
+    if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) { e.preventDefault(); box.focus(); box.select(); }
+  };
+  return h('div', {class: 'gsearch'}, box, list);
+}
+
 function shell() {
   const toggle = h('button', {class: 'nav-toggle', 'aria-expanded': 'false', 'aria-controls': 'menubar', onclick: () => { const open = document.body.classList.toggle('nav-open'); toggle.setAttribute('aria-expanded', String(open)); }}, '☰ Meniu');
   main = h('main', {id: 'main', tabindex: '-1'});
@@ -138,6 +173,7 @@ function shell() {
   clear(root,
     h('a', {class: 'skip', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); }}, 'Pereiti prie turinio'),
     h('header', {class: 'topbar'}, toggle, h('a', {class: 'brand', href: '#/apzvalga'}, 'Apskaita', ENV_LABEL ? h('span', {class: 'env-badge', title: 'Atskira testinė aplinka su savo duomenimis'}, `Testinė aplinka: ${ENV_LABEL}`) : null, state.company?.name ? h('span', {class: 'brand-company'}, state.company.name) : null),
+      searchBox(),
       h('div', {class: 'userbox'}, h('span', null, `${state.user.name || state.user.email} · ${{admin: 'Administratorius', accountant: 'Buhalteris', readonly: 'Tik skaitymas'}[state.user.role]}`),
         h('button', {class: 'btn btn-small', onclick: logout}, 'Atsijungti'))),
     menubar, toolbar, main);
@@ -166,6 +202,7 @@ function loginView(message) {
 
 export function navigate(path) { location.hash = `#/${path}`; }
 
+let routeSeq = 0;
 async function route() {
   if (!state.user) return;
   const [key, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || 'apzvalga').split('/');
@@ -181,17 +218,25 @@ async function route() {
   document.body.classList.remove('nav-open');
   main.onkeydown = null; // page-specific shortcuts (e.g. Ctrl+Enter in the review) never outlive their page
   clear(main, h('div', {class: 'loading'}, 'Kraunama…'));
+  const my = ++routeSeq;
   try {
     if (key === 'pradzia') return onboarding();
     const entry = PAGES[key];
     if (!entry) { clear(main, pageHeader('Puslapis nerastas')); return; }
+    // Each navigation renders into its own container: a slow page that finishes after the user has moved on
+    // must not overwrite the newer page.
     const mod = await entry[1]();
-    await mod.render(main, rest, state);
+    const view = h('div', {class: 'view'});
+    const loading = main.firstChild;
+    main.append(view); view.hidden = true;
+    await mod.render(view, rest, state);
+    if (my !== routeSeq) { view.remove(); return; }
+    loading?.remove(); view.hidden = false;
     document.title = `${entry[0]} – Apskaita${ENV_LABEL ? ` (${ENV_LABEL})` : ''}`;
   } catch (e) {
     if (e.status === 401) return;
     showError(e);
-    clear(main, pageHeader('Klaida'), h('p', null, e.message));
+    if (my === routeSeq) clear(main, pageHeader('Klaida'), h('p', null, e.message));
   }
 }
 
@@ -237,18 +282,22 @@ async function onboarding() {
   draw();
 }
 
+// boot() handles a 401 itself; the 'unauthenticated' event raised by the same request must not start a second boot.
+let booting = false;
 async function boot() {
+  booting = true;
   try {
     const me = await get('/api/me');
+    booting = false; // from here on a 401 (expired session) is handled by the 'unauthenticated' listener
     state.user = me.user; state.company = me.company; setCsrf(me.csrf);
     shell();
     window.onhashchange = route;
     await route();
   } catch (e) {
     if (e.status !== 401) return loginView(e.message);
-    if (await openLogin()) return boot();
+    if (await openLogin()) { booting = false; return boot(); }
     loginView();
-  }
+  } finally { booting = false; }
 }
 
 // Test deployments with OPEN_ACCESS=true: sign in automatically, no password.
@@ -262,6 +311,7 @@ async function openLogin() {
   } catch { return false; }
 }
 window.addEventListener('unauthenticated', async () => {
+  if (booting) return;
   state.user = null;
   if (await openLogin()) return boot();
   loginView('Sesija baigėsi – prisijunkite iš naujo.');

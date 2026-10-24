@@ -4,6 +4,8 @@ import {requireCap} from '../auth/auth.mjs';
 import {SECURITY_HEADERS} from '../http.mjs';
 import {audit} from '../audit.mjs';
 import * as R from '../reports/reports.mjs';
+import {managementPL, directorSummary} from '../reports/director.mjs';
+import {monthClose} from '../reports/monthclose.mjs';
 import {todayVilnius} from '../invoices/context.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
 import {buildIsaf, validateXsd} from '../isaf/isaf.mjs';
@@ -37,6 +39,7 @@ const REPORTS = {
   purchases: (db, q) => R.purchasesReport(db, q),
   payments: (db, q) => R.paymentsReport(db, q),
   'vat-return': (db, q) => R.vatReturn(db, q),
+  'management-pl': (db, q) => managementPL(db, q),
 };
 
 export function register(r, {pool, storage}) {
@@ -259,6 +262,38 @@ export function register(r, {pool, storage}) {
       return {ok: true};
     });
   });
+  // Global search: invoices, counterparties, bank operations, documents, products and journal entries, with links.
+  r.get('/api/search', async ({user, query}) => {
+    requireCap(user, 'read');
+    const q = String(query.q || '').trim().slice(0, 80);
+    if (q.length < 2) return {q, results: []};
+    const like = `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+    const amount = /^-?\d+([.,]\d{1,2})?$/.test(q) ? q.replace(',', '.') : null;
+    const id = /^#?\d+$/.test(q) ? q.replace('#', '') : null;
+    const rows = async (sql, params) => (await pool.query(sql, params)).rows;
+    const [inv, cps, txs, docs, prods, entries] = await Promise.all([
+      rows(`SELECT id, register, series, number, issue_date, gross_total, counterparty_snapshot->>'name' AS cp FROM invoices
+        WHERE (series || ' ' || number) ILIKE $1 OR (series || number) ILIKE $1 OR counterparty_snapshot->>'name' ILIKE $1 OR ($2::numeric IS NOT NULL AND abs(gross_total) = abs($2::numeric))
+        ORDER BY issue_date DESC, id DESC LIMIT 8`, [like, amount]),
+      rows(`SELECT id, name, company_code, vat_code FROM counterparties WHERE name ILIKE $1 OR company_code ILIKE $1 OR vat_code ILIKE $1 OR iban ILIKE $1 ORDER BY name LIMIT 6`, [like]),
+      rows(`SELECT id, booking_date, amount, counterparty_name, reference, status FROM bank_transactions
+        WHERE counterparty_name ILIKE $1 OR reference ILIKE $1 OR ($2::numeric IS NOT NULL AND abs(amount) = abs($2::numeric)) ORDER BY booking_date DESC, id DESC LIMIT 6`, [like, amount]),
+      rows(`SELECT id, title, kind, issue_date FROM documents WHERE NOT archived AND (title ILIKE $1 OR reference_number ILIKE $1) ORDER BY id DESC LIMIT 6`, [like]),
+      rows(`SELECT id, sku, name FROM products WHERE sku ILIKE $1 OR name ILIKE $1 ORDER BY name LIMIT 6`, [like]),
+      rows(`SELECT e.id, e.entry_date, e.description FROM journal_entries e WHERE e.description ILIKE $1 OR ($2::bigint IS NOT NULL AND e.id = $2::bigint) ORDER BY e.entry_date DESC, e.id DESC LIMIT 6`, [like, id]),
+    ]);
+    const results = [
+      ...inv.map((r) => ({type: r.register === 'sales' ? 'Pardavimo sąskaita' : 'Pirkimo sąskaita', label: `${r.series || ''} ${r.number}`.trim(), detail: `${r.cp || ''} · ${String(r.issue_date).slice(0, 10)} · ${money.norm(r.gross_total)} €`, link: `#/${r.register === 'sales' ? 'pardavimai' : 'pirkimai'}/s/${r.id}`})),
+      ...cps.map((r) => ({type: 'Kontrahentas', label: r.name, detail: [r.company_code, r.vat_code].filter(Boolean).join(' · '), link: `#/skolu-aktas?counterparty=${r.id}`})),
+      ...txs.map((r) => ({type: 'Banko operacija', label: `${money.norm(r.amount)} € ${r.counterparty_name || ''}`.trim(), detail: `${String(r.booking_date).slice(0, 10)} · ${(r.reference || '').slice(0, 60)}`, link: `#/bankas/tx/${r.id}`})),
+      ...docs.map((r) => ({type: 'Dokumentas', label: r.title || `#${r.id}`, detail: r.issue_date ? String(r.issue_date).slice(0, 10) : '', link: `#/dokumentai/${r.id}`})),
+      ...prods.map((r) => ({type: 'Prekė / paslauga', label: r.name, detail: r.sku, link: `#/prekes/${r.id}`})),
+      ...entries.map((r) => ({type: 'DK įrašas', label: `#${r.id} ${r.description || ''}`.trim(), detail: String(r.entry_date).slice(0, 10), link: `#/ataskaitos/zurnalas/${r.id}`})),
+    ];
+    return {q, results};
+  });
+  r.get('/api/month-close', async ({user, query}) => { requireCap(user, 'read'); return monthClose(pool, {period: query.period, today: todayVilnius()}); });
+  r.get('/api/director', async ({user}) => { requireCap(user, 'read'); return directorSummary(pool, {today: todayVilnius()}); });
   r.get('/api/dashboard', async ({user, query}) => { requireCap(user, 'read'); return R.dashboard(pool, {...query, today: todayVilnius()}); });
   r.get('/api/reports/:name', async ({user, params, query, res}) => {
     requireCap(user, 'read');

@@ -24,7 +24,7 @@ try {
   const [popup] = await Promise.all([fake.context().waitForEvent('page'), fake.evaluate(decodeURIComponent(href.slice('javascript:'.length)))]);
   await popup.setViewportSize({width: 1366, height: 860});
   await popup.waitForSelector('.vat-result.pos');
-  assert.equal(await popup.inputValue('input >> nth=0'), 'UAB „Energitech“');
+  assert.equal(await popup.inputValue('main input >> nth=0'), 'UAB „Energitech“');
   assert.ok(!popup.url().includes('d='), 'page text removed from the URL');
   await shot(popup, '2-review.png');
   await popup.click('button:text("Sukurti pirkėją / tiekėją")'); await popup.waitForSelector('h1:text("Pirkėjai / Tiekėjai")');

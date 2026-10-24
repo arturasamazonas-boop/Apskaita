@@ -30,6 +30,7 @@ const BUILTIN_VAT_RULES = {
   'BR-FOREIGN': 'Užsienio tiekėjas – atvirkštinis apmokestinimas automatiškai nepalaikomas.',
   'BR-NOT-VAT-INVOICE': 'Dokumentas nėra PVM sąskaita faktūra – PVM atskaita negalima be tinkamo dokumento.',
   'BR-ZERO': 'PVM nėra (0 % arba be PVM).',
+  'BR-HISTORY': 'PVM režimas pakartotas iš ankstesnės šio kontrahento sąskaitos, kurią patvirtino buhalteris.',
 };
 export {BUILTIN_VAT_RULES};
 
@@ -48,6 +49,26 @@ export function pickRule(rules, line, ctx) {
   return hits[0] || null;
 }
 
+/**
+ * Counterparty memory: the same description booked before for this supplier/customer, or, when all their earlier lines
+ * went to one account, that account. Fills `out`; returns false when there is nothing to repeat.
+ */
+function fromHistory(line, ctx, out) {
+  const past = ctx.history?.get(`${ctx.register}:${ctx.counterpartyId}`);
+  if (!past?.length || !ctx.counterpartyId) return false;
+  const desc = fold(line.description || '');
+  const same = desc ? past.find((p) => fold(p.description) === desc) : null;
+  const accounts = new Set(past.map((p) => p.account_code));
+  const hit = same || (accounts.size === 1 && !['asset', 'prepaid'].includes(past[0].line_type) ? past[0] : null);
+  if (!hit || (ctx.accounts && !ctx.accounts.has(hit.account_code))) return false;
+  out.accountCode = hit.account_code; out.lineType = hit.line_type;
+  const doc = `${hit.series || ''} ${hit.number}`.trim();
+  out.suggestion = {source: 'history', explanation: same ? `Ta pati eilutė „${hit.description}“ ankstesnėje sąskaitoje ${doc} (${String(hit.issue_date).slice(0, 10)}) užregistruota į ${hit.account_code}.`
+    : `Visos ankstesnės šio kontrahento sąskaitos (paskutinė ${doc}) užregistruotos į ${hit.account_code}. Patikrinkite.`};
+  if (hit.vat_treatment && !['review', 'output'].includes(hit.vat_treatment)) out.historyVat = {treatment: hit.vat_treatment, rule: 'BR-HISTORY'};
+  return true;
+}
+
 /** Suggest account/type/VAT treatment for one line. Returns only suggestions; user approval required. */
 export function classifyLine(line, ctx) {
   const {register, company, rules, products} = ctx;
@@ -64,6 +85,9 @@ export function classifyLine(line, ctx) {
     out.lineType = register === 'sales' ? (product.kind === 'service' ? 'revenue_services' : 'revenue_goods') : (product.kind === 'goods' ? 'inventory' : 'service');
     out.productId = String(product.id);
     out.suggestion = {source: 'product', explanation: `Prekės kortelė ${product.sku} „${product.name}“.`};
+  } else if (fromHistory(line, ctx, out)) {
+    if (out.historyVat) kwVat = out.historyVat;
+    delete out.historyVat;
   } else {
     const kw = KEYWORDS.find((k) => k[register] && k.re.test(desc));
     if (kw) {

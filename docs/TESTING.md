@@ -17,6 +17,7 @@ All tests run against a real PostgreSQL 16 database. They drop and recreate the 
 | `node test-browser/product-attributes.mjs [dir]` | Žinynai menu order, the Pirkėjai / Tiekėjai page, the RAL 6005 header; a "Diametras, mm" attribute created from a new product card, filled, saved and shown as a product list column |
 | `node test-browser/loans.mjs [dir]` | Palūkanos from the menu: drags a loan agreement (DOCX) onto the drop area, checks the terms read from it and their source text, sets the arrival day and saves. Then checks interest to a date with and without the repayment day, the accrual to the ledger (D 6802 / K 491), the list, and the manual calculator |
 | `node test-browser/environments.mjs [dir]` | Test environments (/ieva/, /sonata/; /test/ is covered by `test/28-demo-environment.test.mjs`): each opens with its badge, a product created in one is not visible in the other or in the main environment |
+| `node test-browser/time-savers.mjs [dir]` | Vadovo suvestinė from the toolbar (8 key figures, monthly chart and P&L, 8-week forecast, XLSX download), the month-close checklist from the menu, global search with Ctrl+K and Enter, and bulk approval of a ready bank proposal |
 | `node test-browser/open-access.mjs` | With `OPEN_ACCESS=true` the app opens without the login form |
 | `npm run perf` | 10,000-document timings ([PERFORMANCE.md](PERFORMANCE.md)) |
 

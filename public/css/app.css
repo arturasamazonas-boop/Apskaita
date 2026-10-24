@@ -272,3 +272,30 @@ dl.details dt { color: var(--muted, #666); } dl.details dd { margin: 0; font-wei
 .calc-result { font-size: 1.05rem; margin: .75rem 0; }
 small.evidence { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: .2rem; padding: 0; font-style: italic; overflow-wrap: anywhere; }
 ul.issue { margin: .5rem 0; padding: .6rem .8rem .6rem 2rem; }
+/* Director charts */
+.chart { margin: 0 0 1rem; } .chart svg { width: 100%; height: auto; max-height: 240px; }
+.chart-bar { fill: var(--primary); opacity: .8; } .chart-dot { fill: var(--ok); stroke: var(--surface); stroke-width: 1.5; } .chart-dot.neg { fill: var(--error); }
+.chart-axis { stroke: var(--border); } .chart-label { font-size: 11px; fill: var(--muted); }
+.legend-bar, .legend-dot { display: inline-block; width: .8rem; height: .8rem; vertical-align: middle; background: var(--primary); opacity: .8; border-radius: 2px; }
+.legend-dot { background: var(--ok); border-radius: 50%; opacity: 1; }
+tr.row-strong td { font-weight: 600; background: var(--surface-2, transparent); }
+/* Month-close checklist */
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.cl-item { display: grid; grid-template-columns: 1.6rem 1fr auto; gap: .6rem; align-items: center; padding: .5rem .6rem; border-radius: 6px; }
+.check-icon { display: inline-flex; width: 1.4rem; height: 1.4rem; border-radius: 50%; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; color: #fff; }
+.check-error { background: var(--error-bg); } .check-error .check-icon { background: var(--error); }
+.check-warn { background: var(--warn-bg); } .check-warn .check-icon { background: var(--warn, #b7791f); }
+.check-info { background: var(--info-bg); } .check-info .check-icon { background: var(--primary); }
+.check-ok .check-icon { background: var(--ok); }
+/* Global search */
+.gsearch { position: relative; flex: 1 1 18rem; max-width: 30rem; margin-left: auto; }
+.gsearch-input { width: 100%; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.35); color: var(--brand-ink); }
+.gsearch-input::placeholder { color: rgba(255,255,255,.7); }
+.gsearch-input:focus { background: var(--surface); color: var(--text); }
+.gsearch-list { position: absolute; z-index: 50; top: calc(100% + 4px); left: 0; right: 0; list-style: none; margin: 0; padding: .25rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); max-height: 70vh; overflow: auto; }
+.gsearch-item { display: grid; grid-template-columns: 8.5rem 1fr; gap: 0 .5rem; padding: .4rem .5rem; border-radius: 4px; cursor: pointer; }
+.gsearch-item.active, .gsearch-item:hover { background: var(--info-bg); }
+.gsearch-type { color: var(--muted); font-size: .8rem; grid-row: span 2; align-self: center; }
+.gsearch-detail { color: var(--muted); font-size: .82rem; }
+.gsearch-empty { padding: .5rem; color: var(--muted); }
+@media (max-width: 720px) { .gsearch { order: 3; flex-basis: 100%; max-width: none; } .topbar { flex-wrap: wrap; } }

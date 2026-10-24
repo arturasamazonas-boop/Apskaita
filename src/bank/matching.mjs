@@ -70,6 +70,31 @@ function scoreInvoice(t, inv, cp) {
   return {score, evidence: ev};
 }
 
+/**
+ * Recurring payments without an invoice (rent, taxes, leasing, utilities): repeat how the last approved transaction
+ * with the same counterparty and direction was booked, if it was a single account line.
+ */
+async function fromHistory(db, t) {
+  const iban = t.counterparty_iban || null, name = normalizeName(t.counterparty_name || '');
+  if (!iban && name.length < 3) return null;
+  const prev = (await db.query(`SELECT t.id, t.booking_date, t.counterparty_name, a.kind, a.account_code, a.note, a.counterparty_id,
+      (SELECT count(*) FROM allocations x WHERE x.transaction_id=t.id AND x.source_allocation_id IS NULL) AS n
+    FROM bank_transactions t JOIN allocations a ON a.transaction_id=t.id AND a.source_allocation_id IS NULL
+    WHERE t.status='approved' AND t.id<>$1 AND sign(t.amount)=sign($2::numeric) AND a.kind IN ('other','fee')
+      AND ($3::text IS NOT NULL AND t.counterparty_iban=$3 OR $3::text IS NULL AND t.counterparty_iban IS NULL AND t.counterparty_name IS NOT NULL)
+    ORDER BY t.booking_date DESC, t.id DESC LIMIT 20`, [t.id || 0, t.amount, iban])).rows
+    .filter((r) => Number(r.n) === 1 && (iban || normalizeName(r.counterparty_name) === name));
+  const last = prev[0];
+  if (!last?.account_code) return null;
+  const acc = (await db.query('SELECT code FROM accounts WHERE code=$1 AND active', [last.account_code])).rows[0];
+  if (!acc) return null;
+  const same = prev.filter((r) => r.account_code === last.account_code).length;
+  const when = String(last.booking_date instanceof Date ? last.booking_date.toISOString() : last.booking_date).slice(0, 10);
+  return {kind: last.kind, status: 'proposed', explanation: `Pasikartojantis mokėjimas: ankstesnės operacijos su šiuo kontrahentu (${same} k.) priskirtos sąskaitai ${last.account_code}. Patikrinkite prieš tvirtindami.`,
+    allocations: [{kind: last.kind, amount: last.kind === 'fee' ? money.abs(t.amount) : money.norm(t.amount), accountCode: last.account_code, counterpartyId: last.counterparty_id ? String(last.counterparty_id) : undefined,
+      note: last.note || 'Pasikartojantis mokėjimas', evidence: [`${when} operacija #${last.id} su tuo pačiu ${iban ? `IBAN ${iban}` : 'kontrahentu'} užregistruota į ${last.account_code}.`]}]};
+}
+
 /** Build a suggestion for one transaction (never posts). */
 export async function suggest(db, t) {
   const roles = await roleAccounts(db);
@@ -106,6 +131,10 @@ export async function suggest(db, t) {
           ...(money.isZero(fee) ? [] : [{kind: 'fee', amount: fee, accountCode: roles.processor_fees, note: 'Mokėjimų tarpininko mokestis', evidence: ['Skirtumas tarp sąskaitos likučio ir išmokos.']}])]};
     }
     return {...base, kind: 'processor_payout', status: fit.length > 1 ? 'ambiguous' : 'none', candidates, explanation: fit.length > 1 ? 'Kelios sąskaitos tinka išmokai – pasirinkite rankiniu būdu.' : 'Tarpininko išmoka: nepavyko automatiškai susieti su sąskaitomis. Pasirinkite sąskaitas ir mokestį.'};
+  }
+  if (!scored.length) {
+    const remembered = await fromHistory(db, t);
+    if (remembered) return {...base, ...remembered};
   }
   if (!scored.length) return {...base, explanation: incoming ? 'Atitinkančių neapmokėtų sąskaitų nerasta. Palikite nesuderintą, kol gausite sąskaitą, arba pažymėkite kaip avansą (tarpinė sąskaita).' : 'Atitinkančių neapmokėtų sąskaitų nerasta. Jei tai išlaidos be sąskaitos – paprašykite patvirtinančio dokumento.'};
   // 1) Explicit invoice numbers in the payment reference → allocate in order.

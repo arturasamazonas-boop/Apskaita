@@ -18,17 +18,43 @@ export async function render(main, rest, state) {
 async function transactions(main, state) {
   const st = {status: 'open', q: '', offset: 0, limit: 50};
   const box = h('div');
+  const picked = new Map();
+  const canApprove = can(state.user, 'approve');
+  const ready = (t) => t.status === 'proposed' && t.proposal_id && !t.blocking && t.match_status !== 'ambiguous';
+  const bulkBtn = h('button', {class: 'btn btn-primary', disabled: true, onclick: async () => {
+    const items = [...picked.values()];
+    if (!items.length) return;
+    const r = await guard(() => post('/api/bank/transactions/approve-many', {items}));
+    if (!r) return;
+    toast(`Patvirtinta: ${r.approved}${r.failed ? `, nepavyko: ${r.failed} (${r.results.find((x) => !x.ok).message})` : ''}.`, r.failed ? 'error' : 'ok');
+    picked.clear(); load();
+  }}, 'Patvirtinti pažymėtus');
+  const refreshBtn = () => { bulkBtn.disabled = !picked.size; bulkBtn.textContent = `Patvirtinti pažymėtus (${picked.size})`; };
   const load = async () => {
     const d = await get(`/api/bank/transactions?${new URLSearchParams({status: st.status, q: st.q, limit: st.limit, offset: st.offset})}`);
-    st.count = d.items.length; st.hasMore = d.hasMore;
-    clear(box, table([{label: 'Data', render: (t) => date(t.booking_date)}, {label: 'Sąskaita', key: 'account_name'}, {label: 'Kontrahentas', key: 'counterparty_name'}, {label: 'Paskirtis', render: (t) => h('span', {class: 'clip'}, t.reference)},
+    st.count = d.items.length; st.hasMore = d.hasMore; st.items = d.items;
+    for (const id of picked.keys()) if (!d.items.some((t) => String(t.id) === id && ready(t))) picked.delete(id);
+    refreshBtn();
+    const check = (t) => (ready(t) ? h('input', {type: 'checkbox', 'aria-label': 'Pažymėti', checked: picked.has(String(t.id)), onclick: (e) => {
+      e.stopPropagation();
+      if (e.target.checked) picked.set(String(t.id), {id: String(t.id), contentHash: t.content_hash}); else picked.delete(String(t.id));
+      refreshBtn();
+    }}) : '');
+    clear(box, table([...(canApprove ? [{label: '', render: check}] : []), {label: 'Data', render: (t) => date(t.booking_date)}, {label: 'Sąskaita', key: 'account_name'}, {label: 'Kontrahentas', key: 'counterparty_name'}, {label: 'Paskirtis', render: (t) => h('span', {class: 'clip'}, t.reference)},
       {label: 'Suma', num: true, render: (t) => h('span', {class: Number(t.amount) < 0 ? 'neg' : 'pos'}, money(t.amount))}, {label: 'Būsena', render: (t) => h('span', null, badge(TX, t.status), t.duplicate_review ? h('span', {class: 'badge badge-error'}, ' galimas dublikatas') : null)},
       {label: 'Pasiūlymas', render: (t) => t.first_error || t.explanation || ''}], d.items, {onRow: (t) => { location.hash = `#/bankas/tx/${t.id}`; }, empty: 'Operacijų nėra.'}), pager(st, load));
   };
   const sSel = select([['open', 'Nesuderintos'], ['', 'Visos'], ['approved', 'Patvirtintos'], ['ignored', 'Ignoruotos']], 'open', {onchange: () => { st.status = sSel.value; st.offset = 0; load(); }});
   const q = input({type: 'search', placeholder: 'Kontrahentas arba paskirtis', oninput: debounce(() => { st.q = q.value; st.offset = 0; load(); })});
+  const bulk = h('div', {class: 'actions'},
+    canApprove ? h('button', {class: 'btn', onclick: () => { for (const t of st.items || []) if (ready(t)) picked.set(String(t.id), {id: String(t.id), contentHash: t.content_hash}); load(); }}, 'Pažymėti visus paruoštus') : null,
+    canApprove ? bulkBtn : null,
+    can(state.user, 'write') ? h('button', {class: 'btn', title: 'Dar kartą ieško atitikmenų nesuderintoms operacijoms (pvz., įkėlus naujas sąskaitas). Rankiniu būdu pakeisti pasiūlymai neliečiami.', onclick: async () => {
+      const r = await guard(() => post('/api/bank/transactions/resuggest-open', {}));
+      if (r) { toast(`Peržiūrėta ${r.checked} operacijų, paruošta tvirtinti ${r.ready}.`, 'ok'); load(); }
+    }}, 'Pasiūlyti iš naujo') : null);
   clear(main, pageHeader('Bankas ir mokėjimai'), tabs(''), h('div', {class: 'filters'}, field('Rodyti', sSel), field('Paieška', q)),
-    h('p', {class: 'hint'}, 'Importuotos operacijos laikomos atskirai nuo apskaitos įrašų. Įrašas sukuriamas tik patvirtinus paskirstymą.'), box);
+    h('p', {class: 'hint'}, 'Importuotos operacijos laikomos atskirai nuo apskaitos įrašų. Įrašas sukuriamas tik patvirtinus paskirstymą. Paruoštus pasiūlymus (be klaidų) galima pažymėti ir patvirtinti kartu.'), bulk, box);
   await load();
 }
 

@@ -13,7 +13,18 @@ export async function loadContext(db, {now} = {}) {
   const taxCodes = (await db.query('SELECT * FROM tax_codes')).rows;
   const rules = (await db.query(`SELECT * FROM classification_rules WHERE status='active'`)).rows;
   const products = (await db.query('SELECT * FROM products WHERE active')).rows;
-  return {company, accounts, taxCodes, rules, products, roles: await roleAccounts(db), today: todayVilnius(now)};
+  // Supplier/customer memory: how each counterparty's lines were booked on posted invoices (latest per description).
+  const history = new Map();
+  for (const r of (await db.query(`SELECT DISTINCT ON (i.register, i.counterparty_id, lower(l.description)) i.register, i.counterparty_id, i.series, i.number, i.issue_date,
+      l.description, l.account_code, l.line_type, l.vat_treatment
+    FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id
+    WHERE i.counterparty_id IS NOT NULL AND i.doc_type <> 'correction' AND i.issue_date > current_date - 730
+    ORDER BY i.register, i.counterparty_id, lower(l.description), i.issue_date DESC, i.id DESC LIMIT 20000`)).rows) {
+    const k = `${r.register}:${r.counterparty_id}`;
+    if (!history.has(k)) history.set(k, []);
+    history.get(k).push(r);
+  }
+  return {company, accounts, taxCodes, rules, products, history, roles: await roleAccounts(db), today: todayVilnius(now)};
 }
 
 export async function findCounterparty(db, c) {

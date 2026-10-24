@@ -173,7 +173,7 @@ export async function render(main, [docId], state) {
         cell('accountCode', {label: 'Sąskaita', options: accOptions}), cell('lineType', {label: 'Tipas', options: [['', '—'], ...Object.entries(LINE_TYPE)]}),
         cell('vatTreatment', {label: 'PVM atskaita', options: [['', '—'], ...Object.entries(VAT_T)]}),
         h('td', null, editable ? h('button', {class: 'btn-icon', 'aria-label': `Pašalinti ${i + 1} eilutę`, onclick: () => { model.lines.splice(i, 1); markDirty(); drawForm(p.validation); }}, '×') : null)),
-      h('tr', {class: 'line-note'}, h('td'), h('td', {colspan: 12}, h('small', null, `Pasiūlymo šaltinis: ${{rule: 'patvirtinta taisyklė', product: 'prekės kortelė', keyword: 'raktažodžiai', llm: 'kalbos modelis', manual: 'naudotojas', default: 'numatyta', store: 'parduotuvė', original: 'originali sąskaita', none: 'nėra'}[s.source] || '—'}. ${s.explanation || ''} ${s.vatExplanation ? `PVM: ${s.vatExplanation}` : ''}`),
+      h('tr', {class: 'line-note'}, h('td'), h('td', {colspan: 12}, h('small', null, `Pasiūlymo šaltinis: ${{rule: 'patvirtinta taisyklė', product: 'prekės kortelė', keyword: 'raktažodžiai', history: 'ankstesnės kontrahento sąskaitos', llm: 'kalbos modelis', manual: 'naudotojas', default: 'numatyta', store: 'parduotuvė', original: 'originali sąskaita', none: 'nėra'}[s.source] || '—'}. ${s.explanation || ''} ${s.vatExplanation ? `PVM: ${s.vatExplanation}` : ''}`),
         can(state.user, 'rules') && model.register && l.accountCode ? h('button', {class: 'link small', onclick: () => ruleDialog(i)}, ' Sukurti taisyklę iš šios eilutės') : null))];
     });
     return h('div', null, h('div', {class: 'table-wrap'}, h('table', {class: 'grid lines'},

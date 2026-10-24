@@ -100,6 +100,34 @@ export function register(r, deps) {
   });
   r.put('/api/bank/transactions/:id/proposal', async ({req, user, params}) => editRecon(pool, user, params.id, await readJson(req)));
   r.post('/api/bank/transactions/:id/approve', async ({req, user, params}) => approveRecon(pool, user, params.id, await readJson(req)));
+  // Approve many ready proposals at once: each one in its own transaction, so one stale or invalid row does not block the rest.
+  r.post('/api/bank/transactions/approve-many', async ({req, user}) => {
+    requireCap(user, 'approve');
+    const {items} = await readJson(req);
+    if (!Array.isArray(items) || !items.length || items.length > 200) throw new AppError(400, 'bad_request', 'Pasirinkite nuo 1 iki 200 operacijų.');
+    const results = [];
+    for (const it of items) {
+      try { const r = await approveRecon(pool, user, String(it.id), {contentHash: String(it.contentHash || '')}); results.push({id: String(it.id), ok: true, journalEntryId: r.journalEntryId}); }
+      catch (e) { results.push({id: String(it.id), ok: false, message: e.message}); }
+    }
+    return {approved: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length, results};
+  });
+  // Re-run matching for every open transaction that the user has not edited (new invoices may have arrived since import).
+  r.post('/api/bank/transactions/resuggest-open', async ({user}) => {
+    requireCap(user, 'write');
+    const ids = (await pool.query(`SELECT t.id FROM bank_transactions t LEFT JOIN reconciliation_proposals p ON p.transaction_id=t.id AND p.status='open'
+      WHERE t.status IN ('unmatched','needs_review') AND coalesce(t.duplicate_review,false)=false AND coalesce(p.data->>'source','') <> 'user' ORDER BY t.booking_date LIMIT 1000`)).rows.map((r) => r.id);
+    let ready = 0;
+    for (const id of ids) {
+      await tx(pool, async (db) => {
+        const t = (await db.query('SELECT * FROM bank_transactions WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        if (!t || !['unmatched', 'needs_review'].includes(t.status)) return;
+        const row = await proposeForTransaction(db, t, {userId: user.id});
+        if (!row.blocking && row.data.allocations?.length) ready++;
+      });
+    }
+    return {checked: ids.length, ready};
+  });
   r.post('/api/bank/transactions/:id/resuggest', async ({user, params}) => {
     requireCap(user, 'write');
     return tx(pool, async (db) => {
