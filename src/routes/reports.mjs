@@ -345,8 +345,9 @@ export function register(r, {pool, storage}) {
     requireCap(user, 'read');
     const fn = Object.hasOwn(REPORTS, params.name) ? REPORTS[params.name] : null;
     if (!fn) throw new AppError(404, 'not_found', 'Ataskaita nerasta.');
-    const rep = await fn(pool, {...query, today: todayVilnius()});
-    if (query.format === 'csv' || query.format === 'xlsx') {
+    const exporting = query.format === 'csv' || query.format === 'xlsx';
+    const rep = await fn(pool, {...query, ...(exporting && params.name === 'ledger' && {limit: Infinity}), today: todayVilnius()});
+    if (exporting) {
       await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: params.name, details: {format: query.format, filters: rep.filters}});
       const buf = query.format === 'csv' ? Buffer.from(R.toCsv(rep), 'utf8') : await R.toXlsx(rep);
       res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': query.format === 'csv' ? 'text/csv; charset=utf-8' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

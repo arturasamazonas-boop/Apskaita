@@ -56,7 +56,7 @@ async function reportView(body, [key, name, title, mode], rest) {
       r.balanced === false ? h('div', {class: 'banner banner-warn'}, 'Dėmesio: ataskaita nesubalansuota.') : null,
       r.opening !== undefined ? h('p', null, `Pradinis likutis: ${money(r.opening)}`) : null,
       table(cols, r.rows, {onRow}),
-      mode === 'ledger' && r.hasMore ? h('div', {class: 'actions'}, h('span', {class: 'hint'}, `Rodoma ${r.rows.length} eilučių. `), h('button', {class: 'btn btn-small', onclick: () => { ledgerLimit = Math.min(ledgerLimit + 2000, 20000); guard(load); }}, 'Rodyti daugiau')) : null,
+      mode === 'ledger' && r.hasMore ? h('div', {class: 'actions'}, h('span', {class: 'hint'}, `Rodoma ${r.rows.length} eilučių. `), h('button', {class: 'btn btn-small', onclick: () => { ledgerLimit = Math.min(ledgerLimit + 5000, 200000); guard(load); }}, 'Rodyti daugiau')) : null,
       r.totals ? h('div', {class: 'totals'}, Object.entries(r.totals).filter(([, v]) => typeof v !== 'object').map(([k, v]) => h('div', null, h('span', null, {debit: 'Debetas', credit: 'Kreditas', closing: 'Galutinis', revenue: 'Pajamos', expenses: 'Sąnaudos', result: 'Rezultatas', assets: 'Turtas', liabilities: 'Įsipareigojimai', equity: 'Nuosavybė', check: 'Skirtumas', vat: 'PVM', net: 'Be PVM', outstanding: 'Likutis'}[k] || k), h('strong', null, money(v))))) : null);
   };
   const exportBtn = (fmt) => h('button', {class: 'btn btn-small', onclick: () => guard(async () => {

@@ -42,12 +42,13 @@ export async function generalLedger(db, {account, from, to, today, limit = 20000
   const single = account && used.length <= 1 && matched.some((a) => a.code === (used[0] || account)) ? (used[0] || account) : null;
   const acc = single ? matched.find((a) => a.code === single) : null;
   const opening = (await db.query(`SELECT coalesce(sum(l.debit - l.credit),0) AS v FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code LIKE $1 || '%' AND e.entry_date < $2`, [account, from])).rows[0].v;
-  const lim = clampInt(limit, 20000, 20000), off = clampInt(offset, 0, 1e9);
+  // On screen up to 200 000 lines ("Rodyti daugiau"); an export (limit Infinity) has every line.
+  const lim = limit === Infinity ? Infinity : clampInt(limit, 20000, 200000), off = clampInt(offset, 0, 1e9);
   // The running balance is computed over the whole period in SQL, so it stays right on any page.
   const rows = (await db.query(`SELECT * FROM (SELECT e.id AS entry_id, e.entry_date, l.account_code, a.name AS account_name, e.description, e.source_type, e.source_id, l.debit, l.credit, l.description AS line_description, c.name AS counterparty,
       i.document_id, sum(l.debit - l.credit) OVER (ORDER BY e.entry_date, e.id, l.id) AS run, row_number() OVER (ORDER BY e.entry_date, e.id, l.id) AS rn
     FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id JOIN accounts a ON a.code=l.account_code LEFT JOIN counterparties c ON c.id=l.counterparty_id LEFT JOIN invoices i ON i.journal_entry_id = e.id
-    WHERE l.account_code LIKE $1 || '%' AND e.entry_date BETWEEN $2 AND $3) x ORDER BY rn LIMIT ${lim + 1} OFFSET ${off}`, [account, from, to])).rows;
+    WHERE l.account_code LIKE $1 || '%' AND e.entry_date BETWEEN $2 AND $3) x ORDER BY rn LIMIT ${lim === Infinity ? 'ALL' : lim + 1} OFFSET ${off}`, [account, from, to])).rows;
   const hasMore = rows.length > lim;
   if (hasMore) rows.length = lim;
   for (const r of rows) { r.balance = single ? money.add(opening, r.run) : null; delete r.run; delete r.rn; }

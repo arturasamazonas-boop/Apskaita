@@ -163,3 +163,21 @@ test('depreciation in a locked period says from which month it can be calculated
     await admin.post('/api/settings/lock-period', {lockedThrough: null});
   }
 });
+
+test('cash order history shows what changed; a deleted order keeps its number on the card; ledger exports are not cut', async () => {
+  const mk = (b) => acc.post('/api/cash/orders', {purpose: 'other', accountCode: '305', personName: 'Savininkas', basis: 'Įnešimas', kind: 'receipt', ...b});
+  const a = (await mk({date: '2026-11-05', amount: '100'})).body;
+  const ed = await acc.put(`/api/cash/orders/${a.id}`, {purpose: 'other', accountCode: '305', personName: 'Savininkas', basis: 'Įnešimas', date: '2026-11-05', amount: '80', reason: 'Neteisinga suma'});
+  assert.equal(ed.status, 200, JSON.stringify(ed.body));
+  const card = (await acc.get(`/api/cash/orders/${a.id}`)).body;
+  assert.equal(card.revisions[0].changes, 'Suma: 100.00 → 80.00');
+  assert.equal(card.cash_account, a.cash_account, 'stays in its cash account');
+  const del = await acc.del(`/api/cash/orders/${a.id}`, {reason: 'Įvesta per klaidą'});
+  assert.equal(del.status, 200, JSON.stringify(del.body));
+  const gone = (await acc.get(`/api/cash/orders/${a.id}`)).body;
+  assert.equal(gone.display_number, a.number);
+  const {generalLedger} = await import('../src/reports/reports.mjs');
+  const all = await generalLedger(t.app.pool, {account: '', from: '2026-01-01', to: '2026-12-31', today: '2026-12-31', limit: Infinity});
+  const page = await generalLedger(t.app.pool, {account: '', from: '2026-01-01', to: '2026-12-31', today: '2026-12-31', limit: 5});
+  assert.ok(all.rows.length > 5 && page.rows.length === 5);
+});

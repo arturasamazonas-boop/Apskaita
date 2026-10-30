@@ -62,7 +62,7 @@ export function makeClient(base, who) {
       csrf = r.body.csrf;
       return this;
     },
-    get: (u, o) => call('GET', u, null, o), post: (u, b, o) => call('POST', u, b || {}, o), put: (u, b, o) => call('PUT', u, b, o), del: (u) => call('DELETE', u),
+    get: (u, o) => call('GET', u, null, o), post: (u, b, o) => call('POST', u, b || {}, o), put: (u, b, o) => call('PUT', u, b, o), del: (u, b) => call('DELETE', u, b),
     async upload(files, {workflow = 'invoice', meta} = {}) {
       const fd = new FormData();
       fd.append('workflow', workflow);

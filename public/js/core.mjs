@@ -51,7 +51,7 @@ export async function api(method, url, body, {raw = false} = {}) {
 export const get = (u) => api('GET', u);
 export const post = (u, b = {}) => api('POST', u, b);
 export const put = (u, b) => api('PUT', u, b);
-export const del = (u) => api('DELETE', u);
+export const del = (u, b) => api('DELETE', u, b);
 
 export function upload(url, formData, onProgress) {
   return new Promise((resolve, reject) => {

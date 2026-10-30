@@ -36,13 +36,22 @@ async function loadOrder(db, id) {
   const o = (await db.query(`SELECT o.*, a.name AS account_name, c.name AS counterparty_name, c.company_code AS counterparty_code, i.series AS invoice_series, i.number AS invoice_number
     FROM cash_orders o JOIN accounts a ON a.code=o.account_code LEFT JOIN counterparties c ON c.id=o.counterparty_id LEFT JOIN invoices i ON i.id=o.invoice_id WHERE o.id=$1`, [id])).rows[0];
   if (!o) throw new AppError(404, 'not_found', 'Orderis nerastas.');
-  const revisions = (await db.query(`SELECT v.kind, v.before->>'amount' AS amount, v.before->>'doc_date' AS doc_date, v.before->>'person_name' AS person_name, v.before->>'account_code' AS account_code,
-      v.reason, v.changed_at, u.name AS changed_by FROM cash_order_revisions v LEFT JOIN users u ON u.id=v.changed_by WHERE v.order_id=$1 ORDER BY v.id`, [o.id])).rows;
-  return {...o, id: String(o.id), amount: money.norm(o.amount), doc_date: String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10), revisions};
+  const rows = (await db.query(`SELECT v.kind, v.before, v.reason, v.changed_at, u.name AS changed_by FROM cash_order_revisions v LEFT JOIN users u ON u.id=v.changed_by WHERE v.order_id=$1 ORDER BY v.id`, [o.id])).rows;
+  const cur = {...o, amount: money.norm(o.amount), doc_date: String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10)};
+  // Each revision with what it changed: its "before" against the next revision's "before" (or the order as it is now).
+  const FIELDS = [['doc_date', 'Data'], ['amount', 'Suma'], ['person_name', 'Asmuo'], ['account_code', 'Kor. sąskaita'], ['cash_account', 'Kasos sąskaita'], ['basis', 'Pagrindas'], ['purpose', 'Paskirtis'], ['attachment', 'Priedai']];
+  const revisions = rows.map((v, i) => {
+    const after = rows[i + 1]?.before || cur, was = v.before || {};
+    const norm = (k, x) => (k === 'amount' && x !== undefined && x !== null && x !== '' ? money.norm(x) : String(x ?? ''));
+    const changes = v.kind === 'edit' ? FIELDS.filter(([k]) => norm(k, was[k]) !== norm(k, after[k])).map(([k, label]) => `${label}: ${norm(k, was[k]) || '—'} → ${norm(k, after[k]) || '—'}`).join('; ') : '';
+    return {kind: v.kind, reason: v.reason, changed_at: v.changed_at, changed_by: v.changed_by, doc_date: was.doc_date, amount: was.amount, person_name: was.person_name, account_code: was.account_code, changes};
+  });
+  // A deleted order keeps its history under a suffixed number; documents show the number it had.
+  return {...cur, id: String(o.id), display_number: String(o.number).replace(/-del-\d+$/, ''), revisions};
 }
 
 function renderOrderPdf(o, company) {
-  const doc = new PDFDocument({size: 'A4', margins: {top: 40, bottom: 30, left: 50, right: 50}, info: {Title: `${KIND[o.kind]} ${o.series} ${o.number}`, Producer: 'Apskaita'}});
+  const doc = new PDFDocument({size: 'A4', margins: {top: 40, bottom: 30, left: 50, right: 50}, info: {Title: `${KIND[o.kind]} ${o.series} ${o.display_number || o.number}`, Producer: 'Apskaita'}});
   doc.registerFont('r', path.join(ROOT, 'assets/fonts/DejaVuSans.ttf'));
   doc.registerFont('b', path.join(ROOT, 'assets/fonts/DejaVuSans-Bold.ttf'));
   const chunks = [];
@@ -56,7 +65,7 @@ function renderOrderPdf(o, company) {
     doc.font('b').fontSize(10).fillColor('#000').text(`${company.legal_form && !company.name.startsWith(company.legal_form) ? company.legal_form + ' ' : ''}${company.name}`, 50, top, {width: W});
     doc.font('r').fontSize(8).fillColor('#444').text([company.company_code && `Įmonės kodas ${company.company_code}`, company.vat_code && `PVM mokėtojo kodas ${company.vat_code}`, company.address].filter(Boolean).join(', '), 50, top + 14, {width: W});
     doc.font('b').fontSize(15).fillColor('#000').text(KIND[o.kind].toUpperCase(), 50, top + 40, {width: W, align: 'center'});
-    doc.font('r').fontSize(10).text(`Serija ${o.series}   Nr. ${o.number}`, 50, top + 62, {width: W, align: 'center'});
+    doc.font('r').fontSize(10).text(`Serija ${o.series}   Nr. ${o.display_number || o.number}`, 50, top + 62, {width: W, align: 'center'});
     doc.text(o.doc_date, 50, top + 76, {width: W, align: 'center'});
     let y = top + 104;
     row(o.kind === 'receipt' ? 'Gauta iš' : 'Išmokėta', [who, o.person_code || o.counterparty_code].filter(Boolean).join(', '), y); y += 24;
@@ -70,6 +79,7 @@ function renderOrderPdf(o, company) {
       ? [['Kasininkas', ''], ['Pinigus sumokėjo', who]]
       : [['Vadovas', company.manager || ''], ['Vyr. buhalteris', company.accountant_name || ''], ['Kasininkas', ''], ['Pinigus gavau', who]];
     sig.forEach(([t, n], i) => { const x = 50 + (i % 2) * (W / 2), yy = y + Math.floor(i / 2) * 34; doc.text(`${t}`, x, yy); doc.moveTo(x + 95, yy + 10).lineTo(x + W / 2 - 20, yy + 10).lineWidth(0.4).strokeColor('#000').stroke(); doc.fontSize(7).fillColor('#555').text(`(parašas, vardas, pavardė) ${n}`, x + 95, yy + 13); doc.fontSize(9).fillColor('#000'); });
+    if (o.status === 'deleted') doc.font('b').fontSize(40).fillColor('#c00').opacity(0.25).text('IŠTRINTAS', 50, top + 150, {width: W, align: 'center'}).opacity(1).fillColor('#000');
     if (o.status === 'cancelled') doc.font('b').fontSize(40).fillColor('#c00').opacity(0.25).text('ANULIUOTAS', 50, top + 150, {width: W, align: 'center'}).opacity(1).fillColor('#000');
   };
   block(40);
@@ -77,7 +87,7 @@ function renderOrderPdf(o, company) {
     // Receipt (kvitas) for the payer, cut off along the dashed line.
     doc.moveTo(50, 430).lineTo(50 + W, 430).dash(4, {space: 3}).lineWidth(0.6).strokeColor('#555').stroke().undash();
     doc.font('r').fontSize(7).fillColor('#555').text('nukirpti', 50, 433, {width: W, align: 'center'});
-    doc.font('b').fontSize(12).fillColor('#000').text(`KVITAS prie kasos pajamų orderio ${o.series} Nr. ${o.number}`, 50, 455, {width: W, align: 'center'});
+    doc.font('b').fontSize(12).fillColor('#000').text(`KVITAS prie kasos pajamų orderio ${o.series} Nr. ${o.display_number || o.number}`, 50, 455, {width: W, align: 'center'});
     let y = 485;
     row('Įmonė', company.name, y); y += 24;
     row('Gauta iš', who, y); y += 24;
@@ -95,7 +105,7 @@ export function register(r, {pool}) {
   r.get('/api/cash/orders', async ({user, query}) => {
     requireCap(user, 'read');
     const from = isDate(query.from) ? query.from : `${todayVilnius().slice(0, 4)}-01-01`, to = isDate(query.to) ? query.to : todayVilnius();
-    return (await pool.query(`SELECT o.id, o.kind, o.series, o.number, o.doc_date, o.purpose, o.amount, o.status, o.account_code, coalesce(nullif(o.person_name,''), c.name) AS who, o.basis
+    return (await pool.query(`SELECT o.id, o.kind, o.series, regexp_replace(o.number, '-del-[0-9]+$', '') AS number, o.doc_date, o.purpose, o.amount, o.status, o.account_code, coalesce(nullif(o.person_name,''), c.name) AS who, o.basis
       FROM cash_orders o LEFT JOIN counterparties c ON c.id=o.counterparty_id WHERE o.status <> 'deleted' AND o.doc_date BETWEEN $1 AND $2 ${['receipt', 'payment'].includes(query.kind) ? `AND o.kind='${query.kind}'` : ''}
       ORDER BY o.doc_date DESC, o.id DESC LIMIT 1000`, [from, to])).rows;
   });
@@ -111,7 +121,7 @@ export function register(r, {pool}) {
     const o = await loadOrder(pool, params.id);
     const company = (await pool.query('SELECT * FROM company_settings WHERE id=1')).rows[0];
     const pdf = await renderOrderPdf(o, company);
-    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${`${o.series}${o.number}`.replace(/[^\w.-]/g, '_')}.pdf"; filename*=UTF-8''${encodeURIComponent(`${o.series}${o.number}.pdf`)}`, 'Cache-Control': 'no-store'});
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${`${o.series}${o.display_number || o.number}`.replace(/[^\w.-]/g, '_')}.pdf"; filename*=UTF-8''${encodeURIComponent(`${o.series}${o.display_number || o.number}.pdf`)}`, 'Cache-Control': 'no-store'});
     res.end(pdf);
   });
   // Validates an order's fields and works out the corresponding account. Used for new and corrected orders.
@@ -213,6 +223,7 @@ export function register(r, {pool}) {
       const o = (await db.query('SELECT * FROM cash_orders WHERE id=$1 FOR UPDATE', [params.id])).rows[0];
       if (!o) throw new AppError(404, 'not_found', 'Orderis nerastas.');
       if (o.status !== 'posted') throw new AppError(409, 'not_posted', 'Taisyti galima tik galiojantį orderį.');
+      if (b.cashAccount === undefined || b.cashAccount === '') b.cashAccount = o.cash_account; // not given: stays in its cash account
       const {revisions: _r, ...before} = await loadOrder(db, o.id);
       const rev = await unpost(db, o, 'edit', `taisoma: ${reason}`, user);
       const v = await prepare(db, b, o.kind);

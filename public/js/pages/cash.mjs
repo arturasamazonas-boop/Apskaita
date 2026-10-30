@@ -1,5 +1,5 @@
 // Kasa: kasos pajamų (KPO) ir išlaidų (KIO) orderiai, kasos knyga.
-import {h, clear, get, post, put, del, pageHeader, section, table, money, date, guard, select, input, field, can, today, toast, badge, promptDialog, confirmDialog, apiUrl} from '../core.mjs';
+import {h, clear, get, post, put, del, pageHeader, section, table, money, date, dateTime, guard, select, input, field, can, today, toast, badge, promptDialog, confirmDialog, apiUrl} from '../core.mjs';
 
 const KIND = {receipt: 'Kasos pajamų orderis (KPO)', payment: 'Kasos išlaidų orderis (KIO)'};
 const PURPOSE = {
@@ -105,7 +105,7 @@ async function newOrder(main, kind, state, edit = null) {
 async function card(main, id, state) {
   const o = await get(`/api/cash/orders/${id}`);
   const who = o.person_name || o.counterparty_name;
-  clear(main, pageHeader(`${o.kind === 'receipt' ? 'KPO' : 'KIO'} ${o.series} ${o.number}`,
+  clear(main, pageHeader(`${o.series} ${o.display_number || o.number}${o.status === 'deleted' ? ' (ištrintas)' : ''}`,
     h('button', {class: 'btn btn-primary', onclick: () => pdf(o.id)}, '⇩ PDF (spausdinti)'),
     o.status === 'posted' && can(state.user, 'approve') ? h('a', {class: 'btn', href: `#/kasa/${o.id}/taisyti`}, 'Taisyti') : null,
     o.status === 'posted' && can(state.user, 'approve') ? h('button', {class: 'btn', onclick: () => guard(async () => {
@@ -114,15 +114,16 @@ async function card(main, id, state) {
       await post(`/api/cash/orders/${o.id}/cancel`, {reason}); toast('Orderis anuliuotas atvirkštiniu įrašu.', 'ok'); card(main, id, state);
     })}, 'Anuliuoti') : null,
     o.status !== 'deleted' && can(state.user, 'approve') ? h('button', {class: 'btn btn-danger', onclick: () => guard(async () => {
-      if (!await confirmDialog('Ištrinti orderį', `Ištrinti ${o.series} ${o.number}? Ištrinti galima tik paskutinį serijos orderį: jo įrašas atšaukiamas, o numeris vėl laisvas kitam orderiui.`, 'Ištrinti')) return;
-      const r = await del(`/api/cash/orders/${o.id}`); toast(`Ištrinta. Numeris ${r.freedNumber} vėl laisvas.`, 'ok'); location.hash = '#/kasa';
+      const reason = await promptDialog(`Ištrinti ${o.series} ${o.number}`, 'Kodėl trinama? Ištrinti galima tik paskutinį serijos orderį: jo įrašas atšaukiamas, o numeris vėl laisvas kitam orderiui.', {minLength: 3});
+      if (!reason) return;
+      const r = await del(`/api/cash/orders/${o.id}`, {reason}); toast(`Ištrinta. Numeris ${r.freedNumber} vėl laisvas.`, 'ok'); location.hash = '#/kasa';
     })}, 'Ištrinti') : null), tabs(''),
     section(KIND[o.kind], h('dl', {class: 'details'},
       ...[['Data', o.doc_date], [o.kind === 'receipt' ? 'Gauta iš' : 'Išmokėta', [who, o.person_code || o.counterparty_code].filter(Boolean).join(', ')], ['Pagrindas', o.basis || (o.invoice_number ? `Sąskaita ${o.invoice_series || ''} ${o.invoice_number}` : '—')],
         ['Korespondencinė sąskaita', `${o.account_code} ${o.account_name}`], ['Kasos sąskaita', o.cash_account], ['Suma', `${money(o.amount)} €`], ['Priedai', o.attachment || '—'],
         ['Būsena', o.status === 'cancelled' ? `Anuliuotas: ${o.cancel_reason}` : o.status === 'deleted' ? `Ištrintas: ${o.cancel_reason}` : 'Užregistruotas'], ['Įrašas', o.journal_entry_id ? `#${o.journal_entry_id}` : '—']].flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)]))),
-    o.revisions?.length ? section('Pakeitimų istorija', table([{label: 'Kada', render: (v) => String(v.changed_at).slice(0, 16).replace('T', ' ')}, {label: 'Veiksmas', render: (v) => (v.kind === 'edit' ? 'Pataisyta' : 'Ištrinta')},
-      {label: 'Buvo: data', key: 'doc_date'}, {label: 'Buvo: suma', num: true, render: (v) => money(v.amount)}, {label: 'Buvo: asmuo', key: 'person_name'}, {label: 'Buvo: kor. sąsk.', key: 'account_code'}, {label: 'Priežastis', key: 'reason'}, {label: 'Kas', key: 'changed_by'}], o.revisions)) : null);
+    o.revisions?.length ? section('Pakeitimų istorija', table([{label: 'Kada', render: (v) => dateTime(v.changed_at)}, {label: 'Veiksmas', render: (v) => (v.kind === 'edit' ? 'Pataisyta' : 'Ištrinta')},
+      {label: 'Kas pakeista (buvo → tapo)', render: (v) => v.changes || (v.kind === 'edit' ? '—' : `Buvo: ${v.doc_date}, ${money(v.amount)} €, ${v.person_name || ''}`)}, {label: 'Priežastis', key: 'reason'}, {label: 'Kas', key: 'changed_by'}], o.revisions)) : null);
 }
 
 async function book(main) {
