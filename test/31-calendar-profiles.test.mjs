@@ -87,14 +87,27 @@ test('cost of sales: quantity sold × weighted average cost, then posted once', 
   };
   await invoice('purchase', 'P1', '10', '5', '2026-07-02');
   await invoice('purchase', 'P2', '10', '7', '2026-07-10');
+  // Default: the cost goes with the sale – 4 × 6.00 (weighted average) = 24.00, D 6000 / K 204 in the invoice entry.
   await invoice('sales', '', '4', '15', '2026-07-20');
+  const line = (await t.app.pool.query(`SELECT l.cogs_amount, i.journal_entry_id FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id WHERE i.register='sales' ORDER BY i.id DESC LIMIT 1`)).rows[0];
+  assert.equal(line.cogs_amount, '24.00');
+  const e = (await t.app.pool.query(`SELECT account_code, debit, credit FROM journal_lines WHERE entry_id=$1 AND account_code IN ('6000','204') ORDER BY account_code`, [line.journal_entry_id])).rows;
+  assert.deepEqual(e.map((x) => [x.account_code, x.debit, x.credit]), [['204', '0.00', '24.00'], ['6000', '24.00', '0.00']]);
+  const auto = (await acc.get('/api/cogs/proposal?period=2026-07')).body;
+  assert.equal(auto.rows.length, 0); assert.ok(auto.issues.some((i) => /jau užregistruota/.test(i.message)));
+  const pl = (await acc.get('/api/reports/profit-loss?from=2026-07-01&to=2026-07-31')).body;
+  assert.equal(pl.incomplete, null, 'no cost-of-sales warning: it is already booked');
+  // Switched off: the monthly calculation covers the sale instead (2 × 6.00 = 12.00).
+  await t.app.pool.query('UPDATE company_settings SET auto_cogs=false WHERE id=1');
+  await invoice('sales', '', '2', '15', '2026-07-25');
   const c = (await acc.get('/api/cogs/proposal?period=2026-07')).body;
   const row = c.rows.find((r) => r.sku === 'VAMZ-1');
-  assert.deepEqual([row.quantity, row.unitCost, row.source, row.amount], ['4.0000', '6.0000', 'average', '24.00']);
-  assert.equal(c.total, '24.00'); assert.equal(c.posted, null);
+  assert.deepEqual([row.quantity, row.unitCost, row.source, row.amount], ['2.0000', '6.0000', 'average', '12.00']);
+  assert.equal(c.total, '12.00'); assert.equal(c.posted, null);
   const post = await acc.post('/api/journal', {date: c.date, kind: 'cogs', cogsPeriod: '2026-07', description: 'Savikaina 2026-07', lines: [{account: c.accounts.debit, debit: c.total}, {account: c.accounts.credit, credit: c.total}]});
   assert.equal(post.status, 200, JSON.stringify(post.body));
   assert.ok((await acc.get('/api/cogs/proposal?period=2026-07')).body.posted);
+  await t.app.pool.query('UPDATE company_settings SET auto_cogs=true WHERE id=1');
   assert.equal((await acc.get('/api/cogs/proposal?period=2026-13')).status, 400);
 });
 

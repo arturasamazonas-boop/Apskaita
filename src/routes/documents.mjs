@@ -10,6 +10,7 @@ import {liveValidation, editProposal, approveProposal, rejectProposal, bulkAppro
 import {computeProposal, applyClassification} from '../invoices/engine.mjs';
 import {loadContext, todayVilnius} from '../invoices/context.mjs';
 import {saveRule} from './core.mjs';
+import {enqueue} from '../jobs.mjs';
 
 export function register(r, deps) {
   const {pool, storage, config} = deps;
@@ -83,6 +84,20 @@ export function register(r, deps) {
   });
   r.post('/api/documents/:id/split', async ({req, user, params}) => splitDocument(pool, storage, user, params.id, (await readJson(req)).ranges));
   r.post('/api/documents/:id/reextract', async ({user, params}) => requestReextract(pool, user, params.id));
+  // A supplier invoice uploaded to the archive by mistake: send it to the inbox so it is read and can be posted.
+  r.post('/api/documents/:id/to-inbox', async ({user, params}) => {
+    requireCap(user, 'write');
+    return tx(pool, async (db) => {
+      const d = await loadDocumentForUser(db, user, params.id, {forUpdate: true});
+      if (d.workflow !== 'vault') throw new AppError(409, 'workflow', 'Dokumentas jau yra dėžutėje arba registre.');
+      const f = (await db.query(`SELECT mime FROM stored_files WHERE document_id=$1 AND role='original' ORDER BY version DESC LIMIT 1`, [d.id])).rows[0];
+      if (!f || !/pdf|wordprocessingml|image\/(png|jpeg)/.test(f.mime)) throw new AppError(422, 'type', 'Nuskaityti galima PDF, DOCX, JPG ar PNG failą.');
+      await db.query(`UPDATE documents SET workflow='invoice', kind='unknown', processing_status='uploaded', processing_error=NULL, updated_at=now() WHERE id=$1`, [d.id]);
+      await enqueue(db, 'extract_invoice', {documentId: d.id, force: true}, {idempotencyKey: `extract:${d.id}:inbox:${Date.now()}`});
+      await audit(db, {userId: user.id, action: 'document.to_inbox', entityType: 'document', entityId: d.id});
+      return {ok: true, documentId: String(d.id)};
+    });
+  });
   r.post('/api/documents/:id/move-to-vault', async ({req, user, params}) => {
     requireCap(user, 'write');
     const b = await readJson(req);

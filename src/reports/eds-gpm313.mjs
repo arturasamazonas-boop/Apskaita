@@ -13,9 +13,13 @@ const comma = (v) => (money.isZero(v) ? '' : money.norm(v).replace('.', ','));
 export async function gpm313Values(db, {year, month}) {
   const company = (await db.query('SELECT * FROM company_settings WHERE id=1')).rows[0];
   const ym = `${year}-${String(month).padStart(2, '0')}`;
-  const runs = (await db.query(`SELECT r.id, r.period, r.payment_date, r.status, coalesce(sum(l.gross),0) AS gross, coalesce(sum(l.gpm),0) AS gpm
-    FROM payroll_runs r LEFT JOIN payroll_lines l ON l.run_id=r.id WHERE to_char(r.payment_date, 'YYYY-MM')=$1 GROUP BY r.id ORDER BY r.payment_date`, [ym])).rows
-    .map((r) => ({...r, payment_date: String(r.payment_date instanceof Date ? r.payment_date.toISOString() : r.payment_date).slice(0, 10), gross: money.norm(r.gross), gpm: money.norm(r.gpm)}));
+  // Payouts by the date they were really paid: the run's pay date, or a line's own date (final settlement on leaving).
+  const paid = (await db.query(`SELECT r.id, r.period, r.status, to_char(coalesce(l.payment_date, r.payment_date), 'YYYY-MM-DD') AS payment_date,
+      coalesce(sum(l.gross),0) AS gross, coalesce(sum(l.gpm),0) AS gpm, count(l.id) AS n, bool_or(l.payment_date IS NOT NULL) AS own_date
+    FROM payroll_runs r JOIN payroll_lines l ON l.run_id=r.id
+    WHERE to_char(coalesce(l.payment_date, r.payment_date), 'YYYY-MM')=$1 GROUP BY r.id, 4 ORDER BY 4, r.period`, [ym])).rows
+    .map((r) => ({...r, gross: money.norm(r.gross), gpm: money.norm(r.gpm)}));
+  const runs = paid;
   const approved = runs.filter((r) => r.status === 'approved');
   const early = approved.filter((r) => Number(r.payment_date.slice(8, 10)) <= 15), late = approved.filter((r) => Number(r.payment_date.slice(8, 10)) > 15);
   const v = Object.fromEntries(GPM313.fields.map((f) => [f.name, '']));
@@ -27,6 +31,7 @@ export async function gpm313Values(db, {year, month}) {
   });
   const notes = [];
   if (runs.some((r) => r.status !== 'approved')) notes.push(`Nepatvirtinti žiniaraščiai, kurių išmokėjimo data ${ym}, neįtraukti: ${runs.filter((r) => r.status !== 'approved').map((r) => r.period).join(', ')}.`);
+  if (approved.some((r) => r.own_date)) notes.push('Įtraukti ir atleistų darbuotojų galutiniai atsiskaitymai, išmokėti atleidimo dieną.');
   if (!approved.length) notes.push(`Žiniaraščių su išmokėjimo data ${ym} nėra – deklaracija pildoma pagal išmokėjimo mėnesį (pvz. rugsėjo DU, išmokėtas spalio 5 d., deklaruojamas spalio GPM313).`);
   notes.push('Avansai laikomi išmokėtais kartu su žiniaraščio išmokėjimu. Jei avansą mokėjote kitą mėnesį ar kitą mėnesio pusę, pataisykite 5–7 laukelius.');
   notes.push('8–12 laukelius (su darbo santykiais nesusijusios A klasės ir B klasės išmokos: autoriniai, nuoma ir kt.) įrašykite patys.');

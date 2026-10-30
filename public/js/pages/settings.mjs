@@ -19,12 +19,13 @@ async function company(body, state) {
   const c = await get('/api/settings/company');
   const f = {name: input({value: c.name}), legal_form: input({value: c.legal_form}), company_code: input({value: c.company_code}), vat_registered: h('input', {type: 'checkbox', checked: c.vat_registered}), vat_code: input({value: c.vat_code}),
     vat_registered_from: input({type: 'date', value: c.vat_registered_from || ''}), address: input({value: c.address}), email: input({value: c.email}), phone: input({value: c.phone}), asset_threshold: input({value: c.asset_threshold}), retention_note: h('textarea', {rows: 3}, c.retention_note),
-    website: input({value: c.website || ''}), manager: input({value: c.manager || ''}), iban: input({value: c.iban || ''}), bank_name: input({value: c.bank_name || ''}), sodra_code: input({value: c.sodra_code || '', inputmode: 'numeric'})};
+    website: input({value: c.website || ''}), manager: input({value: c.manager || ''}), iban: input({value: c.iban || ''}), bank_name: input({value: c.bank_name || ''}), sodra_code: input({value: c.sodra_code || '', inputmode: 'numeric'}), auto_cogs: h('input', {type: 'checkbox', checked: c.auto_cogs !== false})};
   const ro = !can(state.user, 'settings');
   Object.values(f).forEach((x) => { x.disabled = ro; });
   clear(body, h('h2', null, 'Įmonės rekvizitai'), ro ? null : h('div', {class: 'actions-left'}, rekvizitaiButton(f)), h('form', {onsubmit: async (e) => { e.preventDefault(); await guard(() => put('/api/settings/company', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.type === 'checkbox' ? v.checked : v.value || (k.endsWith('from') ? null : v.value)]))), 'Išsaugota.'); }},
     h('div', {class: 'form-grid'}, field('Pavadinimas', f.name), field('Teisinė forma', f.legal_form), field('Įmonės kodas', f.company_code), h('label', {class: 'check'}, f.vat_registered, ' PVM mokėtoja'), field('PVM kodas', f.vat_code, vatCheckButton(f.vat_code)), field('PVM mokėtoja nuo', f.vat_registered_from),
       field('Adresas', f.address), field('El. paštas', f.email), field('Telefonas', f.phone), field('Tinklalapis', f.website), field('Vadovas', f.manager), field('Banko sąskaita (IBAN)', f.iban, 'Rodoma sąskaitose faktūrose'), field('Bankas', f.bank_name), field('Sodros draudėjo kodas', f.sodra_code, 'Reikalingas SAM pranešimui'), field('Ilgalaikio turto riba (EUR)', f.asset_threshold), field('Dokumentų saugojimo politika', f.retention_note, 'Įrašykite savo įmonės taikomus terminus; programa teisės aktų nustatytų terminų nenustato.')),
+    h('label', {class: 'check'}, f.auto_cogs, ' Pardavus prekę savikainą registruoti iš karto (D 6000 / K 204 pagal vidutinę savikainą)'),
     h('p', {class: 'hint'}, 'Apskaitos valiuta: EUR. Laiko juosta: Europe/Vilnius.'), ro ? null : h('button', {class: 'btn btn-primary'}, 'Išsaugoti')));
 }
 

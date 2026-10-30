@@ -99,6 +99,7 @@ const NUM_RE = [
   /^(?:nr\.?|no\.?)\s*:?\s*([a-z0-9][a-z0-9\-\/]*)/,
 ];
 function findNumber(page) {
+  const fromTitle = numberInTitle(page);
   for (const row of page.rows.slice(0, 14)) {
     const f = fold(row.text);
     if (/uzsakym|order|koreguojam|kredituojam|pagal saskait|mokejimo paskirt|kodas/.test(f)) continue;
@@ -117,6 +118,20 @@ function findNumber(page) {
         return parts.length === 2 && /^[A-Z]{1,6}$/.test(parts[0]) ? {series: parts[0], number: parts[1], page, row} : {series: '', number: raw.replace(/\s+/g, ''), page, row};
       }
     }
+  }
+  return fromTitle;
+}
+
+/** "PVM SĄSKAITA – FAKTŪRA BS-2026/118" or "SĄSKAITA FAKTŪRA AB 1234": the number written in the title itself. */
+function numberInTitle(page) {
+  for (const row of page.rows.slice(0, 12)) {
+    const f = fold(row.text);
+    const m = /saskaita\s*[-–]?\s*faktura|invoice/.exec(f);
+    if (!m || f.length > 90) continue;
+    const rest = row.text.slice(m.index + m[0].length).replace(/^[\s:–-]+/, '').replace(/^(nr\.?|no\.?)\s*/i, '').trim();
+    const t = /^([A-ZĄČĘĖĮŠŲŪŽ]{1,6})?[\s-]?([A-Z0-9][A-Z0-9\-\/]*\d[A-Z0-9\-\/]*)$/i.exec(rest);
+    if (!t) continue;
+    return t[1] && /\s/.test(rest) ? {series: t[1].toUpperCase(), number: t[2].toUpperCase(), page, row} : {series: '', number: rest.replace(/\s+/g, '').toUpperCase(), page, row};
   }
   return null;
 }
@@ -172,8 +187,21 @@ function partyBlocks(doc) {
     const bEnd = sellerAt && buyerAt && sellerAt.i > buyerAt.i ? sellerAt.i : rows.length;
     take('seller', sellerAt, sEnd); take('buyer', buyerAt, bEnd);
   }
+  // No "Pardavėjas" label: many invoices print the supplier as a letterhead above the title. Take the rows above the
+  // title (or above the buyer) that carry a company code, VAT code or IBAN.
+  if (!sellerAt) {
+    const titleIdx = rows.findIndex((row) => TYPE_PATTERNS.some(([, re]) => re.test(fold(row.text))) && fold(row.text).length < 90);
+    const end = Math.min(titleIdx >= 0 ? titleIdx : rows.length, buyerAt ? buyerAt.i : rows.length, 12);
+    const top = rows.slice(0, end).filter((row) => !/^(data|israsymo|saskaitos data|serija|nr\.?)\b/.test(fold(row.text).trim()));
+    if (top.some((row) => /kodas|\bk\.|pvm|\blt\d{2}|\b\d{9}\b/.test(fold(row.text)))) {
+      for (const row of top) blocks.seller.push({page, row, seg: {...(row.segments?.[0] || {}), text: row.text, words: row.words, bbox: row.bbox}});
+      return {blocks, found: {seller: true, buyer: !!buyerAt}, sellerGuessed: true};
+    }
+  }
   return {blocks, found: {seller: !!sellerAt, buyer: !!buyerAt}};
 }
+
+const STREET_RE = /\b(g\.|gatve|pr\.|prospektas|al\.|aleja|kel\.|pl\.|plentas|skg\.|takas|a\.|aikste)\s*\d|\blt-?\d{5}\b|\b\d{5}\s+[a-z]/;
 
 function parseParty(items) {
   const p = {name: missing('Pavadinimas nerastas.'), companyCode: missing('Įmonės kodas nerastas.'), vatCode: missing('PVM mokėtojo kodas nerastas.'), address: missing('Adresas nerastas.'), iban: missing('Banko sąskaita nerasta.')};
@@ -181,24 +209,45 @@ function parseParty(items) {
     const t = it.seg.text.trim();
     const f = fold(t);
     const src = srcOf(it.page, it.row, it.seg);
-    let m;
-    if ((m = /(?:pvm\s*(?:moketojo)?\s*kodas|vat\s*(?:no|number|code|id)?)\s*:?\s*([a-z]{2}\s?[0-9a-z ]{8,14})/i.exec(f))) {
+    let m, claimed = false;
+    // One line often carries several details ("UAB X, į. k. 123456789, PVM k. LT123…"): read each of them.
+    if (p.vatCode.status === 'missing' && (m = /(?:pvm\s*(?:moketojo)?\s*(?:kodas|k\.)|vat\s*(?:no|number|code|id)?\.?)\s*:?\s*([a-z]{2}\s?[0-9a-z ]{8,14})/i.exec(f))) {
       const v = normalizeVat(t.slice(m.index + m[0].length - m[1].length, m.index + m[0].length));
       p.vatCode = field(v, src);
       if (v.startsWith('LT') && !ltVatValid(v) && p.vatCode.status === 'ok') { p.vatCode.status = 'uncertain'; p.vatCode.reason = 'PVM mokėtojo kodo kontrolinis skaitmuo nesutampa – galima atpažinimo klaida.'; }
-    } else if ((m = /(?:imones\s*kodas|im\.\s*k\.|kodas|company\s*(?:code|no)|reg\.?\s*(?:no|nr|code))\s*:?\s*(\d{7,9})\b/.exec(f))) {
-      p.companyCode = field(m[1], src);
-    } else if ((m = /(?:adresas|address)\s*:?\s*(.+)/.exec(f))) {
-      p.address = field(t.slice(m.index + m[0].length - m[1].length).trim(), src);
-    } else if ((m = /\b([a-z]{2}\d{2}(?:\s?[a-z0-9]{4}){3,7}(?:\s?[a-z0-9]{1,4})?)\b/.exec(f)) && /(a\/s|a\.s\.|iban|saskaita|account|lt\d{2})/.test(f)) {
-      const v = normalizeIban(m[1]);
+      claimed = true;
+    }
+    if (p.companyCode.status === 'missing' && (m = /(?:imones\s*kodas|im\.\s*k\.|i\.\s*k\.|(?<!pvm\s)(?<!moketojo\s)kodas|company\s*(?:code|no)|reg\.?\s*(?:no|nr|code))\s*:?\s*(\d{7,9})\b/.exec(f))) {
+      p.companyCode = field(m[1], src); claimed = true;
+    }
+    if (p.iban.status === 'missing' && (m = /\b([a-z]{2}\d{2}(?:\s?[a-z0-9]{4}){3,7}(?:\s?[a-z0-9]{1,4})?)\b/.exec(f)) && /(a\/s|a\.\s?s\.|iban|saskaita|account|lt\d{2})/.test(f) && !/pvm/.test(f.slice(Math.max(0, m.index - 12), m.index))) {
+      let v = normalizeIban(m[1]);
+      // "LT21 7044 0600 0765 4321 AB SEB bankas": the bank's name can stick to the end – cut to the country's IBAN length.
+      const len = {LT: 20, LV: 21, EE: 20, PL: 28, DE: 22, FI: 18, SE: 24, GB: 22, NL: 18, FR: 27}[v.slice(0, 2)];
+      if (len && v.length > len && ibanValid(v.slice(0, len))) v = v.slice(0, len);
       p.iban = field(v, src);
       if (!ibanValid(v) && p.iban.status === 'ok') { p.iban.status = 'uncertain'; p.iban.reason = 'IBAN kontrolinė suma nesutampa – galima atpažinimo klaida.'; }
-    } else if (/^(bankas|bank|swift|bic|tel|el\. ?p|e-?mail|www|faks)/.test(f)) {
-      // ignore
-    } else if (p.name.status === 'missing' && t.length >= 2 && !/:\s*$/.test(t)) {
-      p.name = field(t, src);
+      claimed = true;
     }
+    if (p.address.status === 'missing') {
+      if ((m = /(?:adresas|address|buveine)\s*:?\s*(.+)/.exec(f))) { p.address = field(t.slice(m.index + m[0].length - m[1].length).trim(), src); claimed = true; }
+      else if (!claimed && STREET_RE.test(f) && !/^(bankas|bank|tel|el\.)/.test(f)) { p.address = field(t, src); claimed = true; }
+    }
+    if (claimed || /^(bankas|bank|swift|bic|tel|el\. ?p|e-?mail|www|faks)/.test(f)) continue;
+    if (p.name.status === 'missing' && t.length >= 2 && !/:\s*$/.test(t)) p.name = field(t, src);
+  }
+  // "UAB X, į. k. …" – the name is the text before the first detail.
+  for (const k of ['name']) {
+    const v = p[k].value;
+    if (v && /,/.test(v) && /(\bk\.|kodas|pvm|\blt\d)/i.test(v)) p[k] = {...p[k], value: v.split(/,\s*(?=(?:į\.|i\.|im\.|įm\.|pvm|kodas|lt\d|a\.\s?s))/i)[0].trim()};
+  }
+  // A name line can also carry the code ("UAB X, į. k. 123"): read the details from it too.
+  if (p.name.source && (p.companyCode.status === 'missing' || p.vatCode.status === 'missing')) {
+    const t = p.name.source.text || '';
+    const f = fold(t);
+    let m;
+    if (p.vatCode.status === 'missing' && (m = /pvm\s*(?:moketojo)?\s*(?:kodas|k\.)\s*:?\s*([a-z]{2}\s?\d{9,12})/.exec(f))) p.vatCode = field(normalizeVat(m[1]), p.name.source);
+    if (p.companyCode.status === 'missing' && (m = /(?:i\.\s*k\.|im\.\s*k\.|imones\s*kodas)\s*:?\s*(\d{7,9})/.exec(f))) p.companyCode = field(m[1], p.name.source);
   }
   return p;
 }
@@ -294,7 +343,17 @@ function parseLines(doc) {
       if (TOTAL_RE.test(f.replace(/^[^a-z]*/, ''))) { ended = true; continue; }
       if (/^\(?tesinys\)?$|^perkelta|^puslapis/.test(f)) continue;
       const cells = cellsByColumn(row, cols);
-      const num = (k) => (cells[k] ? parseAmount(cells[k].text.replace(/%/g, '')) : null);
+      const num = (k) => {
+        if (!cells[k]) return null;
+        const raw = cells[k].text.replace(/%/g, '').trim();
+        const v = parseAmount(raw);
+        if (v !== null || k !== 'quantity') return v;
+        // "10 vnt.", "2,5 kg": the number, with the unit kept for the unit column.
+        const m = /^(-?\d[\d\s]*(?:[.,]\d+)?)\s*([a-zA-ZąčęėįšųūžĄČĘĖĮŠŲŪŽ.²³]{1,8})$/.exec(raw);
+        if (!m) return null;
+        if (!cells.unit) cells.unit = {text: m[2], seg: cells[k].seg};
+        return parseAmount(m[1]);
+      };
       const hasNumbers = ['quantity', 'unitPrice', 'net', 'gross'].some((k) => num(k) !== null);
       if (!hasNumbers) {
         // Header continuation (directly after header) or wrapped description.
@@ -384,7 +443,7 @@ function parseTotals(doc) {
       else t[key] = field(a.value, src);
     };
     const NET = /^(suma be pvm|is viso be pvm|viso be pvm|tarpine suma|subtotal|net total|apmokestinama suma)/;
-    const RATE = /^(?:pvm|vat)\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*(%|4(?=\s*:))/;
+    const RATE = /^(?:pvm|vat)\s*\(?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*(%|4(?=\s*:))\s*\)?/;
     const VAT = /^(pvm suma|pvm:|pvm$|vat:|vat amount|viso pvm)/;
     const GROSS = /^(is viso su pvm|viso su pvm|suma su pvm|bendra suma|is viso moketi|moketi|apmoketi|grand total|total|is viso|viso)\b/;
     if (NET.test(lf)) put('net', NET);
@@ -398,8 +457,11 @@ function parseTotals(doc) {
         t.vatByRate.push(entry);
       }
     } else if (VAT.test(lf)) put('vat', VAT);
-    else if (GROSS.test(lf) && !/be pvm/.test(lf)) {
+    else if (GROSS.test(lf) && !/be pvm/.test(lf) && !/(iki|terminas|data|zodziais)\b/.test(lf)) {
+      // A due-date row ("Apmokėti iki …") or an unreadable amount never replaces a total that was read.
+      const before = t.gross;
       if (t.gross.status !== 'ok' || /su pvm|moketi/.test(lf)) put('gross', GROSS);
+      if (before.status === 'ok' && t.gross.status !== 'ok') t.gross = before;
     }
   }
   if (t.vat.status === 'missing' && t.vatByRate.length) {

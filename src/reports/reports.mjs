@@ -30,29 +30,40 @@ export async function trialBalance(db, {from, to, today}) {
 /** Non-negative integer from a query value, with a default and an upper bound. */
 const clampInt = (v, def, max) => { const n = Math.trunc(Number(v)); return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : def; };
 
+/**
+ * General ledger. `account` empty → every posted line; otherwise every account whose code starts with it
+ * ("27" → 271, 2710, 272…, "2710" → 2710 and its sub-accounts). A running balance is shown when one account matches.
+ */
 export async function generalLedger(db, {account, from, to, today, limit = 20000, offset = 0}) {
   from = D(from, yearStart(today)); to = D(to, today);
-  const acc = (await db.query('SELECT * FROM accounts WHERE code=$1', [account])).rows[0];
-  const opening = (await db.query(`SELECT coalesce(sum(l.debit - l.credit),0) AS v FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code=$1 AND e.entry_date < $2`, [account, from])).rows[0].v;
+  account = String(account || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 12);
+  const matched = (await db.query(`SELECT code, name FROM accounts WHERE code LIKE $1 || '%' ORDER BY code`, [account])).rows;
+  const used = (await db.query(`SELECT DISTINCT l.account_code FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code LIKE $1 || '%' AND e.entry_date <= $2`, [account, to])).rows.map((r) => r.account_code);
+  const single = account && used.length <= 1 && matched.some((a) => a.code === (used[0] || account)) ? (used[0] || account) : null;
+  const acc = single ? matched.find((a) => a.code === single) : null;
+  const opening = (await db.query(`SELECT coalesce(sum(l.debit - l.credit),0) AS v FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code LIKE $1 || '%' AND e.entry_date < $2`, [account, from])).rows[0].v;
   const lim = clampInt(limit, 20000, 20000), off = clampInt(offset, 0, 1e9);
   // The running balance is computed over the whole period in SQL, so it stays right on any page.
-  const rows = (await db.query(`SELECT * FROM (SELECT e.id AS entry_id, e.entry_date, e.description, e.source_type, e.source_id, l.debit, l.credit, l.description AS line_description, c.name AS counterparty,
+  const rows = (await db.query(`SELECT * FROM (SELECT e.id AS entry_id, e.entry_date, l.account_code, a.name AS account_name, e.description, e.source_type, e.source_id, l.debit, l.credit, l.description AS line_description, c.name AS counterparty,
       i.document_id, sum(l.debit - l.credit) OVER (ORDER BY e.entry_date, e.id, l.id) AS run, row_number() OVER (ORDER BY e.entry_date, e.id, l.id) AS rn
-    FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id LEFT JOIN counterparties c ON c.id=l.counterparty_id LEFT JOIN invoices i ON i.journal_entry_id = e.id
-    WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3) x ORDER BY rn LIMIT ${lim + 1} OFFSET ${off}`, [account, from, to])).rows;
+    FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id JOIN accounts a ON a.code=l.account_code LEFT JOIN counterparties c ON c.id=l.counterparty_id LEFT JOIN invoices i ON i.journal_entry_id = e.id
+    WHERE l.account_code LIKE $1 || '%' AND e.entry_date BETWEEN $2 AND $3) x ORDER BY rn LIMIT ${lim + 1} OFFSET ${off}`, [account, from, to])).rows;
   const hasMore = rows.length > lim;
   if (hasMore) rows.length = lim;
-  for (const r of rows) { r.balance = money.add(opening, r.run); delete r.run; delete r.rn; }
-  const sums = (await db.query(`SELECT coalesce(sum(l.debit),0) AS d, coalesce(sum(l.credit),0) AS c FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3`, [account, from, to])).rows[0];
-  return report(`Didžioji knyga: ${account} ${acc?.name || ''}`, `Visi užregistruoti įrašai sąskaitoje ${account} ${from}–${to}, su einamuoju likučiu ir nuorodomis į šaltinio dokumentus.${hasMore ? ` Rodoma pirmųjų ${lim} eilučių – susiaurinkite laikotarpį.` : ''}`,
-    [['entry_date', 'Data', 'date'], ['entry_id', 'Įrašas'], ['description', 'Aprašymas'], ['counterparty', 'Kontrahentas'], ['debit', 'Debetas', 'money'], ['credit', 'Kreditas', 'money'], ['balance', 'Likutis', 'money']],
-    rows, {filters: {account, from, to}, opening, hasMore, totals: {debit: sums.d, credit: sums.c, closing: money.add(opening, money.sub(sums.d, sums.c))}, drill: {column: 'entry_id', to: 'entry'}});
+  for (const r of rows) { r.balance = single ? money.add(opening, r.run) : null; delete r.run; delete r.rn; }
+  const sums = (await db.query(`SELECT coalesce(sum(l.debit),0) AS d, coalesce(sum(l.credit),0) AS c FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code LIKE $1 || '%' AND e.entry_date BETWEEN $2 AND $3`, [account, from, to])).rows[0];
+  const scope = !account ? 'visos sąskaitos' : single ? `${single} ${acc?.name || ''}`.trim() : `sąskaitos, prasidedančios ${account} (${used.length})`;
+  const title = !account ? 'Didžioji knyga: visos operacijos' : single ? `Didžioji knyga: ${single} ${acc?.name || ''}`.trim() : `Didžioji knyga: ${account}…`;
+  return report(title, `Užregistruoti įrašai (${scope}) ${from}–${to}${single ? ', su einamuoju likučiu' : ''} ir nuorodomis į šaltinio dokumentus.${hasMore ? ` Rodoma pirmųjų ${lim} eilučių – susiaurinkite laikotarpį arba sąskaitą.` : ''}`,
+    [['entry_date', 'Data', 'date'], ['entry_id', 'Įrašas'], ...(single ? [] : [['account_code', 'Sąskaita'], ['account_name', 'Pavadinimas']]), ['description', 'Aprašymas'], ['counterparty', 'Kontrahentas'], ['debit', 'Debetas', 'money'], ['credit', 'Kreditas', 'money'], ...(single ? [['balance', 'Likutis', 'money']] : [])],
+    rows, {filters: {account, from, to}, opening: account ? opening : undefined, hasMore, matchedAccounts: matched.slice(0, 50),
+      totals: {debit: sums.d, credit: sums.c, ...(account && {closing: money.add(opening, money.sub(sums.d, sums.c))})}, drill: {column: 'entry_id', to: 'entry'}});
 }
 
 /** Cost-of-sales completeness: months with goods sales but no confirmed COGS posting. */
 export async function cogsGaps(db, from, to) {
   const r = await db.query(`SELECT DISTINCT to_char(i.issue_date, 'YYYY-MM') AS period FROM invoices i JOIN invoice_lines l ON l.invoice_id=i.id
-    WHERE i.register='sales' AND l.line_type='revenue_goods' AND i.issue_date BETWEEN $1 AND $2
+    WHERE i.register='sales' AND l.line_type='revenue_goods' AND l.cogs_amount IS NULL AND i.issue_date BETWEEN $1 AND $2
       AND NOT EXISTS (SELECT 1 FROM cogs_periods c WHERE c.period = to_char(i.issue_date, 'YYYY-MM')
         AND NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id = c.journal_entry_id)) ORDER BY 1`, [from, to]);
   return r.rows.map((x) => x.period);

@@ -1,5 +1,5 @@
 // Atlyginimai: monthly payroll sheets, employees, payroll parameters, payslips.
-import {h, clear, get, post, put, del, pageHeader, section, table, money, eur, date, guard, select, input, field, can, modal, today, confirmDialog, promptDialog, badge, toast} from '../core.mjs';
+import {h, clear, get, post, put, del, pageHeader, section, table, money, eur, date, guard, select, input, field, can, modal, today, confirmDialog, promptDialog, badge, toast, api} from '../core.mjs';
 
 const STATUS = {draft: ['Juodraštis', 'warn'], approved: ['Patvirtinta ir kontuota', 'done']};
 const tabs = (cur) => h('div', {class: 'tabs'}, [['', 'Žiniaraščiai'], ['darbuotojai', 'Darbuotojai'], ['parametrai', 'Tarifai ir parametrai']].map(([k, t]) => h('a', {class: ['tab', cur === k && 'active'], href: `#/atlyginimai${k ? '/' + k : ''}`}, t)));
@@ -25,15 +25,18 @@ async function newRun(main, state) {
   const d = new Date();
   const period = input({type: 'month', value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`});
   const norm = input({inputmode: 'numeric'}), pay = input({type: 'date'});
+  // Pay day: the 10th of the next month (a Saturday/Sunday moves to Monday); change it if salaries are paid otherwise.
+  const payDay = (p) => { const [y, m] = p.split('-').map(Number); const x = new Date(Date.UTC(m === 12 ? y + 1 : y, m % 12, 10)); while (x.getUTCDay() % 6 === 0) x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
   const refresh = async () => {
     if (!/^\d{4}-\d{2}$/.test(period.value)) return;
+    pay.value = payDay(period.value);
     norm.value = (await get(`/api/payroll/working-days?period=${period.value}`)).days;
     const [y, m] = period.value.split('-').map(Number); pay.value = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   };
   period.addEventListener('change', () => guard(refresh));
   clear(main, pageHeader('Naujas darbo užmokesčio žiniaraštis'), tabs(''),
     section(null, h('form', {onsubmit: async (e) => { e.preventDefault(); const r = await guard(() => post('/api/payroll/runs', {period: period.value, norm_days: norm.value, payment_date: pay.value}), 'Žiniaraštis sukurtas.'); if (r) location.hash = `#/atlyginimai/${r.id}`; }},
-      h('div', {class: 'form-grid'}, field('Mėnuo', period), field('Darbo dienų norma', norm, 'Pagal darbo dienas be švenčių; galite pakeisti'), field('Išmokėjimo data', pay)),
+      h('div', {class: 'form-grid'}, field('Mėnuo', period), field('Darbo dienų norma', norm, 'Pagal darbo dienas be švenčių; galite pakeisti'), field('Išmokėjimo data', pay, 'Pagal šią datą algos patenka į GPM313 (pvz., rugsėjo DU, išmokėtas spalio 10 d., – spalio GPM313)')),
       h('p', {class: 'hint'}, 'Į žiniaraštį įtraukiami visi aktyvūs tą mėnesį dirbę darbuotojai. Dirbtos dienos užpildomos pagal normą (pradėjusiems ar baigusiems darbą mėnesio viduryje – proporcingai) – jas galėsite pakeisti.'),
       h('button', {class: 'btn btn-primary'}, 'Sukurti žiniaraštį'))));
   await refresh();
@@ -46,7 +49,7 @@ async function runSheet(main, id, state) {
   const num = (v, attrs = {}) => input({value: Number(v) ? String(v).replace(/\.00$/, '') : '', inputmode: 'decimal', class: 'num-input', disabled: !draft, ...attrs});
   const cols = [
     {label: 'Darbuotojas', render: (l) => h('div', null, h('a', {href: `#/atlyginimai/darbuotojai/${l.employee_id}`}, `${l.first_name} ${l.last_name}`), h('div', {class: 'hint'}, l.position || '', l.pay_type === 'hourly' ? ` · ${money(l.hourly_rate)} €/val.` : ` · ${money(l.base_salary)} €/mėn.`))},
-    {label: 'Dirbta d.', render: (l) => inputs.get(l.employee_id).worked_days},
+    {label: 'Dirbta d.', render: (l) => h('div', null, inputs.get(l.employee_id).worked_days, inputs.get(l.employee_id).payment_date ? h('label', {class: 'hint', title: 'Atleidžiamam darbuotojui atsiskaitoma paskutinę darbo dieną – ši data naudojama GPM313'}, 'Išmokėta ', inputs.get(l.employee_id).payment_date) : null)},
     {label: 'Val.', render: (l) => (l.pay_type === 'hourly' ? inputs.get(l.employee_id).worked_hours : '')},
     {label: 'Priedai', render: (l) => inputs.get(l.employee_id).bonus},
     {label: 'Atostoginiai', render: (l) => h('span', {class: 'row-actions'}, inputs.get(l.employee_id).vacation_pay, draft ? h('button', {class: 'btn btn-small', type: 'button', title: 'Apskaičiuoti pagal vidutinį darbo užmokestį (3 mėn.)', onclick: () => guard(async () => {
@@ -72,7 +75,8 @@ async function runSheet(main, id, state) {
   ];
   for (const l of run.lines) inputs.set(l.employee_id, {worked_days: num(l.worked_days, {'aria-label': `${fullName(l)} dirbta dienų`}), worked_hours: num(l.worked_hours, {'aria-label': `${fullName(l)} valandos`}),
     bonus: num(l.bonus, {'aria-label': `${fullName(l)} priedai`}), vacation_pay: num(l.vacation_pay, {'aria-label': `${fullName(l)} atostoginiai`}), sick_pay: num(l.sick_pay, {'aria-label': `${fullName(l)} ligos`}),
-    other_pay: num(l.other_pay, {'aria-label': `${fullName(l)} kitos išmokos`}), advance: num(l.advance, {'aria-label': `${fullName(l)} avansas`})});
+    other_pay: num(l.other_pay, {'aria-label': `${fullName(l)} kitos išmokos`}), advance: num(l.advance, {'aria-label': `${fullName(l)} avansas`}),
+    ...(l.payment_date && {payment_date: input({type: 'date', value: l.payment_date, disabled: !draft, 'aria-label': `${fullName(l)} išmokėjimo data`})})});
   const norm = input({value: run.norm_days, inputmode: 'numeric', disabled: !draft, class: 'num-input'}), pay = input({type: 'date', value: run.payment_date, disabled: !draft});
   const save = () => guard(async () => {
     await put(`/api/payroll/runs/${id}`, {norm_days: norm.value, payment_date: pay.value, lines: run.lines.map((l) => ({employee_id: l.employee_id, ...Object.fromEntries(Object.entries(inputs.get(l.employee_id)).map(([k, v]) => [k, v.value]))}))});
@@ -146,7 +150,8 @@ async function employeeCard(main, id, state) {
     iban: input({value: e.iban || ''}), email: input({type: 'email', value: e.email || ''}), address: input({value: e.address || ''}), notes: h('textarea', {rows: 3}, e.notes || ''), active: h('input', {type: 'checkbox', checked: e.active !== false})};
   Object.values(f).forEach((x) => { x.disabled = ro; });
   const body = () => Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.type === 'checkbox' ? v.checked : v.value]));
-  clear(main, pageHeader(id ? `Darbuotojas: ${fullName(e)}` : 'Naujas darbuotojas', h('a', {class: 'btn', href: '#/atlyginimai/darbuotojai'}, '← Sąrašas')),
+  clear(main, pageHeader(id ? `Darbuotojas: ${fullName(e)}` : 'Naujas darbuotojas', h('a', {class: 'btn', href: '#/atlyginimai/darbuotojai'}, '← Sąrašas'),
+    id && !ro ? h('button', {class: 'btn btn-primary', type: 'button', onclick: () => guard(() => contractDialog(id, e))}, '🖶 Darbo sutartis') : null),
     h('form', {onsubmit: async (ev) => { ev.preventDefault(); const r = await guard(() => (id ? put(`/api/employees/${id}`, body()) : post('/api/employees', body())), 'Išsaugota.'); if (r && !id) location.hash = `#/atlyginimai/darbuotojai/${r.id}`; }},
       section('Asmens duomenys', h('div', {class: 'form-grid'}, field('Vardas', f.first_name), field('Pavardė', f.last_name), field('Asmens kodas', f.personal_code), field('Sodros pažymėjimo nr.', f.sodra_no),
         field('El. paštas', f.email), field('Adresas', f.address), field('Banko sąskaita (IBAN)', f.iban))),
@@ -175,4 +180,23 @@ async function params(main, state) {
     h('ul', {class: 'hint'}, rows.filter((r) => r.note).map((r) => h('li', null, h('strong', null, `Nuo ${date(r.effective_from)}: `), r.note))),
     can(state.user, 'settings') ? section('Nauji parametrai', h('form', {onsubmit: async (e) => { e.preventDefault(); if (await guard(() => post('/api/payroll/params', {...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.value])), note: note.value}), 'Išsaugota.')) params(main, state); }},
       h('div', {class: 'form-grid'}, keys.map(([k, label]) => field(label, f[k])), field('Pastaba', note)), h('button', {class: 'btn btn-primary'}, 'Išsaugoti'))) : null);
+}
+
+// Print the employment contract: the terms from the card, plus those given here (number, workplace, probation…).
+async function contractDialog(id, e) {
+  const d = await get(`/api/employees/${id}/contract`);
+  const f = {number: input({value: d.number, placeholder: 'pvz. DS-12'}), date: input({type: 'date', value: d.date}), place: input({value: d.place}), workplace: input({value: d.workplace}),
+    probationMonths: select([['0', 'Nenustatomas'], ['1', '1 mėn.'], ['2', '2 mėn.'], ['3', '3 mėn.']], d.probationMonths), leaveDays: input({value: d.leaveDays, inputmode: 'numeric', class: 'w-num'}),
+    duties: h('textarea', {rows: 2, placeholder: 'Nebūtina: trumpas pareigų aprašymas'}, d.duties), workTime: h('textarea', {rows: 2}, d.workTime), payDays: h('textarea', {rows: 2}, d.payDays),
+    employerRep: input({value: d.employerRep}), employerRepTitle: input({value: d.employerRepTitle})};
+  const m = modal(`Darbo sutartis – ${fullName(e)}`, h('form', {onsubmit: (ev) => { ev.preventDefault(); guard(async () => {
+    const res = await api('POST', `/api/employees/${id}/contract`, Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.value])), {raw: true});
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Sutarties sugeneruoti nepavyko.');
+    window.open(URL.createObjectURL(await res.blob()), '_blank', 'noopener'); m.close();
+  }); }},
+  h('p', {class: 'hint'}, 'Duomenys imami iš darbuotojo kortelės (asmens kodas, adresas, pareigos, darbo pradžia, atlyginimas, sutarties rūšis) ir įmonės rekvizitų. Patikslinkite trūkstamas sąlygas.'),
+  h('div', {class: 'form-grid'}, field('Sutarties Nr.', f.number), field('Sudarymo data', f.date), field('Sudarymo vieta', f.place), field('Darbovietė', f.workplace), field('Išbandymas', f.probationMonths), field('Kasmetinės atostogos, d. d.', f.leaveDays),
+    field('Darbdavio atstovas', f.employerRep), field('Atstovo pareigos', f.employerRepTitle)),
+  field('Pareigų aprašymas', f.duties), field('Darbo laiko režimas', f.workTime), field('Darbo užmokesčio mokėjimas', f.payDays),
+  h('div', {class: 'actions'}, h('button', {class: 'btn btn-primary'}, 'Sugeneruoti PDF'))), {wide: true});
 }

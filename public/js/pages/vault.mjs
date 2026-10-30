@@ -52,7 +52,7 @@ async function uploadForm(main, state) {
       const fd = new FormData(); fd.append('workflow', 'vault'); fd.append('meta', JSON.stringify(metaValues(m)));
       [...fileIn.files].forEach((f) => fd.append('files', f, f.name));
       try { const r = await upload('/api/uploads', fd); const ok = r.results.filter((x) => x.status === 'uploaded'); r.results.filter((x) => x.status === 'error').forEach((x) => toast(`${x.name}: ${x.message}`, 'error')); if (ok.length) location.hash = `#/dokumentai/${ok[0].documentId}`; } catch (x) { showError(x); }
-    }}, section('Failai', fileIn, h('p', {class: 'hint'}, 'PDF, DOCX, XLSX, JPG, PNG, TXT, CSV, XML. Originalas saugomas nekeičiamas; tekstas indeksuojamas paieškai.')), section('Metaduomenys', metaForm(m)), h('button', {class: 'btn btn-primary'}, 'Įkelti')));
+    }}, section('Failai', fileIn, h('p', {class: 'hint'}, 'PDF, DOCX, XLSX, JPG, PNG, TXT, CSV, XML. Originalas saugomas nekeičiamas; tekstas indeksuojamas paieškai.'), h('p', {class: 'issue issue-warning'}, 'Čia saugomi sutartys ir kiti dokumentai – jie nėra registruojami apskaitoje. Pirkimo ar pardavimo sąskaitas įkelkite per ', h('a', {href: '#/pirkimai'}, 'Pirkimai'), ' arba ', h('a', {href: '#/deze'}, 'Dokumentų dėžutę'), ' – ten jos nuskaitomos automatiškai.')), section('Metaduomenys', metaForm(m)), h('button', {class: 'btn btn-primary'}, 'Įkelti')));
 }
 
 async function detail(main, id, state) {
@@ -62,7 +62,10 @@ async function detail(main, id, state) {
   const derived = d.files.filter((f) => !['original', 'generated'].includes(f.role));
   const versionIn = h('input', {type: 'file', 'aria-label': 'Nauja versija'});
   clear(main, pageHeader(d.title || `Dokumentas #${d.id}`, h('a', {class: 'btn btn-small', href: '#/dokumentai'}, '‹ Dokumentai'),
-    d.workflow === 'invoice' ? h('a', {class: 'btn btn-small', href: `#/deze/${d.id}`}, 'Peržiūra dėžutėje') : null),
+    d.workflow === 'invoice' ? h('a', {class: 'btn btn-small', href: `#/deze/${d.id}`}, 'Peržiūra dėžutėje') : null,
+    d.workflow === 'vault' && can(state.user, 'write') ? h('button', {class: 'btn btn-primary', title: 'Sąskaita įkelta į archyvą? Ji bus nuskaityta ir paruošta registruoti.', onclick: () => guard(async () => {
+      const r = await post(`/api/documents/${d.id}/to-inbox`, {}); toast('Nuskaitoma kaip sąskaita…', 'info'); location.hash = `#/deze/${r.documentId}`;
+    })}, 'Nuskaityti kaip sąskaitą') : null),
     d.kind === 'contract' ? h('div', {class: 'banner'}, `Sutarties būsena: ${CONTRACT[d.contract_status_effective] || '—'}${d.contract_status_manual ? ' (nustatyta rankiniu būdu)' : ' (pagal datas)'}. Sutarties vertė ${d.contract_value ? eur(d.contract_value) : '—'} yra informacinė ir nesukuria pajamų, sąnaudų ar įsipareigojimų įrašų.`) : null,
     section('Failų versijos (originalai nekeičiami)', table([{label: 'Versija', key: 'version'}, {label: 'Failas', key: 'original_name'}, {label: 'Dydis', render: (f) => `${Math.round(f.size_bytes / 1024)} KB`}, {label: 'SHA-256', render: (f) => h('code', {title: f.sha256}, f.sha256.slice(0, 16) + '…')},
       {label: 'Įkėlė', render: (f) => `${f.uploaded_by_name || 'Sistema'} ${dateTime(f.uploaded_at)}`}, {label: 'Pastaba', key: 'note'}, {label: '', render: (f) => h('span', null, h('button', {class: 'btn btn-small', onclick: () => guard(() => openFile(f.id))}, 'Peržiūrėti'), ' ', h('button', {class: 'btn btn-small', onclick: () => guard(() => openFile(f.id, {download: true}))}, 'Atsisiųsti'))}], originals),

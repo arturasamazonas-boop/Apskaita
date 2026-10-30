@@ -8,6 +8,7 @@ import {managementPL, directorSummary} from '../reports/director.mjs';
 import {monthClose} from '../reports/monthclose.mjs';
 import {taxCalendar, TAX_FORMS} from '../tax/calendar.mjs';
 import {cogsProposal} from '../reports/cogs.mjs';
+import {changeBlockers} from '../sales/edit.mjs';
 import {todayVilnius} from '../invoices/context.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
 import {buildIsaf, validateXsd} from '../isaf/isaf.mjs';
@@ -29,7 +30,7 @@ import {money} from '../lib/money.mjs';
 
 const REPORTS = {
   'trial-balance': (db, q) => R.trialBalance(db, q),
-  ledger: (db, q) => { if (!q.account) throw new AppError(400, 'account', 'Nurodykite sąskaitą.'); return R.generalLedger(db, q); },
+  ledger: (db, q) => R.generalLedger(db, q),
   'profit-loss': (db, q) => R.profitAndLoss(db, q),
   'balance-sheet': (db, q) => R.balanceSheet(db, q),
   'vat-sales': (db, q) => R.vatRegister(db, {...q, register: 'sales'}),
@@ -352,7 +353,9 @@ export function register(r, {pool, storage}) {
     if (query.store) add('i.store_id = ?', query.store);
     if (query.q) add(`(i.number ILIKE '%'||?||'%' OR i.counterparty_snapshot->>'name' ILIKE '%'||$${params.length + 1}||'%')`, String(query.q).slice(0, 100)), params.push(String(query.q).slice(0, 100));
     const rows = (await pool.query(`SELECT i.id, i.register, i.doc_type, i.series, i.number, i.issue_date, i.due_date, i.net_total, i.vat_total, i.gross_total, i.counterparty_snapshot->>'name' AS counterparty,
-        i.document_id, i.related_invoice_id, i.store_id, s.name AS store_name, i.approved_at, i.external_order_id
+        i.document_id, i.related_invoice_id, i.store_id, s.name AS store_name, i.approved_at, i.external_order_id,
+        (i.doc_type IN ('invoice','vat_invoice') AND EXISTS (SELECT 1 FROM invoices c WHERE c.related_invoice_id=i.id AND c.doc_type='correction')
+          AND (SELECT sum(g.gross_total) FROM invoices g WHERE g.id=i.id OR (g.related_invoice_id=i.id AND g.doc_type='correction')) = 0) AS annulled
       FROM invoices i LEFT JOIN stores s ON s.id=i.store_id ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY i.issue_date DESC, i.id DESC LIMIT ${limit + 1} OFFSET ${offset}`, params)).rows;
     const roots = rows.filter((x) => !['correction', 'credit_note'].includes(x.doc_type) || !x.related_invoice_id).map((x) => x.id);
     const bal = roots.length ? await invoiceBalances(pool, {ids: roots, limit: 1000}) : [];
@@ -372,6 +375,7 @@ export function register(r, {pool, storage}) {
     const allocations = (await pool.query(`SELECT a.*, t.booking_date, t.amount AS tx_amount, t.counterparty_name, t.reference FROM allocations a LEFT JOIN bank_transactions t ON t.id=a.transaction_id
       WHERE a.invoice_id IN (SELECT id FROM invoices WHERE id=$1 OR related_invoice_id=$1) ORDER BY a.id`, [rootId])).rows;
     const order = inv.external_order_id ? (await pool.query('SELECT id, store_id, external_id, order_number, external_status, state FROM external_orders WHERE id=$1', [inv.external_order_id])).rows[0] : null;
-    return {...inv, lines, vat, entry, related, balance, allocations, order};
+    const change = inv.register === 'sales' && ['invoice', 'vat_invoice'].includes(inv.doc_type) ? await changeBlockers(pool, inv.id).then(({blockers, annulled}) => ({blockers, annulled})) : null;
+    return {...inv, lines, vat, entry, related, balance, allocations, order, change};
   });
 }

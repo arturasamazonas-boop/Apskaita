@@ -1,5 +1,6 @@
 // Shared invoice list, detail and manual invoice form (used by Pardavimai and Pirkimai).
-import {h, clear, get, post, pageHeader, section, table, badge, PAY, DOC_TYPE, eur, money, date, dateTime, guard, select, input, field, pager, debounce, can, openFile, toast, LINE_TYPE, VAT_T, yearStart, today, apiUrl} from '../core.mjs';
+import {h, clear, get, post, pageHeader, section, table, badge, PAY, DOC_TYPE, eur, money, date, dateTime, guard, select, input, field, pager, debounce, can, openFile, toast, LINE_TYPE, VAT_T, yearStart, today, apiUrl, modal, promptDialog} from '../core.mjs';
+import {invoiceDrop} from '../lib/invoice-drop.mjs';
 
 export async function invoiceList(main, register, state, extraTabs = null) {
   const base = register === 'sales' ? 'pardavimai' : 'pirkimai';
@@ -17,7 +18,7 @@ export async function invoiceList(main, register, state, extraTabs = null) {
       {label: register === 'sales' ? 'Pirkėjas' : 'Tiekėjas', key: 'counterparty'},
       ...(register === 'sales' ? [{label: 'Parduotuvė', render: (r) => r.store_name || '—'}] : []),
       {label: 'Be PVM', num: true, render: (r) => money(r.net_total)}, {label: 'PVM', num: true, render: (r) => money(r.vat_total)}, {label: 'Su PVM', num: true, render: (r) => money(r.gross_total)},
-      {label: 'Mokėjimas', render: (r) => (r.balance ? h('span', null, badge(PAY, r.balance.payment_status), Number(r.balance.outstanding) ? ` likutis ${money(r.balance.outstanding)}` : '') : r.related_invoice_id ? 'susieta' : '—')},
+      {label: 'Mokėjimas', render: (r) => (r.annulled ? h('span', {class: 'badge badge-error'}, 'Anuliuota') : r.balance ? h('span', null, badge(PAY, r.balance.payment_status), Number(r.balance.outstanding) ? ` likutis ${money(r.balance.outstanding)}` : '') : r.related_invoice_id ? 'susieta' : '—')},
       {label: 'Terminas', render: (r) => date(r.due_date)},
     ], d.items, {onRow: (r) => { location.hash = `#/${base}/s/${r.id}`; }, empty: 'Užregistruotų sąskaitų nėra.'}), pager(st, load));
   };
@@ -26,7 +27,7 @@ export async function invoiceList(main, register, state, extraTabs = null) {
   const q = input({type: 'search', placeholder: 'Numeris arba kontrahentas', oninput: debounce(() => { st.q = q.value; st.offset = 0; load(); })});
   const storeSel = stores.length ? select([['', 'Visos parduotuvės'], ...stores.map((s) => [s.id, s.name])], '', {onchange: () => { st.store = storeSel.value; load(); }, 'aria-label': 'Parduotuvė'}) : null;
   clear(main, pageHeader(register === 'sales' ? 'Pardavimai' : 'Pirkimai', can(state.user, 'write') ? h('a', {class: 'btn btn-primary', href: `#/${base}/nauja`}, register === 'sales' ? '+ Nauja sąskaita' : '+ Rankinis pirkimas') : null),
-    extraTabs, h('div', {class: 'filters'}, field('Nuo', from), field('Iki', to), field('Paieška', q), storeSel ? field('Parduotuvė', storeSel) : null),
+    extraTabs, register === 'purchase' ? invoiceDrop(state) : null, h('div', {class: 'filters'}, field('Nuo', from), field('Iki', to), field('Paieška', q), storeSel ? field('Parduotuvė', storeSel) : null),
     h('p', {class: 'hint'}, 'Rodomos patvirtintos (užregistruotos) sąskaitos. Patvirtinimo ir apmokėjimo būsenos yra atskiros.'), box);
   await load();
 }
@@ -38,8 +39,23 @@ export async function invoiceDetail(main, id, state) {
   if (inv.register === 'sales' && ['vat_invoice', 'invoice'].includes(inv.doc_type) && can(state.user, 'write')) actions.push(h('button', {class: 'btn', onclick: () => creditNote(inv)}, 'Kreditinė sąskaita / grąžinimas'));
   if (inv.document_id) actions.push(h('a', {class: 'btn', href: inv.register === 'sales' && !inv.document_id ? '#' : `#/dokumentai/${inv.document_id}`}, 'Dokumentas ir failai'));
   if (inv.register === 'sales') actions.push(h('button', {class: 'btn', onclick: () => guard(async () => { const {url} = await get(`/api/invoices/${inv.id}/pdf-link`); window.open(apiUrl(url), '_blank', 'noopener'); })}, 'PDF'));
+  if (inv.register === 'sales' && can(state.user, 'write') && !inv.change?.annulled) actions.push(h('button', {class: 'btn btn-primary', onclick: () => guard(() => emailDialog(inv))}, '✉ Siųsti el. paštu'));
+  // Correct (same number) or annul an invoice issued here, while nothing depends on it yet.
+  if (inv.change && !inv.change.annulled && can(state.user, 'write')) {
+    const why = inv.change.blockers.join(' ');
+    actions.push(h('button', {class: 'btn', disabled: !!why, title: why || 'Atidaroma peržiūrai su dabartiniais duomenimis; patvirtinus numeris lieka tas pats', onclick: () => guard(async () => {
+      const r = await post(`/api/invoices/${inv.id}/correct`, {}); toast('Pataisykite ir patvirtinkite – numeris liks tas pats.', 'info'); location.hash = `#/deze/${r.documentId}`;
+    })}, 'Taisyti'));
+    if (can(state.user, 'approve')) actions.push(h('button', {class: 'btn btn-danger', disabled: !!why, title: why || 'Visos sumos atšaukiamos; numeris lieka pažymėtas „Anuliuota“', onclick: () => guard(async () => {
+      const reason = await promptDialog(`Anuliuoti ${inv.series} ${inv.number}`, 'Priežastis (pvz., išrašyta per klaidą)', {minLength: 3});
+      if (!reason) return;
+      await post(`/api/invoices/${inv.id}/annul`, {reason}); toast('Sąskaita anuliuota.', 'ok'); invoiceDetail(main, id, state);
+    })}, 'Anuliuoti'));
+  }
   const cp = inv.counterparty_snapshot || {};
   clear(main, pageHeader(`${DOC_TYPE[inv.doc_type] || ''} ${inv.series} ${inv.number}`, h('a', {class: 'btn btn-small', href: `#/${base}`}, '‹ Sąrašas'), ...actions),
+    inv.change?.annulled ? h('p', {class: 'issue issue-error'}, 'ANULIUOTA – visos šios sąskaitos sumos atšauktos (žr. susijusius koregavimus).') : null,
+    inv.change && inv.change.blockers.length && !inv.change.annulled ? h('p', {class: 'hint'}, `Taisyti ar anuliuoti nebegalima: ${inv.change.blockers.join(' ')}`) : null,
     h('div', {class: 'cols'},
       section('Rekvizitai', h('dl', {class: 'dl'},
         h('dt', null, 'Išrašyta'), h('dd', null, date(inv.issue_date)), h('dt', null, 'PVM data'), h('dd', null, date(inv.vat_point_date)), h('dt', null, 'Terminas'), h('dd', null, date(inv.due_date)),
@@ -104,6 +120,7 @@ export async function manualForm(main, register, state) {
     if (r) { toast('Juodraštis sukurtas – peržiūrėkite ir patvirtinkite.', 'ok'); location.hash = `#/deze/${r.documentId}`; }
   };
   clear(main, pageHeader(register === 'sales' ? 'Nauja pardavimo sąskaita' : 'Rankinis pirkimas', h('a', {class: 'btn btn-small', href: `#/${base}`}, '‹ Atgal')),
+    register === 'purchase' ? invoiceDrop(state, {title: 'Turite sąskaitos failą? Įkelkite jį – duomenų nereikės vesti ranka'}) : null,
     h('form', {onsubmit: submit},
       section('Dokumentas', h('div', {class: 'form-grid'}, field('Data', f.issueDate), field('Apmokėti iki', f.dueDate),
         register === 'sales' ? field('Serija', f.seriesCode, 'Numeris suteikiamas tvirtinant') : [field('Tiekėjo serija', f.series), field('Numeris', f.number)], field('Užsakymo nr.', f.orderReference), field('Pastabos', f.notes))),
@@ -111,4 +128,29 @@ export async function manualForm(main, register, state) {
       section('Eilutės', h('div', {class: 'table-wrap'}, h('table', {class: 'grid'}, h('thead', null, h('tr', null, ['Prekė', 'Aprašymas', 'Kiekis', 'Kaina be PVM', 'PVM', 'Sąskaita'].map((t) => h('th', null, t)))), linesBox)),
         h('button', {type: 'button', class: 'btn btn-small', onclick: addLine}, '+ Eilutė')),
       h('div', {class: 'actions'}, h('button', {class: 'btn btn-primary'}, 'Sukurti juodraštį peržiūrai'))));
+}
+
+// Send the invoice PDF to the buyer: through the e-mail service when it is set up, otherwise with the user's own
+// e-mail program (the PDF is downloaded to attach it).
+async function emailDialog(inv) {
+  const d = await get(`/api/invoices/${inv.id}/email`);
+  const to = input({type: 'email', value: d.to, required: true, multiple: true, placeholder: 'pirkejas@imone.lt'}), cc = input({placeholder: 'nebūtina'});
+  const subject = input({value: d.subject, required: true}), text = h('textarea', {rows: 8}, d.text);
+  const history = d.history.length ? h('details', null, h('summary', null, `Siųsta anksčiau (${d.history.length})`), h('ul', null, d.history.map((x) => h('li', null, `${dateTime(x.sent_at)} → ${x.recipients}: ${x.status === 'sent' ? 'išsiųsta' : `nepavyko (${x.error})`}`)))) : null;
+  const downloadPdf = async () => {
+    const {url} = await get(`/api/invoices/${inv.id}/pdf-link`);
+    const a = h('a', {href: apiUrl(`${url}&download=1`), download: `${inv.series}${inv.number}.pdf`}); document.body.append(a); a.click(); a.remove();
+  };
+  const m = modal(`Siųsti ${inv.series} ${inv.number} el. paštu`, h('form', {onsubmit: (e) => { e.preventDefault(); guard(async () => {
+    if (!d.configured) {
+      await downloadPdf();
+      location.href = `mailto:${encodeURIComponent(to.value)}?${new URLSearchParams({...(cc.value && {cc: cc.value}), subject: subject.value, body: text.value}).toString().replace(/\+/g, '%20')}`;
+      toast('PDF atsisiųstas – pridėkite jį prie atsidariusio laiško.', 'info'); m.close(); return;
+    }
+    const r = await post(`/api/invoices/${inv.id}/email`, {to: to.value, cc: cc.value, subject: subject.value, text: text.value});
+    toast(`Išsiųsta: ${r.to.join(', ')}.`, 'ok'); m.close();
+  }); }},
+  d.configured ? null : h('p', {class: 'issue issue-warning'}, 'Automatinis siuntimas dar nenustatytas (administratorius Render nustatymuose turi įrašyti EMAIL_PROVIDER, EMAIL_API_KEY, EMAIL_FROM). Dabar bus atsisiųstas PDF ir atidaryta jūsų pašto programa su paruoštu laišku.'),
+  field('Kam', to, 'Kelis adresus atskirkite kableliu'), field('Kopija (CC)', cc), field('Tema', subject), field('Laiškas', text), history,
+  h('div', {class: 'actions'}, h('button', {class: 'btn btn-primary'}, d.configured ? 'Siųsti su PDF' : 'Atsisiųsti PDF ir atidaryti paštą'))), {wide: true});
 }

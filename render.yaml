@@ -47,6 +47,13 @@ services:
         sync: false
       - key: OPEN_ACCESS
         value: "true"
+      # Optional: sending invoices by e-mail (resend or brevo). Leave empty to use the user's own e-mail program.
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
       # Test environments at /ieva/ and /sonata/: same code, own databases (neondb_ieva, neondb_sonata, created automatically).
       - key: TENANTS
         value: ieva,sonata,test

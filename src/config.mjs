@@ -32,6 +32,12 @@ export function loadConfig(env = process.env) {
     publicBaseUrl: env.PUBLIC_BASE_URL || '',
     // Lietuvos bankas FxRates web service; empty = rates only from the database (entered by hand).
     fxUrl: (env.FX_URL ?? 'https://www.lb.lt/webservices/FxRates/FxRates.asmx').replace(/\/$/, ''),
+    // Sending invoices by e-mail through an HTTPS e-mail API (works where outgoing SMTP is blocked):
+    // EMAIL_PROVIDER=resend|brevo, EMAIL_API_KEY, EMAIL_FROM ("Įmonė <saskaitos@imone.lt>", a verified sender).
+    emailProvider: ['resend', 'brevo'].includes(env.EMAIL_PROVIDER) ? env.EMAIL_PROVIDER : '',
+    emailApiKey: env.EMAIL_API_KEY || '',
+    emailFrom: env.EMAIL_FROM || '',
+    emailApiUrl: (env.EMAIL_API_URL || '').replace(/\/$/, ''),
     viesUrl: (env.VIES_URL || 'https://ec.europa.eu/taxation_customs/vies/rest-api').replace(/\/$/, ''),
     // Separate test environments served by the same process under /<name>/, each with its own database
     // (DATABASE_URL_<NAME>, or the main database name + "_<name>"). Production default: /ieva, /sonata and /test.

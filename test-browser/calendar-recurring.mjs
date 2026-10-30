@@ -10,6 +10,7 @@ const today = new Date().toISOString().slice(0, 10), month = today.slice(0, 7);
 const prevMonth = (p) => { const [y, m] = p.split('-').map(Number); return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`; };
 const last = prevMonth(month);
 await acc.post('/api/counterparties', {name: 'UAB Nuomininkas', company_code: '303333333', is_customer: true, country: 'LT'});
+await t.app.pool.query('UPDATE company_settings SET auto_cogs=false WHERE id=1'); // the monthly calculation path (e.g. a manufacturer)
 const prod = (await acc.post('/api/products', {sku: 'VAMZ-1', name: 'Vamzdis', kind: 'goods', unit: 'vnt.', unit_price: '15', purchase_price: '5', track_stock: true})).body;
 for (const [register, n, qty, price] of [['purchase', 'P1', '10', '6'], ['sales', '', '3', '15']]) {
   const d = await acc.post('/api/manual-invoices', {register, series: 'T', number: n, issueDate: `${last}-10`, counterparty: {name: register === 'sales' ? 'UAB Pirkėjas' : 'UAB Tiekėjas', companyCode: register === 'sales' ? '301111111' : '302222222', vatCode: register === 'sales' ? '' : 'LT100002222219'},

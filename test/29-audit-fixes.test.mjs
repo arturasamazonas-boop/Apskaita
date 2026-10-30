@@ -72,3 +72,15 @@ test('sales: a company that is not a VAT payer cannot charge VAT; 0 % EU supply 
     assert.ok(nv.body.proposal.validation.issues.some((i) => i.code === 'not_vat_payer'));
   } finally { await t.app.pool.query('UPDATE company_settings SET vat_registered=true WHERE id=1'); }
 });
+
+test('ledger: every operation without an account, and all accounts starting with what is typed', async () => {
+  const all = (await acc.get('/api/reports/ledger?from=2026-08-01&to=2026-08-31')).body;
+  assert.ok(all.rows.length >= 6, 'both sides of each entry');
+  assert.ok(all.columns.some((c) => c[0] === 'account_code'));
+  assert.equal(all.totals.debit, all.totals.credit);
+  const pre = (await acc.get('/api/reports/ledger?account=63&from=2026-08-01&to=2026-08-31')).body;
+  assert.ok(pre.rows.length >= 3 && pre.rows.every((r) => r.account_code.startsWith('63')));
+  const one = (await acc.get('/api/reports/ledger?account=271&from=2026-08-01&to=2026-08-31')).body;
+  assert.deepEqual(one.rows.map((r) => r.balance), ['-1.00', '-2.00', '-3.00']); // only 2711 used: single account with balance
+  assert.ok(one.matchedAccounts.some((a) => a.code === '2711'));
+});

@@ -1,6 +1,6 @@
 // Ataskaitos: financial statements from the ledger, registers, aging, sales, drill-down, CSV/XLSX export, i.SAF, journal.
 import {isafView} from '../lib/isaf-view.mjs';
-import {h, clear, get, post, api, pageHeader, section, table, money, date, dateTime, guard, select, input, field, can, modal, toast, yearStart, monthStart, today} from '../core.mjs';
+import {h, clear, get, post, api, pageHeader, section, table, money, date, dateTime, guard, select, input, field, can, modal, toast, yearStart, monthStart, today, debounce} from '../core.mjs';
 
 const REPORTS = [
   ['pelnas', 'profit-loss', 'Pelnas (nuostoliai) pagal sąskaitas', 'period'], ['balansas', 'balance-sheet', 'Balansas pagal sąskaitas', 'asOf'], ['bandomasis', 'trial-balance', 'Bandomasis balansas', 'period'],
@@ -26,14 +26,18 @@ export async function render(main, rest, state) {
 async function reportView(body, [key, name, title, mode], rest) {
   const params = new URLSearchParams(location.hash.split('?')[1] || '');
   const f = {from: input({type: 'date', value: params.get('from') || yearStart()}), to: input({type: 'date', value: params.get('to') || today()}), asOf: input({type: 'date', value: params.get('asOf') || today()}),
-    account: input({value: params.get('account') || rest[1] || '', placeholder: 'pvz. 2410'}), groupBy: select(mode === 'purchases' ? [['account', 'Pagal sąskaitą'], ['supplier', 'Pagal tiekėją']] : [['month', 'Pagal mėnesį'], ['store', 'Pagal parduotuvę'], ['customer', 'Pagal pirkėją'], ['product', 'Pagal prekę']], params.get('groupBy') || (mode === 'purchases' ? 'account' : 'month'))};
+    account: input({value: params.get('account') || rest[1] || '', placeholder: 'visos; arba pradžia, pvz. 27', list: 'ledger-accounts', inputmode: 'numeric', autocomplete: 'off'}), groupBy: select(mode === 'purchases' ? [['account', 'Pagal sąskaitą'], ['supplier', 'Pagal tiekėją']] : [['month', 'Pagal mėnesį'], ['store', 'Pagal parduotuvę'], ['customer', 'Pagal pirkėją'], ['product', 'Pagal prekę']], params.get('groupBy') || (mode === 'purchases' ? 'account' : 'month'))};
   const inputs = mode === 'asOf' ? [field('Dienai', f.asOf)] : [field('Nuo', f.from), field('Iki', f.to), mode === 'ledger' ? field('Sąskaita', f.account) : null, ['sales', 'purchases'].includes(mode) ? field('Grupuoti', f.groupBy) : null];
   const out = h('div');
+  let loadSeq = 0;
   const qs = () => new URLSearchParams(mode === 'asOf' ? {asOf: f.asOf.value} : {from: f.from.value, to: f.to.value, ...(mode === 'ledger' && {account: f.account.value}), ...(['sales', 'purchases'].includes(mode) && {groupBy: f.groupBy.value})});
   const load = async () => {
     // Keep the period in the address, so Back, bookmarks and shared links show the same report.
     history.replaceState(null, '', `${location.hash.split('?')[0]}?${qs()}`);
+    const my = ++loadSeq;
     const r = await get(`/api/reports/${name}?${qs()}`);
+    if (my !== loadSeq) return; // a newer filter was typed meanwhile
+    if (r.matchedAccounts) clear(accList, r.matchedAccounts.map((a) => h('option', {value: a.code}, `${a.code} ${a.name}`)));
     const drill = r.drill;
     const cols = r.columns.map(([k, label, type]) => ({label, num: type === 'money', render: (row) => {
       const v = row[k];
@@ -59,8 +63,11 @@ async function reportView(body, [key, name, title, mode], rest) {
     if (!res.ok) throw new Error('Eksportas nepavyko.');
     const blob = await res.blob(); const a = h('a', {href: URL.createObjectURL(blob), download: `${name}.${fmt}`}); document.body.append(a); a.click(); a.remove();
   })}, fmt.toUpperCase());
-  clear(body, h('div', {class: 'filters'}, inputs, h('button', {class: 'btn btn-primary', onclick: () => guard(load)}, 'Rodyti'), exportBtn('csv'), exportBtn('xlsx')), out);
-  if (mode !== 'ledger' || f.account.value) await load();
+  // Ledger: the account box filters while typing (by the start of the account code); empty shows every operation.
+  const accList = h('datalist', {id: 'ledger-accounts'});
+  if (mode === 'ledger') f.account.addEventListener('input', debounce(() => guard(load), 350));
+  clear(body, h('div', {class: 'filters'}, inputs, accList, h('button', {class: 'btn btn-primary', onclick: () => guard(load)}, 'Rodyti'), exportBtn('csv'), exportBtn('xlsx')), out);
+  await load();
 }
 
 async function entryModal(id) {

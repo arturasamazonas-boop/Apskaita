@@ -94,7 +94,7 @@ export function register(r, {pool}) {
     requireCap(user, 'read');
     const from = isDate(query.from) ? query.from : `${todayVilnius().slice(0, 4)}-01-01`, to = isDate(query.to) ? query.to : todayVilnius();
     return (await pool.query(`SELECT o.id, o.kind, o.series, o.number, o.doc_date, o.purpose, o.amount, o.status, o.account_code, coalesce(nullif(o.person_name,''), c.name) AS who, o.basis
-      FROM cash_orders o LEFT JOIN counterparties c ON c.id=o.counterparty_id WHERE o.doc_date BETWEEN $1 AND $2 ${['receipt', 'payment'].includes(query.kind) ? `AND o.kind='${query.kind}'` : ''}
+      FROM cash_orders o LEFT JOIN counterparties c ON c.id=o.counterparty_id WHERE o.status <> 'deleted' AND o.doc_date BETWEEN $1 AND $2 ${['receipt', 'payment'].includes(query.kind) ? `AND o.kind='${query.kind}'` : ''}
       ORDER BY o.doc_date DESC, o.id DESC LIMIT 1000`, [from, to])).rows;
   });
   r.get('/api/cash/open-invoices', async ({user, query}) => {
@@ -112,71 +112,141 @@ export function register(r, {pool}) {
     res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${o.series}${o.number}.pdf"`, 'Cache-Control': 'no-store'});
     res.end(pdf);
   });
-  r.post('/api/cash/orders', async ({req, user}) => {
-    requireCap(user, 'approve');
-    const b = await readJson(req);
-    const kind = b.kind === 'payment' ? 'payment' : 'receipt';
+  // Validates an order's fields and works out the corresponding account. Used for new and corrected orders.
+  const prepare = async (db, b, kind) => {
     const purpose = ['invoice', 'advance', 'bank', 'accountable', 'other'].includes(b.purpose) ? b.purpose : null;
     if (!purpose) throw new AppError(400, 'purpose', 'Pasirinkite operacijos rūšį.');
     const date = isDate(b.date) ? b.date : null;
     if (!date) throw new AppError(400, 'date', 'Nurodykite datą.');
     const amount = String(b.amount || '').replace(',', '.').replace(/\s/g, '');
     if (!/^\d+(\.\d{1,2})?$/.test(amount) || money.isZero(amount)) throw new AppError(400, 'amount', 'Suma turi būti teigiama (eurais ir centais).');
+    const roles = await roleAccounts(db);
+    const cash = s(b.cashAccount, 8) || CASH;
+    if (!(await db.query(`SELECT 1 FROM accounts WHERE code=$1 AND code LIKE '272%' AND active AND postable`, [cash])).rowCount) throw new AppError(400, 'cash_account', 'Kasos sąskaita turi būti 272 grupės detalioji sąskaita.');
+    let account, counterpartyId = b.counterpartyId ? String(b.counterpartyId) : null, invoiceId = null, employeeId = null, personName = s(b.personName, 120), personCode = s(b.personCode, 20);
+    const warnings = [];
+    if (purpose === 'invoice') {
+      const inv = (await invoiceBalances(db, {ids: [String(b.invoiceId)]}))[0];
+      if (!inv) throw new AppError(400, 'invoice', 'Pasirinkite sąskaitą.');
+      if (inv.register !== (kind === 'receipt' ? 'sales' : 'purchase')) throw new AppError(400, 'invoice', kind === 'receipt' ? 'KPO apmokama pardavimo sąskaita.' : 'KIO apmokama pirkimo sąskaita.');
+      if (inv.currency !== 'EUR') throw new AppError(422, 'currency', `Sąskaita ${inv.currency} valiuta – apmokėjimą registruokite per banką (kursų skirtumas skaičiuojamas automatiškai).`);
+      if (money.cmp(amount, inv.outstanding) > 0) throw new AppError(400, 'amount', `Suma ${amount} viršija sąskaitos likutį ${money.norm(inv.outstanding)}.`);
+      account = kind === 'receipt' ? roles.receivable : roles.payable;
+      invoiceId = String(inv.id); counterpartyId = inv.counterparty_id ? String(inv.counterparty_id) : null;
+      personName ||= inv.counterparty_name || '';
+    } else if (purpose === 'advance') {
+      account = kind === 'receipt' ? roles.advances_received : roles.advances_paid;
+      if (!counterpartyId) throw new AppError(400, 'counterparty', 'Avansui nurodykite kontrahentą.');
+    } else if (purpose === 'bank') {
+      account = roles.transfer_clearing; // money in transit between the cash desk and the bank (273)
+      personName ||= kind === 'receipt' ? 'Paimta iš banko' : 'Įnešta į banką';
+    } else if (purpose === 'accountable') {
+      const e = (await db.query('SELECT * FROM employees WHERE id=$1', [b.employeeId])).rows[0];
+      if (!e) throw new AppError(400, 'employee', 'Pasirinkite atskaitingą asmenį (darbuotoją).');
+      account = '2445'; employeeId = String(e.id); personName = `${e.first_name} ${e.last_name}`; personCode ||= '';
+    } else {
+      account = s(b.accountCode, 8);
+      if (!(await db.query('SELECT 1 FROM accounts WHERE code=$1 AND active AND postable', [account])).rowCount) throw new AppError(400, 'account', 'Nurodykite korespondencinę sąskaitą (detaliąją).');
+      if (account.startsWith('272')) throw new AppError(400, 'account', 'Korespondencinė sąskaita negali būti kasa.');
+    }
+    if (!account) throw new AppError(422, 'mapping_missing', 'Nenustatyta korespondencinė sąskaita (Servisas → Kontavimo susiejimai).');
+    if (counterpartyId && !(await db.query('SELECT 1 FROM counterparties WHERE id=$1', [counterpartyId])).rowCount) throw new AppError(400, 'counterparty', 'Kontrahentas nerastas.');
+    if (!personName && counterpartyId) personName = (await db.query('SELECT name FROM counterparties WHERE id=$1', [counterpartyId])).rows[0].name;
+    if (!personName) throw new AppError(400, 'person', kind === 'receipt' ? 'Nurodykite, iš ko gauti pinigai.' : 'Nurodykite, kam išmokėti pinigai.');
+    if (kind === 'payment') {
+      const bal = await cashBalance(db, cash, date), low = await lowestBalanceFrom(db, cash, date);
+      if (money.cmp(amount, bal) > 0) throw new AppError(422, 'cash_negative', `Kasoje ${date} yra ${bal} Eur – negalima išmokėti ${amount} Eur (kasos likutis negali būti neigiamas).`);
+      if (money.cmp(amount, low) > 0) throw new AppError(422, 'cash_negative', `Kasoje ${date} yra ${bal} Eur, bet po vėlesnių išmokėjimų likutis nukristų iki ${low} Eur – išmokėjus ${amount} Eur jis taptų neigiamas.`);
+    }
+    if (['invoice', 'advance'].includes(purpose) && money.cmp(amount, CASH_LIMIT) > 0) warnings.push(`Atsiskaitymai grynaisiais pinigais virš ${CASH_LIMIT} € pagal vieną sandorį ribojami (Atsiskaitymų grynaisiais pinigais ribojimo įstatymas).`);
+    return {kind, purpose, date, amount, cash, account, counterpartyId, invoiceId, employeeId, personName, personCode, basis: s(b.basis, 300), attachment: s(b.attachment, 200), warnings};
+  };
+  // The journal entry (and invoice allocation) of an order.
+  const postOrder = async (db, id, v, label, user) => {
+    const lines = v.kind === 'receipt'
+      ? [{account: v.cash, debit: v.amount, description: label}, {account: v.account, credit: v.amount, counterpartyId: v.counterpartyId, description: `${label} ${v.personName}`.slice(0, 200)}]
+      : [{account: v.account, debit: v.amount, counterpartyId: v.counterpartyId, description: `${label} ${v.personName}`.slice(0, 200)}, {account: v.cash, credit: v.amount, description: label}];
+    const n = (await db.query('SELECT count(*) AS n FROM cash_order_revisions WHERE order_id=$1', [id])).rows[0].n;
+    const e = await postEntry(db, {date: v.date, description: `${KIND[v.kind]} ${label}: ${v.basis || v.personName}`.slice(0, 300), sourceType: 'cash_order', sourceId: id, idempotencyKey: `cash-order:${id}${Number(n) ? `:r${n}` : ''}`, userId: user.id, lines});
+    await db.query('UPDATE cash_orders SET journal_entry_id=$2 WHERE id=$1', [id, e.id]);
+    if (v.invoiceId) await db.query(`INSERT INTO allocations(cash_order_id, kind, invoice_id, counterparty_id, account_code, amount, journal_entry_id, note, approved_by) VALUES ($1,'invoice',$2,$3,$4,$5,$6,$7,$8)`,
+      [id, v.invoiceId, v.counterpartyId, v.account, v.amount, e.id, label, user.id]);
+    return e;
+  };
+  // Takes an order's posting back (reversal on its own date), checking a receipt is not needed by later payments.
+  const unpost = async (db, o, kind, reason, user) => {
+    const date = String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10);
+    if (o.kind === 'receipt' && kind !== 'edit') {
+      const after = money.sub(await lowestBalanceFrom(db, o.cash_account, date), o.amount);
+      if (money.cmp(after, '0') < 0) throw new AppError(422, 'cash_negative', `Be šio KPO kasos likutis kurią nors dieną taptų neigiamas (${after} Eur) – pirmiausia anuliuokite vėlesnius KIO.`);
+    }
+    const rev = await reverseEntry(db, {entryId: o.journal_entry_id, date, reason: `${o.series} ${o.number}: ${reason}`.slice(0, 250), userId: user.id});
+    if (o.invoice_id) await db.query(`INSERT INTO allocations(cash_order_id, kind, invoice_id, counterparty_id, account_code, amount, journal_entry_id, note, approved_by) VALUES ($1,'invoice',$2,$3,$4,$5,$6,$7,$8)`,
+      [o.id, o.invoice_id, o.counterparty_id, o.account_code, money.neg(o.amount), rev.id, `${kind === 'edit' ? 'Taisoma' : 'Anuliuota'} ${o.series} ${o.number}`, user.id]);
+    return rev;
+  };
+  r.post('/api/cash/orders', async ({req, user}) => {
+    requireCap(user, 'approve');
+    const b = await readJson(req);
+    const kind = b.kind === 'payment' ? 'payment' : 'receipt';
     return tx(pool, async (db) => {
-      const roles = await roleAccounts(db);
-      const cash = s(b.cashAccount, 8) || CASH;
-      if (!(await db.query(`SELECT 1 FROM accounts WHERE code=$1 AND code LIKE '272%' AND active AND postable`, [cash])).rowCount) throw new AppError(400, 'cash_account', 'Kasos sąskaita turi būti 272 grupės detalioji sąskaita.');
-      let account, counterpartyId = b.counterpartyId ? String(b.counterpartyId) : null, invoiceId = null, employeeId = null, personName = s(b.personName, 120), personCode = s(b.personCode, 20);
-      const warnings = [];
-      if (purpose === 'invoice') {
-        const inv = (await invoiceBalances(db, {ids: [String(b.invoiceId)]}))[0];
-        if (!inv) throw new AppError(400, 'invoice', 'Pasirinkite sąskaitą.');
-        if (inv.register !== (kind === 'receipt' ? 'sales' : 'purchase')) throw new AppError(400, 'invoice', kind === 'receipt' ? 'KPO apmokama pardavimo sąskaita.' : 'KIO apmokama pirkimo sąskaita.');
-        if (inv.currency !== 'EUR') throw new AppError(422, 'currency', `Sąskaita ${inv.currency} valiuta – apmokėjimą registruokite per banką (kursų skirtumas skaičiuojamas automatiškai).`);
-        if (money.cmp(amount, inv.outstanding) > 0) throw new AppError(400, 'amount', `Suma ${amount} viršija sąskaitos likutį ${money.norm(inv.outstanding)}.`);
-        account = kind === 'receipt' ? roles.receivable : roles.payable;
-        invoiceId = String(inv.id); counterpartyId = inv.counterparty_id ? String(inv.counterparty_id) : null;
-        personName ||= inv.counterparty_name || '';
-      } else if (purpose === 'advance') {
-        account = kind === 'receipt' ? roles.advances_received : roles.advances_paid;
-        if (!counterpartyId) throw new AppError(400, 'counterparty', 'Avansui nurodykite kontrahentą.');
-      } else if (purpose === 'bank') {
-        account = roles.transfer_clearing; // money in transit between the cash desk and the bank (273)
-        personName ||= kind === 'receipt' ? 'Paimta iš banko' : 'Įnešta į banką';
-      } else if (purpose === 'accountable') {
-        const e = (await db.query('SELECT * FROM employees WHERE id=$1', [b.employeeId])).rows[0];
-        if (!e) throw new AppError(400, 'employee', 'Pasirinkite atskaitingą asmenį (darbuotoją).');
-        account = '2445'; employeeId = String(e.id); personName = `${e.first_name} ${e.last_name}`; personCode ||= '';
-      } else {
-        account = s(b.accountCode, 8);
-        if (!(await db.query('SELECT 1 FROM accounts WHERE code=$1 AND active AND postable', [account])).rowCount) throw new AppError(400, 'account', 'Nurodykite korespondencinę sąskaitą (detaliąją).');
-        if (account.startsWith('272')) throw new AppError(400, 'account', 'Korespondencinė sąskaita negali būti kasa.');
-      }
-      if (!account) throw new AppError(422, 'mapping_missing', 'Nenustatyta korespondencinė sąskaita (Servisas → Kontavimo susiejimai).');
-      if (counterpartyId && !(await db.query('SELECT 1 FROM counterparties WHERE id=$1', [counterpartyId])).rowCount) throw new AppError(400, 'counterparty', 'Kontrahentas nerastas.');
-      if (!personName && counterpartyId) personName = (await db.query('SELECT name FROM counterparties WHERE id=$1', [counterpartyId])).rows[0].name;
-      if (!personName) throw new AppError(400, 'person', kind === 'receipt' ? 'Nurodykite, iš ko gauti pinigai.' : 'Nurodykite, kam išmokėti pinigai.');
-      if (kind === 'payment') {
-        const bal = await cashBalance(db, cash, date), low = await lowestBalanceFrom(db, cash, date);
-        if (money.cmp(amount, bal) > 0) throw new AppError(422, 'cash_negative', `Kasoje ${date} yra ${bal} Eur – negalima išmokėti ${amount} Eur (kasos likutis negali būti neigiamas).`);
-        if (money.cmp(amount, low) > 0) throw new AppError(422, 'cash_negative', `Kasoje ${date} yra ${bal} Eur, bet po vėlesnių išmokėjimų likutis nukristų iki ${low} Eur – išmokėjus ${amount} Eur jis taptų neigiamas.`);
-      }
-      if (['invoice', 'advance'].includes(purpose) && money.cmp(amount, CASH_LIMIT) > 0) warnings.push(`Atsiskaitymai grynaisiais pinigais virš ${CASH_LIMIT} € pagal vieną sandorį ribojami (Atsiskaitymų grynaisiais pinigais ribojimo įstatymas).`);
+      const v = await prepare(db, b, kind);
       const ser = (await db.query('UPDATE cash_order_series SET next_number = next_number + 1 WHERE kind=$1 RETURNING next_number - 1 AS n, padding, prefix', [kind])).rows[0];
       const number = String(ser.n).padStart(ser.padding, '0');
       const o = (await db.query(`INSERT INTO cash_orders(kind, series, number, doc_date, cash_account, purpose, invoice_id, counterparty_id, employee_id, person_name, person_code, account_code, amount, basis, attachment, created_by)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
-      [kind, ser.prefix, number, date, cash, purpose, invoiceId, counterpartyId, employeeId, personName, personCode, account, amount, s(b.basis, 300), s(b.attachment, 200), user.id])).rows[0];
-      const label = `${ser.prefix} ${number}`;
-      const lines = kind === 'receipt'
-        ? [{account: cash, debit: amount, description: label}, {account, credit: amount, counterpartyId, description: `${label} ${personName}`.slice(0, 200)}]
-        : [{account, debit: amount, counterpartyId, description: `${label} ${personName}`.slice(0, 200)}, {account: cash, credit: amount, description: label}];
-      const e = await postEntry(db, {date, description: `${KIND[kind]} ${label}: ${s(b.basis, 200) || personName}`.slice(0, 300), sourceType: 'cash_order', sourceId: o.id, idempotencyKey: `cash-order:${o.id}`, userId: user.id, lines});
-      await db.query('UPDATE cash_orders SET journal_entry_id=$2 WHERE id=$1', [o.id, e.id]);
-      if (invoiceId) await db.query(`INSERT INTO allocations(cash_order_id, kind, invoice_id, counterparty_id, account_code, amount, journal_entry_id, note, approved_by) VALUES ($1,'invoice',$2,$3,$4,$5,$6,$7,$8)`,
-        [o.id, invoiceId, counterpartyId, account, amount, e.id, label, user.id]);
-      await audit(db, {userId: user.id, action: 'cash.order', entityType: 'cash_order', entityId: o.id, details: {kind, number: label, amount, purpose, entryId: e.id}});
-      return {...(await loadOrder(db, o.id)), warnings};
+      [kind, ser.prefix, number, v.date, v.cash, v.purpose, v.invoiceId, v.counterpartyId, v.employeeId, v.personName, v.personCode, v.account, v.amount, v.basis, v.attachment, user.id])).rows[0];
+      const e = await postOrder(db, o.id, v, `${ser.prefix} ${number}`, user);
+      await audit(db, {userId: user.id, action: 'cash.order', entityType: 'cash_order', entityId: o.id, details: {kind, number: `${ser.prefix} ${number}`, amount: v.amount, purpose: v.purpose, entryId: e.id}});
+      return {...(await loadOrder(db, o.id)), warnings: v.warnings};
+    });
+  });
+  // Correct a posted order: same series and number; the old entry is reversed and a new one posted.
+  r.put('/api/cash/orders/:id', async ({req, user, params}) => {
+    requireCap(user, 'approve');
+    const b = await readJson(req);
+    const reason = s(b.reason, 200);
+    if (reason.length < 3) throw new AppError(400, 'reason', 'Nurodykite, kas taisoma.');
+    return tx(pool, async (db) => {
+      const o = (await db.query('SELECT * FROM cash_orders WHERE id=$1 FOR UPDATE', [params.id])).rows[0];
+      if (!o) throw new AppError(404, 'not_found', 'Orderis nerastas.');
+      if (o.status !== 'posted') throw new AppError(409, 'not_posted', 'Taisyti galima tik galiojantį orderį.');
+      const before = await loadOrder(db, o.id);
+      const rev = await unpost(db, o, 'edit', `taisoma: ${reason}`, user);
+      const v = await prepare(db, b, o.kind);
+      await db.query(`UPDATE cash_orders SET doc_date=$2, cash_account=$3, purpose=$4, invoice_id=$5, counterparty_id=$6, employee_id=$7, person_name=$8, person_code=$9, account_code=$10, amount=$11, basis=$12, attachment=$13 WHERE id=$1`,
+        [o.id, v.date, v.cash, v.purpose, v.invoiceId, v.counterpartyId, v.employeeId, v.personName, v.personCode, v.account, v.amount, v.basis, v.attachment]);
+      await db.query(`INSERT INTO cash_order_revisions(order_id, kind, old_entry_id, reversal_entry_id, before, reason, changed_by) VALUES ($1,'edit',$2,$3,$4,$5,$6)`, [o.id, o.journal_entry_id, rev.id, before, reason, user.id]);
+      const e = await postOrder(db, o.id, v, `${o.series} ${o.number}`, user);
+      // A corrected receipt (smaller, later, other cash desk) must not leave any day with a negative cash balance.
+      const oldDate = String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10);
+      for (const acct of new Set([o.cash_account, v.cash])) {
+        const low = await lowestBalanceFrom(db, acct, oldDate < v.date ? oldDate : v.date);
+        if (money.cmp(low, '0') < 0) throw new AppError(422, 'cash_negative', `Po pataisymo kasos (${acct}) likutis kurią nors dieną taptų neigiamas (${low} Eur).`);
+      }
+      await audit(db, {userId: user.id, action: 'cash.edit', entityType: 'cash_order', entityId: o.id, details: {reason, oldEntry: o.journal_entry_id, reversal: rev.id, newEntry: e.id}});
+      return {...(await loadOrder(db, o.id)), warnings: v.warnings};
+    });
+  });
+  // Delete the last order of a series (e.g. entered by mistake): its posting is reversed and its number is free again.
+  r.delete('/api/cash/orders/:id', async ({req, user, params}) => {
+    requireCap(user, 'approve');
+    const b = await readJson(req).catch(() => ({}));
+    const reason = s(b?.reason, 200) || 'Ištrintas';
+    return tx(pool, async (db) => {
+      const o = (await db.query('SELECT * FROM cash_orders WHERE id=$1 FOR UPDATE', [params.id])).rows[0];
+      if (!o || o.status === 'deleted') throw new AppError(404, 'not_found', 'Orderis nerastas.');
+      const ser = (await db.query('SELECT * FROM cash_order_series WHERE kind=$1 FOR UPDATE', [o.kind])).rows[0];
+      if (o.series !== ser.prefix || Number(o.number) !== Number(ser.next_number) - 1) throw new AppError(409, 'not_last', `Ištrinti galima tik paskutinį serijos orderį (${ser.prefix} ${String(Number(ser.next_number) - 1).padStart(ser.padding, '0')}), kad numeracija liktų be spragų. Šį orderį anuliuokite arba pataisykite.`);
+      const before = await loadOrder(db, o.id);
+      let rev = null;
+      if (o.status === 'posted') rev = await unpost(db, o, 'delete', `ištrinta: ${reason}`, user);
+      if (rev) await db.query(`INSERT INTO cash_order_revisions(order_id, kind, old_entry_id, reversal_entry_id, before, reason, changed_by) VALUES ($1,'delete',$2,$3,$4,$5,$6)`, [o.id, o.journal_entry_id, rev.id, before, reason, user.id]);
+      // The number goes back to the series; the row keeps its history under a suffixed number.
+      await db.query(`UPDATE cash_orders SET status='deleted', number=number || '-ištr-' || id, cancel_entry_id=coalesce($2, cancel_entry_id), cancel_reason=$3 WHERE id=$1`, [o.id, rev?.id || null, reason]);
+      await db.query('UPDATE cash_order_series SET next_number = next_number - 1 WHERE kind=$1', [o.kind]);
+      await audit(db, {userId: user.id, action: 'cash.delete', entityType: 'cash_order', entityId: o.id, details: {number: `${o.series} ${o.number}`, reason, reversal: rev?.id || null}});
+      return {ok: true, freedNumber: `${o.series} ${o.number}`};
     });
   });
   r.post('/api/cash/orders/:id/cancel', async ({req, user, params}) => {
@@ -185,16 +255,9 @@ export function register(r, {pool}) {
     if (s(b.reason).length < 5) throw new AppError(400, 'reason', 'Nurodykite anuliavimo priežastį.');
     return tx(pool, async (db) => {
       const o = (await db.query('SELECT * FROM cash_orders WHERE id=$1 FOR UPDATE', [params.id])).rows[0];
-      if (!o) throw new AppError(404, 'not_found', 'Orderis nerastas.');
+      if (!o || o.status === 'deleted') throw new AppError(404, 'not_found', 'Orderis nerastas.');
       if (o.status === 'cancelled') throw new AppError(409, 'cancelled', 'Orderis jau anuliuotas.');
-      const date = String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10);
-      if (o.kind === 'receipt') {
-        const after = money.sub(await lowestBalanceFrom(db, o.cash_account, date), o.amount);
-        if (money.cmp(after, '0') < 0) throw new AppError(422, 'cash_negative', `Anuliavus KPO kasos likutis kurią nors dieną taptų neigiamas (${after} Eur) – pirmiausia anuliuokite vėlesnius KIO.`);
-      }
-      const rev = await reverseEntry(db, {entryId: o.journal_entry_id, date, reason: `${o.series} ${o.number}: ${s(b.reason, 200)}`, userId: user.id});
-      if (o.invoice_id) await db.query(`INSERT INTO allocations(cash_order_id, kind, invoice_id, counterparty_id, account_code, amount, journal_entry_id, note, approved_by) VALUES ($1,'invoice',$2,$3,$4,$5,$6,$7,$8)`,
-        [o.id, o.invoice_id, o.counterparty_id, o.account_code, money.neg(o.amount), rev.id, `Anuliuota ${o.series} ${o.number}`, user.id]);
+      const rev = await unpost(db, o, 'cancel', s(b.reason, 200), user);
       await db.query(`UPDATE cash_orders SET status='cancelled', cancel_entry_id=$2, cancel_reason=$3 WHERE id=$1`, [o.id, rev.id, s(b.reason, 200)]);
       await audit(db, {userId: user.id, action: 'cash.cancel', entityType: 'cash_order', entityId: o.id, details: {reversal: rev.id, reason: s(b.reason, 200)}});
       return {ok: true};
@@ -208,7 +271,9 @@ export function register(r, {pool}) {
     const opening = await cashBalance(pool, acct, new Date(Date.parse(from) - 86400000).toISOString().slice(0, 10));
     const rows = (await pool.query(`SELECT e.entry_date, e.id AS entry_id, e.description, l.debit, l.credit, o.id AS order_id, o.series, o.number, coalesce(nullif(o.person_name,''), '') AS who, o.account_code AS corr
       FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id LEFT JOIN cash_orders o ON o.journal_entry_id=e.id OR o.cancel_entry_id=e.id
-      WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3 ORDER BY e.entry_date, e.id`, [acct, from, to])).rows;
+      WHERE l.account_code=$1 AND e.entry_date BETWEEN $2 AND $3
+        AND NOT EXISTS (SELECT 1 FROM cash_order_revisions v WHERE e.id IN (v.old_entry_id, v.reversal_entry_id)) -- corrected or deleted: the pair nets to zero on its day
+      ORDER BY e.entry_date, e.id`, [acct, from, to])).rows;
     let bal = opening;
     const days = [];
     for (const x of rows) {

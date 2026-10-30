@@ -6,6 +6,7 @@ import {audit} from '../audit.mjs';
 import {requireCap} from '../auth/auth.mjs';
 import {ROOT} from '../config.mjs';
 import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
+import {amountWords} from '../lib/words-lt.mjs';
 import {createDocument, addFile, loadDocumentForUser} from '../vault/documents.mjs';
 import {createProposalVersion} from '../invoices/service.mjs';
 import {applyClassification} from '../invoices/engine.mjs';
@@ -126,6 +127,7 @@ export function renderInvoicePdf(inv, lines, vatRows) {
     const title = inv.doc_type === 'credit_note' ? 'KREDITINĖ PVM SĄSKAITA FAKTŪRA' : inv.doc_type === 'vat_invoice' ? 'PVM SĄSKAITA FAKTŪRA' : 'SĄSKAITA FAKTŪRA';
     doc.font('b').fontSize(16).text(inv.doc_type === 'credit_note' && !inv.company_snapshot.vatRegistered ? 'KREDITINĖ SĄSKAITA FAKTŪRA' : title, {align: 'center'});
     doc.font('r').fontSize(10).text(`Serija ${inv.series} Nr. ${inv.number}`, {align: 'center'});
+    if (inv.corrected) doc.fontSize(9).fillColor('#a00').text(`Pataisyta ${inv.corrected} (pakeičia anksčiau išrašytą to paties numerio sąskaitą)`, {align: 'center'}).fillColor('#000');
     doc.moveDown(0.5).fontSize(9).text(`Išrašymo data: ${inv.issue_date}`);
     if (inv.vat_point_date) doc.text(`PVM apskaičiavimo (tiekimo) data: ${inv.vat_point_date}`);
     if (inv.due_date) doc.text(`Apmokėti iki: ${inv.due_date}`);
@@ -155,25 +157,52 @@ export function renderInvoicePdf(inv, lines, vatRows) {
     for (const v of vatRows) { if (v.rate === null) continue; doc.text(`PVM ${Number(v.rate)} %:`, 360, y); doc.text(fmt(v.vat), 485, y); y += 13; }
     doc.font('b').text('Iš viso su PVM:', 360, y); doc.text(`${fmt(inv.gross_total)} ${inv.currency}`, 470, y); doc.font('r'); y += 24;
     if (!inv.company_snapshot.vatRegistered) { doc.text('Pardavėjas nėra PVM mokėtojas.', 40, y); y += 14; }
+    doc.text(`Suma žodžiais: ${amountWords(inv.gross_total, inv.currency)}`, 40, y, {width: 515}); y = doc.y + 6;
     if (inv.payment_reference) doc.text(`Mokėjimo paskirtis: ${inv.payment_reference}`, 40, y);
     else doc.text(`Mokėjimo paskirtis: ${inv.series}${inv.number}`, 40, y);
+    if (inv.notes) { y = doc.y + 6; doc.text(`Pastabos: ${inv.notes}`, 40, y, {width: 515}); }
+    // Signature lines: who issued the invoice (the user who approved it) and who received it.
+    y = Math.max(doc.y + 36, y + 36);
+    if (y > 760) { doc.addPage(); y = 60; }
+    const sign = (x, label, name) => {
+      doc.font('b').fontSize(9).text(label, x, y, {lineBreak: false}); doc.font('r');
+      if (name) doc.text(name, x, y + 14, {width: 240});
+      doc.moveTo(x, y + 40).lineTo(x + 230, y + 40).lineWidth(0.5).stroke();
+      doc.fontSize(7).fillColor('#555').text('(pareigos, vardas, pavardė, parašas)', x, y + 43, {width: 230}); doc.fontSize(9).fillColor('#000');
+    };
+    sign(40, 'Sąskaitą išrašė:', inv.issued_by_name || '');
+    sign(310, 'Sąskaitą priėmė:', '');
     doc.end();
   });
 }
 
-export async function renderAndStorePdf({pool, storage}, invoiceId) {
-  const inv = (await pool.query('SELECT * FROM invoices WHERE id=$1', [invoiceId])).rows[0];
+export async function renderAndStorePdf({pool, storage}, invoiceId, {correctionId = null} = {}) {
+  let inv = (await pool.query('SELECT * FROM invoices WHERE id=$1', [invoiceId])).rows[0];
   if (!inv?.document_id) return {skipped: true};
   const have = (await pool.query(`SELECT 1 FROM stored_files WHERE document_id=$1 AND role='generated'`, [inv.document_id])).rowCount;
-  if (have) return {skipped: 'exists'};
-  const lines = (await pool.query('SELECT * FROM invoice_lines WHERE invoice_id=$1 ORDER BY line_no', [inv.id])).rows;
-  const vat = (await pool.query('SELECT * FROM invoice_vat_rows WHERE invoice_id=$1', [inv.id])).rows;
+  if (have && !correctionId) return {skipped: 'exists'};
+  let lines = (await pool.query('SELECT * FROM invoice_lines WHERE invoice_id=$1 ORDER BY line_no', [inv.id])).rows;
+  let vat = (await pool.query('SELECT * FROM invoice_vat_rows WHERE invoice_id=$1', [inv.id])).rows;
+  let corrected = null;
+  if (correctionId) {
+    // Corrected invoice (same number): the lines as they are now, totals of the invoice with all its corrections.
+    const c = (await pool.query(`SELECT * FROM invoices WHERE id=$1 AND related_invoice_id=$2 AND doc_type='correction'`, [correctionId, inv.id])).rows[0];
+    if (!c) return {skipped: 'no_correction'};
+    lines = (await pool.query(`SELECT * FROM invoice_lines WHERE invoice_id=$1 AND description NOT LIKE 'Atšaukiama: %' ORDER BY line_no`, [c.id])).rows.map((l, i) => ({...l, line_no: i + 1}));
+    const tot = (await pool.query(`SELECT sum(net_total) AS n, sum(vat_total) AS v, sum(gross_total) AS g FROM invoices WHERE id=$1 OR (related_invoice_id=$1 AND doc_type='correction')`, [inv.id])).rows[0];
+    vat = (await pool.query(`SELECT tax_code, rate, sum(taxable) AS taxable, sum(vat) AS vat FROM invoice_vat_rows WHERE invoice_id IN (SELECT id FROM invoices WHERE id=$1 OR (related_invoice_id=$1 AND doc_type='correction')) GROUP BY 1,2 HAVING sum(taxable) <> 0 OR sum(vat) <> 0`, [inv.id])).rows;
+    if (!lines.length) return {skipped: 'annulled'};
+    corrected = String(c.approved_at || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+    inv = {...inv, net_total: tot.n, vat_total: tot.v, gross_total: tot.g, approved_by: c.approved_by};
+  }
   const rel = inv.related_invoice_id ? (await pool.query('SELECT series, number FROM invoices WHERE id=$1', [inv.related_invoice_id])).rows[0] : null;
   const iban = (await pool.query(`SELECT iban FROM bank_accounts WHERE active AND kind='bank' ORDER BY id LIMIT 1`)).rows[0]?.iban || '';
-  const buf = await renderInvoicePdf({...inv, related: rel ? `${rel.series} ${rel.number}` : '', company_iban: iban}, lines, vat);
+  const issuer = inv.approved_by ? (await pool.query('SELECT name, email FROM users WHERE id=$1', [inv.approved_by])).rows[0] : null;
+  const notes = inv.proposal_id ? (await pool.query(`SELECT data->>'notes' AS n FROM proposals WHERE id=$1`, [inv.proposal_id])).rows[0]?.n : '';
+  const buf = await renderInvoicePdf({...inv, related: rel ? `${rel.series} ${rel.number}` : '', company_iban: iban, issued_by_name: issuer?.name || '', notes: notes || '', corrected}, lines, vat);
   await tx(pool, async (db) => {
-    // The issued PDF is the immutable original of this generated document.
-    await addFile(db, storage, {documentId: inv.document_id, buffer: buf, mime: 'application/pdf', originalName: `${inv.series}${inv.number}.pdf`, role: 'generated', note: 'Sugeneruota patvirtinus'});
+    // The issued PDF is the immutable original of this generated document; a correction adds a newer one.
+    await addFile(db, storage, {documentId: inv.document_id, buffer: buf, mime: 'application/pdf', originalName: `${inv.series}${inv.number}${corrected ? '-pataisyta' : ''}.pdf`, role: 'generated', note: corrected ? `Pataisyta ${corrected}` : 'Sugeneruota patvirtinus'});
   });
   return {ok: true};
 }

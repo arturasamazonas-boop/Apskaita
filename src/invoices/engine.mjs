@@ -355,6 +355,9 @@ export function computeProposal(data, ctx) {
       const pos = money.sign(amt) > 0;
       entries.push({account, accountName: accounts.get(account)?.name || '', debit: pos ? money.norm(amt) : '0.00', credit: pos ? '0.00' : money.abs(amt), counterparty: cp ? data.counterparty?.name : ''});
     }
+    if (data.register === 'sales' && ctx.company?.auto_cogs !== false && data.lines.some((l) => l.productId && l.lineType === 'revenue_goods')) {
+      issues.push({level: 'info', field: 'entries', code: 'cogs_with_sale', message: 'Patvirtinus kartu bus užregistruota parduotų prekių savikaina (D 6000 / K 204) pagal prekių vidutinę savikainą sąskaitos dieną.'});
+    }
     const d = money.sum(entries.map((e) => e.debit)), c = money.sum(entries.map((e) => e.credit));
     if (!money.eq(d, c)) err('entries', 'unbalanced', `Įrašas nesubalansuotas: debetas ${d}, kreditas ${c}.`);
     for (const r of ['payable', 'receivable', 'vat_input', 'vat_output']) if (!roles[r]) err('entries', 'mapping', `Nenustatytas kontavimo susiejimas „${r}“.`);

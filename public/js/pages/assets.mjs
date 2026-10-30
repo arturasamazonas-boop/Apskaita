@@ -122,7 +122,11 @@ async function runs(main, state) {
     if (my !== seq) return; // a newer month was chosen meanwhile
     clear(out,
       p.alreadyPosted ? h('p', {class: 'banner'}, `Už ${p.period} nusidėvėjimas jau paskaičiuotas.`) : null,
-      p.blocked.length ? h('p', {class: 'issue issue-error'}, `Pirmiausia paskaičiuokite ankstesnius mėnesius: ${months(p.blocked.flatMap((b) => b.missing))}.`) : null,
+      p.blocked.length ? h('div', {class: 'issue issue-warning'}, `Dar nepaskaičiuoti ankstesni mėnesiai: ${months(p.blocked.flatMap((b) => b.missing))}. `,
+        can(state.user, 'approve') ? h('button', {class: 'btn btn-primary btn-small', onclick: () => guard(async () => {
+          const r = await post('/api/depreciation/runs', {period: period.value, catchUp: true});
+          toast(`Paskaičiuota ${r.months} mėn. (${r.from}–${r.to}), iš viso ${money(r.total)} € – kiekvienas mėnuo atskiru įrašu.`, 'ok'); preview(); loadHist();
+        })}, `Skaičiuoti visus mėnesius iki ${period.value}`) : null) : null,
       table([{label: 'Inv. Nr.', key: 'inv_no'}, {label: 'Pavadinimas', key: 'name'}, {label: 'D', key: 'expense_account'}, {label: 'K', key: 'depreciation_account'}, {label: 'Nusidėvėjimas', num: true, render: (l) => money(l.amount)},
         {label: 'Sukauptas po', num: true, render: (l) => money(l.accumulatedAfter)}], p.lines, {empty: p.alreadyPosted ? '—' : 'Šį mėnesį nudėvimo turto nėra.'}),
       p.lines.length ? h('p', null, h('strong', null, `Iš viso: ${money(p.total)} €`)) : null,

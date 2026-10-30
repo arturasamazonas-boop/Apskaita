@@ -41,7 +41,7 @@ export async function createApp(config, {pool: givenPool, log = console} = {}) {
   const handlers = {
     extract_invoice: (p) => processInvoiceDocument(deps, p.documentId, {force: !!p.force}),
     index_document: (p) => indexVaultDocument(deps, p, extractText),
-    render_invoice_pdf: (p) => renderAndStorePdf(deps, p.invoiceId),
+    render_invoice_pdf: (p) => renderAndStorePdf(deps, p.invoiceId, {correctionId: p.correctionId || null}),
     ...integrationJobHandlers(deps),
   };
   const onDead = {

@@ -10,7 +10,8 @@ export async function cogsProposal(db, {period}) {
   const to = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0)).toISOString().slice(0, 10);
   const roles = await roleAccounts(db);
   const rows = (await db.query(`WITH sold AS (
-      SELECT product_id, -sum(quantity) AS qty FROM stock_moves WHERE kind='sale' AND move_date BETWEEN $1 AND $2 GROUP BY product_id),
+      SELECT l.product_id, sum(l.quantity) AS qty FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id
+      WHERE i.register='sales' AND l.product_id IS NOT NULL AND l.cogs_amount IS NULL AND i.issue_date BETWEEN $1 AND $2 GROUP BY l.product_id),
     cost AS (
       SELECT product_id, sum(quantity * unit_price) FILTER (WHERE quantity > 0 AND kind IN ('purchase','opening','adjustment') AND unit_price IS NOT NULL) AS value,
         sum(quantity) FILTER (WHERE quantity > 0 AND kind IN ('purchase','opening','adjustment') AND unit_price IS NOT NULL) AS qty_in,
@@ -34,6 +35,9 @@ export async function cogsProposal(db, {period}) {
     out.push({productId: r.id, sku: r.sku, name: r.name, unit: r.unit, quantity: qty, unitCost, source, amount});
   }
   // Goods sold without a product card cannot be costed from stock.
+  const auto = (await db.query(`SELECT count(*) AS n, coalesce(sum(l.cogs_amount),0) AS v FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id
+    WHERE i.register='sales' AND l.cogs_amount IS NOT NULL AND i.issue_date BETWEEN $1 AND $2`, [from, to])).rows[0];
+  if (Number(auto.n)) issues.push({level: 'info', message: `${auto.n} pardavimo eilučių savikaina (${money.norm(auto.v)} EUR) jau užregistruota kartu su sąskaitomis – čia neįtraukta.`});
   const loose = (await db.query(`SELECT count(*) AS n, coalesce(sum(l.net),0) AS net FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id
     WHERE i.register='sales' AND l.line_type='revenue_goods' AND l.product_id IS NULL AND i.issue_date BETWEEN $1 AND $2`, [from, to])).rows[0];
   if (Number(loose.n)) issues.push({level: 'warning', message: `${loose.n} prekių pardavimo eilučių (${money.norm(loose.net)} EUR be PVM) be prekės kortelės – jų savikaina neapskaičiuota; pridėkite ranka.`});

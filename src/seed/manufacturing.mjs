@@ -17,7 +17,7 @@ function ibanLT(bban) {
   return `LT${String(98 - r).padStart(2, '0')}${bban}`;
 }
 
-const COMPANY = {name: 'UAB „Ąžuolo dirbtuvės“ (DEMO)', legal_form: 'UAB', company_code: '306999001', vat_code: vatLT('1000999001'), vat_registered: true, vat_registered_from: '2019-03-01',
+const COMPANY = {name: 'UAB „Ąžuolo dirbtuvės“ (DEMO)', auto_cogs: false, legal_form: 'UAB', company_code: '306999001', vat_code: vatLT('1000999001'), vat_registered: true, vat_registered_from: '2019-03-01',
   address: 'Pramonės g. 12, LT-51329 Kaunas', email: 'info@azuolo-dirbtuves.invalid', phone: '+370 600 00000', manager: 'Tomas Medinis', evrk_code: '310900', onboarding_done: true};
 const BANK = {iban: ibanLT('7300010199990001'), name: 'Pagrindinė sąskaita (DEMO)', bank_name: 'Demo bankas', ledger_account: '2710'};
 

@@ -12,7 +12,7 @@ import {postEntry} from '../ledger/ledger.mjs';
 import {extractPdf, extractImage, extractDocx, plainText} from '../extraction/text.mjs';
 import {parseInvoice, PROVIDER} from '../extraction/invoice-parser.mjs';
 import {addFile, currentOriginal, createDocument, refreshSearch, loadDocumentForUser} from '../vault/documents.mjs';
-import {proposalFromExtraction, computeProposal, contentHash, applyClassification, DOC_TYPES, LINE_TYPES, VAT_TREATMENTS} from './engine.mjs';
+import {proposalFromExtraction, computeProposal, contentHash, applyClassification, DOC_TYPES, LINE_TYPES, VAT_TREATMENTS, counterpartyKey} from './engine.mjs';
 import {loadContext, findCounterparty, findDuplicates} from './context.mjs';
 import {normalizeVat, normalizeIban, numberKey} from '../extraction/ids.mjs';
 import {enqueue} from '../jobs.mjs';
@@ -306,10 +306,14 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     // Recompute inside the transaction against current state (locks, duplicates, rules).
     const ctx = await loadContext(db);
     const data = p.data;
-    const first = computeProposal(data, {...ctx, duplicates: {}});
+    // Annulment (a correction to zero): no lines to validate, every posted amount of the invoice is reversed.
+    const annul = p.kind === 'correction' && data.annul === true;
+    const first = annul ? null : computeProposal(data, {...ctx, duplicates: {}});
     const fileSha = p.document_id ? (await currentOriginal(db, p.document_id))?.sha256 : null;
     const duplicates = p.kind === 'correction' ? {} : await findDuplicates(db, {data, computed: first.computed, documentId: p.document_id, fileSha});
-    const {computed, issues, blocking} = computeProposal(data, {...ctx, duplicates});
+    const {computed, issues, blocking} = annul
+      ? {computed: {lines: [], vatGroups: [], net: '0.00', vat: '0.00', gross: '0.00', deductibleVat: '0.00', entries: [], fx: null, numberKey: numberKey(data.series, data.number), counterpartyKey: counterpartyKey(data)}, issues: [], blocking: false}
+      : computeProposal(data, {...ctx, duplicates});
     if (blocking) throw new AppError(422, 'validation', 'Pasiūlymas turi neišspręstų klaidų.', {issues: issues.filter((i) => i.level === 'error')});
     const company = ctx.company;
     // Counterparty record (created on approval, never from AI alone).
@@ -359,6 +363,15 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     let entryLines = computed.entries.map((e) => ({account: e.account, debit: e.debit, credit: e.credit, counterpartyId: e.counterparty ? cpId : null, description: `${series} ${number}`.trim()}));
     let relatedId = data.relatedInvoiceId || null;
     let numberKeyValue = computed.numberKey;
+    // Cost of sales with the sale (perpetual inventory): goods lines take the product's weighted average cost on the
+    // invoice date; a credit note returns the goods at the cost of the original sale. D cost of sales / K inventory.
+    // A correction reverses the cost of the old lines (in the delta below) and books the cost of the new ones.
+    const cogs = data.register === 'sales' && company.auto_cogs !== false ? await saleCost(db, data, lines, ctx.roles) : null;
+    if (cogs?.total && !money.isZero(cogs.total)) {
+      const pos = money.sign(cogs.total) > 0, amt = money.abs(cogs.total), label = `${series} ${number} savikaina`.trim();
+      entryLines.push({account: ctx.roles.cogs || '6000', debit: pos ? amt : '0', credit: pos ? '0' : amt, counterpartyId: null, description: label},
+        {account: ctx.roles.inventory || '204', debit: pos ? '0' : amt, credit: pos ? amt : '0', counterpartyId: null, description: label});
+    }
     if (p.kind === 'correction') {
       const delta = await correctionDelta(db, p.corrects_invoice_id, {lines, totals, vatRows, entryLines});
       ({lines, totals, vatRows, entryLines} = delta);
@@ -385,9 +398,10 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     let n = 0;
     for (const l of lines) {
       n++;
-      await db.query(`INSERT INTO invoice_lines(invoice_id, line_no, description, sku, product_id, quantity, unit, unit_price, discount, net, tax_code, vat_rate, vat, gross, account_code, line_type, vat_treatment, rule_id)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
-      [invoiceId, n, l.description, l.sku || '', l.productId || null, l.quantity, l.unit || '', l.unitPrice, money.norm(l.discount || '0'), l.net, l.taxCode, l.rate ?? '0', l.vat, l.gross, l.accountCode, l.lineType, l.vatTreatment, l.suggestion?.source === 'rule' ? l.suggestion.ruleId : null]);
+      await db.query(`INSERT INTO invoice_lines(invoice_id, line_no, description, sku, product_id, quantity, unit, unit_price, discount, net, tax_code, vat_rate, vat, gross, account_code, line_type, vat_treatment, rule_id, cogs_amount)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+      [invoiceId, n, l.description, l.sku || '', l.productId || null, l.quantity, l.unit || '', l.unitPrice, money.norm(l.discount || '0'), l.net, l.taxCode, l.rate ?? '0', l.vat, l.gross, l.accountCode, l.lineType, l.vatTreatment, l.suggestion?.source === 'rule' ? l.suggestion.ruleId : null,
+        cogs?.byLine.get(l) ?? l.cogsAmount ?? null]);
     }
     for (const v of vatRows) {
       await db.query(`INSERT INTO invoice_vat_rows(invoice_id, tax_code, isaf_code, rate, taxable, vat, deductible_vat) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
@@ -396,14 +410,44 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     await db.query(`UPDATE proposals SET status='approved', decided_by=$2, decided_at=now() WHERE id=$1`, [p.id, user.id]);
     if (p.document_id) {
       await db.query(`UPDATE documents SET processing_status='posted', kind=CASE WHEN kind IN ('unknown','purchase_invoice','sales_invoice','credit_note','generated_invoice') THEN $2 ELSE kind END,
-        counterparty_id=$3, reference_number=$4, issue_date=$5, updated_at=now() WHERE id=$1`, [p.document_id, p.kind === 'correction' ? 'purchase_invoice' : docKindFor(data), cpId, `${series} ${number}`.trim(), data.issueDate]);
+        counterparty_id=$3, reference_number=$4, issue_date=$5, updated_at=now() WHERE id=$1`, [p.document_id, p.kind === 'correction' && data.register !== 'sales' ? 'purchase_invoice' : p.kind === 'correction' ? 'generated_invoice' : docKindFor(data), cpId, `${series} ${number}`.trim(), data.issueDate]);
       await refreshSearch(db, p.document_id);
     }
     if (issuedHere || data.generatePdf) await enqueue(db, 'render_invoice_pdf', {invoiceId: String(invoiceId)}, {idempotencyKey: `pdf:${invoiceId}`});
+    // A corrected sales invoice issued here gets a new PDF version with the corrected content (same number).
+    if (p.kind === 'correction' && data.register === 'sales') await enqueue(db, 'render_invoice_pdf', {invoiceId: String(relatedId), correctionId: String(invoiceId)}, {idempotencyKey: `pdf:${relatedId}:c${invoiceId}`});
     if (p.external_order_id) await db.query(`UPDATE external_orders SET state='posted', invoice_id=COALESCE(invoice_id,$2), updated_at=now() WHERE id=$1`, [p.external_order_id, invoiceId]);
     await audit(db, {userId: user.id, action: 'proposal.approve', entityType: 'proposal', entityId: p.id, details: {invoiceId, journalEntryId: entry.id, version: p.version, contentHash: p.content_hash, documentId: p.document_id, gross: totals.gross}});
-    return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim()};
+    return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim(), ...(cogs && {cogs: cogs.total, cogsMissing: cogs.missing})};
   });
+}
+
+/**
+ * Cost of the goods on a sales invoice: quantity × weighted average cost of the goods received (purchases, opening
+ * balances, positive adjustments with a cost) up to the invoice date; the card's purchase price when nothing was bought.
+ * Credit notes use the unit cost booked on the original invoice. Lines whose cost is unknown are listed in `missing`
+ * and stay for the monthly cost-of-sales check.
+ */
+async function saleCost(db, data, lines, roles) {
+  if (!roles.cogs || !roles.inventory) return null;
+  const goods = lines.filter((l) => l.productId && l.lineType === 'revenue_goods' && l.quantity && !money.isZero(l.quantity));
+  if (!goods.length) return null;
+  const ids = [...new Set(goods.map((l) => String(l.productId)))];
+  const products = new Map((await db.query(`SELECT id, sku, name, kind, purchase_price, track_stock FROM products WHERE id = ANY($1::bigint[])`, [ids])).rows.map((r) => [String(r.id), r]));
+  const avg = new Map((await db.query(`SELECT product_id, sum(quantity * unit_price) AS value, sum(quantity) AS qty FROM stock_moves
+    WHERE product_id = ANY($1::bigint[]) AND move_date <= $2 AND quantity > 0 AND kind IN ('purchase','opening','adjustment') AND unit_price IS NOT NULL GROUP BY product_id`, [ids, data.issueDate])).rows
+    .filter((r) => Number(r.qty) > 0).map((r) => [String(r.product_id), fromUnits(divRound(toUnits(r.value, 4) * 10000n, toUnits(r.qty, 4)), 4)]));
+  const original = data.relatedInvoiceId ? new Map((await db.query(`SELECT product_id, sum(cogs_amount) AS c, sum(quantity) AS q FROM invoice_lines WHERE invoice_id=$1 AND cogs_amount IS NOT NULL GROUP BY product_id`, [data.relatedInvoiceId])).rows
+    .filter((r) => Number(r.q) !== 0).map((r) => [String(r.product_id), fromUnits(divRound(toUnits(r.c, 2) * 1000000n, toUnits(r.q, 4)), 4)])) : new Map();
+  const byLine = new Map(), missing = [];
+  for (const l of goods) {
+    const prod = products.get(String(l.productId));
+    if (!prod || prod.kind !== 'goods' || prod.track_stock === false) continue;
+    const unit = (money.sign(l.quantity) < 0 && original.get(String(l.productId))) || avg.get(String(l.productId)) || (prod.purchase_price !== null && prod.purchase_price !== undefined ? money.norm(prod.purchase_price) : null);
+    if (unit === null) { missing.push(prod.sku || prod.name); continue; }
+    byLine.set(l, fromUnits(divRound(toUnits(l.quantity, 4) * toUnits(unit, 4), 10n ** 6n), 2));
+  }
+  return {byLine, total: money.sum([...byLine.values()]), missing};
 }
 
 /** Delta between the corrected data and what is currently posted for the invoice group. */
@@ -416,7 +460,7 @@ async function correctionDelta(db, invoiceId, next) {
   const negQty = (q) => (String(q).startsWith('-') ? String(q).slice(1) : `-${q}`);
   const lines = [
     ...oldLines.map((l) => ({description: `Atšaukiama: ${l.description}`, sku: l.sku, productId: l.product_id, quantity: negQty(l.quantity), unit: l.unit, unitPrice: l.unit_price,
-      discount: money.neg(l.discount), net: money.neg(l.net), taxCode: l.tax_code, rate: l.vat_rate, vat: money.neg(l.vat), gross: money.neg(l.gross), accountCode: l.account_code, lineType: l.line_type, vatTreatment: l.vat_treatment})),
+      discount: money.neg(l.discount), net: money.neg(l.net), taxCode: l.tax_code, rate: l.vat_rate, vat: money.neg(l.vat), gross: money.neg(l.gross), accountCode: l.account_code, lineType: l.line_type, vatTreatment: l.vat_treatment, cogsAmount: l.cogs_amount === null ? null : money.neg(l.cogs_amount)})),
     ...next.lines,
   ];
   const vatMap = new Map();

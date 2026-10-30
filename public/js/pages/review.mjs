@@ -266,6 +266,8 @@ export async function render(main, [docId], state) {
   }
   // After a decision open the next document waiting in the inbox (ready ones first), or the inbox when none is left.
   async function goNext() {
+    // A corrected sales invoice: back to that invoice.
+    if (doc.workflow === 'generated' && p.kind === 'correction' && p.corrects_invoice_id) { location.hash = `#/pardavimai/s/${p.corrects_invoice_id}`; return; }
     if (doc.workflow === 'generated') { // a draft from a recurring template: the next such draft, else the inbox
       try {
         const r = await get('/api/recurring-invoices');

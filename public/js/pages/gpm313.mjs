@@ -4,7 +4,9 @@ import {edsFormView} from '../lib/eds-form.mjs';
 
 export async function render(main) {
   const params = new URLSearchParams(location.hash.split('?')[1] || '');
-  const month = input({type: 'month', value: params.get('month') || today().slice(0, 7)});
+  // GPM313 is filed for the previous month (payouts made in it), so that month is shown first.
+  const prev = (() => { const [y, m] = today().slice(0, 7).split('-').map(Number); return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`; })();
+  const month = input({type: 'month', value: params.get('month') || prev});
   const layout = await get('/api/eds/gpm313/layout');
   const out = h('div'), notesBox = h('div'), runsBox = h('div');
   let values = {}, edits = {};
