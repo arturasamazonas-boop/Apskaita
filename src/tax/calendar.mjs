@@ -17,6 +17,16 @@ export function workingDayOnOrAfter(date) {
   }
 }
 
+/** The date itself if it is a working day, otherwise the previous working day (e.g. a pay day that must not be late). */
+export function workingDayOnOrBefore(date) {
+  const d = new Date(`${date}T00:00:00Z`);
+  for (;;) {
+    const s = iso(d);
+    if (d.getUTCDay() % 6 !== 0 && !holidays(d.getUTCFullYear()).has(s)) return s;
+    d.setUTCDate(d.getUTCDate() - 1);
+  }
+}
+
 // Monthly obligations for period P, due in the following month. `when` decides whether the company has it.
 const MONTHLY = [
   {form: 'GPM313', title: 'GPM313 pajamų mokesčio deklaracija', day: 15, link: '#/gpm313', when: (c) => c.payroll, note: 'Už mėnesį išmokėtas su darbo santykiais susijusias pajamas.'},

@@ -25,13 +25,12 @@ async function newRun(main, state) {
   const d = new Date();
   const period = input({type: 'month', value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`});
   const norm = input({inputmode: 'numeric'}), pay = input({type: 'date'});
-  // Pay day: the 10th of the next month (a Saturday/Sunday moves to Monday); change it if salaries are paid otherwise.
-  const payDay = (p) => { const [y, m] = p.split('-').map(Number); const x = new Date(Date.UTC(m === 12 ? y + 1 : y, m % 12, 10)); while (x.getUTCDay() % 6 === 0) x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
+  // Pay day: the 10th of the next month (a Saturday/Sunday moves to the Friday before); change it if salaries are paid otherwise.
+  const payDay = (p) => { const [y, m] = p.split('-').map(Number); const x = new Date(Date.UTC(m === 12 ? y + 1 : y, m % 12, 10)); while (x.getUTCDay() % 6 === 0) x.setUTCDate(x.getUTCDate() - 1); return x.toISOString().slice(0, 10); };
   const refresh = async () => {
     if (!/^\d{4}-\d{2}$/.test(period.value)) return;
     pay.value = payDay(period.value);
     norm.value = (await get(`/api/payroll/working-days?period=${period.value}`)).days;
-    const [y, m] = period.value.split('-').map(Number); pay.value = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   };
   period.addEventListener('change', () => guard(refresh));
   clear(main, pageHeader('Naujas darbo užmokesčio žiniaraštis'), tabs(''),
@@ -43,7 +42,9 @@ async function newRun(main, state) {
 }
 
 async function runSheet(main, id, state) {
-  const [run, emps] = await Promise.all([get(`/api/payroll/runs/${id}`), get('/api/employees?active=true')]);
+  const [run, allEmps] = await Promise.all([get(`/api/payroll/runs/${id}`), get('/api/employees')]);
+  // Active employees, plus anyone who left during this month (final pay), even if already marked inactive.
+  const emps = allEmps.filter((x) => x.active || (x.employment_end && x.employment_end.slice(0, 7) === run.period));
   const draft = run.status === 'draft' && can(state.user, 'write');
   const inputs = new Map();
   const num = (v, attrs = {}) => input({value: Number(v) ? String(v).replace(/\.00$/, '') : '', inputmode: 'decimal', class: 'num-input', disabled: !draft, ...attrs});
@@ -76,7 +77,7 @@ async function runSheet(main, id, state) {
   for (const l of run.lines) inputs.set(l.employee_id, {worked_days: num(l.worked_days, {'aria-label': `${fullName(l)} dirbta dienų`}), worked_hours: num(l.worked_hours, {'aria-label': `${fullName(l)} valandos`}),
     bonus: num(l.bonus, {'aria-label': `${fullName(l)} priedai`}), vacation_pay: num(l.vacation_pay, {'aria-label': `${fullName(l)} atostoginiai`}), sick_pay: num(l.sick_pay, {'aria-label': `${fullName(l)} ligos`}),
     other_pay: num(l.other_pay, {'aria-label': `${fullName(l)} kitos išmokos`}), advance: num(l.advance, {'aria-label': `${fullName(l)} avansas`}),
-    ...(l.payment_date && {payment_date: input({type: 'date', value: l.payment_date, disabled: !draft, 'aria-label': `${fullName(l)} išmokėjimo data`})})});
+    ...((l.payment_date || (l.employment_end && String(l.employment_end).slice(0, 7) === run.period)) && {payment_date: input({type: 'date', value: l.payment_date || '', disabled: !draft, 'aria-label': `${fullName(l)} išmokėjimo data`})})});
   const norm = input({value: run.norm_days, inputmode: 'numeric', disabled: !draft, class: 'num-input'}), pay = input({type: 'date', value: run.payment_date, disabled: !draft});
   const save = () => guard(async () => {
     await put(`/api/payroll/runs/${id}`, {norm_days: norm.value, payment_date: pay.value, lines: run.lines.map((l) => ({employee_id: l.employee_id, ...Object.fromEntries(Object.entries(inputs.get(l.employee_id)).map(([k, v]) => [k, v.value]))}))});

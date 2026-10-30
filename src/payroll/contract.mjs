@@ -22,7 +22,7 @@ export function contractDefaults(emp, company) {
     number: '', date: String(emp.employment_start || '').slice(0, 10), place: city,
     workplace: company.address || '', duties: '', probationMonths: '0',
     workTime: hours >= 40 ? 'Penkių darbo dienų savaitė, 40 valandų per savaitę (8 valandos per dieną), poilsio dienos – šeštadienis ir sekmadienis.'
-      : `Ne visas darbo laikas: ${hours} val. per savaitę (darbo dienos ir valandos – pagal darbo grafiką).`,
+      : `Darbo laiko norma – ${String(hours).replace('.', ',')} val. per savaitę (darbo dienos ir valandos – pagal darbo grafiką).`,
     payDays: 'Darbo užmokestis mokamas du kartus per mėnesį; darbuotojo prašymu – kartą per mėnesį, ne vėliau kaip iki kito mėnesio 10 d.',
     leaveDays: hours >= 40 ? '20' : '20', employerRep: company.manager || '', employerRepTitle: company.manager_title || 'Direktorius',
   };
@@ -45,7 +45,7 @@ export function renderContractPdf(emp, company, opts) {
     const h = (text) => { doc.moveDown(0.3); doc.font('b').fontSize(10.5).text(text, {width: W}); doc.moveDown(0.3); };
     p(`Darbdavys ${employer}, juridinio asmens kodas ${company.company_code || '__________'}, buveinė ${company.address || '__________'}, kuriam atstovauja ${o.employerRepTitle ? o.employerRepTitle.toLowerCase() : 'vadovas'} ${o.employerRep || '__________________'}, ir darbuotojas (-a) ${emp.first_name} ${emp.last_name}, asmens kodas ${emp.personal_code || '___________'}, gyvenamoji vieta ${emp.address || '______________________________'}, sudarė šią darbo sutartį.`);
     const salary = emp.pay_type === 'hourly'
-      ? `${fmt(emp.hourly_rate)} Eur (${amountWords(money.norm(emp.hourly_rate)).replace(/^./, (c) => c.toLowerCase())}) už valandą neatskaičius mokesčių`
+      ? `${String(Number(emp.hourly_rate)).replace('.', ',')} Eur (${amountWords(money.norm(emp.hourly_rate)).replace(/^./, (c) => c.toLowerCase())}) už valandą neatskaičius mokesčių`
       : `${fmt(emp.base_salary)} Eur (${amountWords(money.norm(emp.base_salary)).replace(/^./, (c) => c.toLowerCase())}) per mėnesį neatskaičius mokesčių`;
     const fixed = emp.contract_type === 'fixed_term';
     const items = [
@@ -56,6 +56,7 @@ export function renderContractPdf(emp, company, opts) {
       ['Darbo laiko režimas', o.workTime],
       ['Kasmetinės atostogos', `Darbuotojui suteikiamos ${o.leaveDays} darbo dienų (dirbant penkias dienas per savaitę) trukmės kasmetinės atostogos, kurių trukmė apskaičiuojama ir jos suteikiamos Darbo kodekso nustatyta tvarka.`],
       ['Išbandymas', Number(o.probationMonths) > 0 ? `Nustatomas ${Number(o.probationMonths)} mėn. išbandymo laikotarpis (ne ilgesnis kaip trys mėnesiai, DK 36 str.).` : 'Išbandymas nenustatomas.'],
+      ['Informacija darbuotojui (DK 44 str.)', 'Viršvalandinis darbas ir darbas poilsio ar švenčių dienomis apmokamas Darbo kodekso 144 straipsnyje nustatyta tvarka (ne mažiau kaip pusantro ar dvigubo dydžio darbo užmokesčiu). Darbuotojo kvalifikacijos tobulinimas ir mokymas – pagal darbdavio nustatytą tvarką ir Darbo kodekso 37 straipsnį. Socialinio draudimo įmokas darbdavys moka Valstybinio socialinio draudimo fondo valdybai (Sodrai).'],
       ['Kitos sąlygos', 'Kitos darbo sąlygos, kurios nenurodytos šioje sutartyje, nustatomos pagal Lietuvos Respublikos darbo kodeksą, kitus darbo teisės aktus ir darbdavio darbo tvarkos taisykles. Įspėjimo apie darbo sutarties nutraukimą terminai – pagal Darbo kodekso 55–57 straipsnius.'],
       ['Baigiamosios nuostatos', 'Darbo sutartis įsigalioja nuo jos pasirašymo ir galioja nuo darbo pradžios dienos. Sutartis sudaryta dviem vienodą teisinę galią turinčiais egzemplioriais – po vieną kiekvienai šaliai. Darbuotojas patvirtina, kad iki darbo pradžios jis supažindintas su darbo tvarkos taisyklėmis, darbuotojų saugos ir sveikatos reikalavimais bei pareigybės aprašymu.'],
     ];

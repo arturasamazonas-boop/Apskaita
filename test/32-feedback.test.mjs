@@ -12,7 +12,7 @@ test('GPM313 for October: September pay paid in October plus the final pay of so
   const leave = (await acc.post('/api/employees', {first_name: 'Ona', last_name: 'Išeinanti', employment_start: '2025-01-01', employment_end: '2026-10-20', base_salary: '1500', iban: 'LT121000011101001000'})).body;
   assert.ok(stay.id && leave.id);
   const sep = (await acc.post('/api/payroll/runs', {period: '2026-09'})).body;
-  assert.equal(sep.payment_date, '2026-10-12'); // default: 10 October is a Saturday → Monday 12 October
+  assert.equal(sep.payment_date, '2026-10-09'); // default: 10 October is a Saturday → Friday 9 October (never late)
   const oct = (await acc.post('/api/payroll/runs', {period: '2026-10'})).body;
   assert.equal(oct.payment_date, '2026-11-10');
   const leaving = oct.lines.find((l) => String(l.employee_id) === String(leave.id));
@@ -23,6 +23,15 @@ test('GPM313 for October: September pay paid in October plus the final pay of so
   const sepGross = sep.lines.reduce((s, l) => s + Number(l.gross), 0);
   const expected = (sepGross + Number(leaving.gross)).toFixed(2).replace('.', ',');
   assert.equal(g.values.G5, expected, JSON.stringify(g.runs));
+  // Someone whose leaving date is entered after the sheet was made, and who is already inactive, still gets the final pay date.
+  const late = (await acc.post('/api/employees', {first_name: 'Rimas', last_name: 'Vėlyvas', employment_start: '2025-01-01', base_salary: '1000', iban: 'LT121000011101001000'})).body;
+  const nov = (await acc.post('/api/payroll/runs', {period: '2026-11'})).body;
+  await acc.put(`/api/employees/${late.id}`, {...(await acc.get(`/api/employees/${late.id}`)).body, employment_end: '2026-11-13', active: false});
+  const nov2 = (await acc.put(`/api/payroll/runs/${nov.id}`, {lines: []})).body;
+  assert.equal(nov2.lines.find((l) => String(l.employee_id) === String(late.id)).payment_date, '2026-11-13');
+  const dec = (await acc.post('/api/payroll/runs', {period: '2026-12'})).body;
+  assert.ok(!dec.lines.some((l) => String(l.employee_id) === String(late.id)), 'left in November: not in December');
+  await acc.del(`/api/payroll/runs/${nov.id}`); await acc.del(`/api/payroll/runs/${dec.id}`);
   assert.equal((await acc.get('/api/eds/gpm313?year=2026&month=11')).body.values.G5, (Number(oct.lines.find((l) => String(l.employee_id) === String(stay.id)).gross)).toFixed(2).replace('.', ','));
 });
 
@@ -124,4 +133,8 @@ test('employment contract printed from the employee card', async () => {
   for (const re of [/DARBO SUTARTIS/, /2026 m\. lapkričio 2 d\. Nr\. DS-7/, /Asta Astaitė, asmens kodas 48501011234/, /Buhalterė/, /1 850,50 Eur \(tūkstantis aštuoni šimtai penkiasdešimt eurų 50 ct\)/,
     /Neterminuota darbo sutartis/, /3 mėn\. išbandymo/, /20 darbo dienų/, /kuriam atstovauja direktorius Petras Petraitis/, /lapkričio 2 d\. 2\. Darbo funkcija/]) assert.match(text, re);
   assert.equal((await acc.raw('POST', `/api/employees/${e.id}/contract`, {probationMonths: '6'})).status, 400);
+  // Fixed term of 2 months: probation at most 1 month (DK 36 str.); a fixed-term contract needs its end date.
+  const ft = (await acc.post('/api/employees', {first_name: 'Tomas', last_name: 'Terminuotas', employment_start: '2026-11-02', employment_end: '2026-12-31', contract_type: 'fixed_term', base_salary: '1200'})).body;
+  assert.equal((await acc.raw('POST', `/api/employees/${ft.id}/contract`, {probationMonths: '2'})).status, 400);
+  assert.equal((await acc.raw('POST', `/api/employees/${ft.id}/contract`, {probationMonths: '1', employerRep: null}, {raw: true})).status, 200);
 });
