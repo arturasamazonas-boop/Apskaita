@@ -101,3 +101,47 @@ test('a sales invoice issued here: corrected with the same number (new PDF), the
   assert.match(locked.blockers.join(' '), /apmokėta/);
   assert.equal((await acc.post(`/api/invoices/${s2.invoiceId}/annul`, {reason: 'bandymas'})).status, 409);
 });
+
+test('correction: checked again at approval, buyer and dates locked; credit notes follow the corrected invoice; annulled is AN in i.SAF', async () => {
+  const sale = async (qty, date = '2026-09-15') => {
+    const d = await acc.post('/api/manual-invoices', {register: 'sales', issueDate: date, counterparty: {name: 'UAB Pirkėjas', companyCode: '301111111'}, lines: [{description: 'Detalė', quantity: qty, unitPrice: '10', taxCode: 'PVM1'}]});
+    return (await acc.post(`/api/proposals/${d.body.proposal.id}/approve`, {contentHash: d.body.proposal.content_hash})).body;
+  };
+  const edit = async (invoiceId, change) => {
+    const c = (await acc.post(`/api/invoices/${invoiceId}/correct`, {})).body;
+    const p = (await acc.get(`/api/proposals/${c.proposalId}`)).body;
+    const ed = (await acc.put(`/api/proposals/${p.id}`, {contentHash: p.content_hash, data: change(p.data)})).body;
+    return ed;
+  };
+  // Paid after the correction was opened: approval refused.
+  const a = await sale('2');
+  const ed1 = await edit(a.invoiceId, (d) => ({...d, lines: d.lines.map((l) => ({...l, quantity: '3'}))}));
+  await t.app.pool.query(`INSERT INTO cash_order_series(kind, prefix, next_number, padding) VALUES ('receipt','KPO',1,4) ON CONFLICT DO NOTHING`).catch(() => {});
+  assert.equal((await acc.post('/api/cash/orders', {kind: 'receipt', purpose: 'invoice', invoiceId: a.invoiceId, date: '2026-09-20', amount: '24.20'})).status, 200);
+  const ap1 = await acc.post(`/api/proposals/${ed1.id}/approve`, {contentHash: ed1.content_hash});
+  assert.equal(ap1.status, 409, JSON.stringify(ap1.body)); assert.match(ap1.body.error, /apmokėta/);
+  // Buyer and dates stay as issued.
+  const b = await sale('10');
+  const ed2 = await edit(b.invoiceId, (d) => ({...d, issueDate: '2026-10-01'}));
+  const ap2 = await acc.post(`/api/proposals/${ed2.id}/approve`, {contentHash: ed2.content_hash});
+  assert.equal(ap2.status, 422); assert.match(ap2.body.error, /išrašymo datą/);
+  await acc.post(`/api/proposals/${ed2.id}/reject`, {contentHash: ed2.content_hash, reason: 'Netinka'});
+  // Quantity corrected 10 → 5: at most 5 can be credited.
+  const ed3 = await edit(b.invoiceId, (d) => ({...d, lines: d.lines.map((l) => ({...l, quantity: '5'}))}));
+  assert.equal((await acc.post(`/api/proposals/${ed3.id}/approve`, {contentHash: ed3.content_hash})).status, 200);
+  const inv = (await acc.get(`/api/invoices/${b.invoiceId}`)).body;
+  assert.deepEqual(inv.currentLines.map((l) => [l.line_no, Number(l.quantity)]), [[1, 5]]);
+  assert.equal((await acc.post(`/api/invoices/${b.invoiceId}/credit-note`, {lines: [{lineNo: 1, quantity: '10'}], reason: 'grąžinimas'})).status, 422);
+  // Annulled: no credit note, no e-mail, AN in i.SAF.
+  const c = await sale('1');
+  assert.equal((await acc.post(`/api/invoices/${c.invoiceId}/annul`, {reason: 'Klaida'})).status, 200);
+  assert.equal((await acc.post(`/api/invoices/${c.invoiceId}/credit-note`, {lines: [{lineNo: 1, quantity: '1'}], reason: 'x'})).status, 409);
+  assert.equal((await acc.post(`/api/invoices/${c.invoiceId}/email`, {to: 'a@b.lt', subject: 'x'})).status, 409);
+  const {buildIsaf} = await import('../src/isaf/isaf.mjs');
+  const x = await buildIsaf(t.app.pool, {from: '2026-09-01', to: '2026-09-30', dataType: 'S'});
+  const no = (await t.app.pool.query('SELECT series, number FROM invoices WHERE id=$1', [c.invoiceId])).rows[0];
+  assert.match(x.xml, new RegExp(`<InvoiceNo>${no.series}${no.number}</InvoiceNo>.*?<InvoiceType>AN</InvoiceType>`));
+  await t.drain();
+  const doc = (await t.app.pool.query(`SELECT f.note FROM stored_files f JOIN invoices i ON i.document_id=f.document_id WHERE i.id=$1 AND f.role='generated' ORDER BY f.id DESC LIMIT 1`, [c.invoiceId])).rows[0];
+  assert.match(doc.note, /Anuliuota/);
+});

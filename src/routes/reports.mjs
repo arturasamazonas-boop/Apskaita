@@ -9,6 +9,7 @@ import {monthClose} from '../reports/monthclose.mjs';
 import {taxCalendar, TAX_FORMS} from '../tax/calendar.mjs';
 import {cogsProposal} from '../reports/cogs.mjs';
 import {changeBlockers} from '../sales/edit.mjs';
+import {currentSalesLines} from '../sales/service.mjs';
 import {todayVilnius} from '../invoices/context.mjs';
 import {invoiceBalances} from '../ledger/balances.mjs';
 import {buildIsaf, validateXsd} from '../isaf/isaf.mjs';
@@ -376,6 +377,8 @@ export function register(r, {pool, storage}) {
       WHERE a.invoice_id IN (SELECT id FROM invoices WHERE id=$1 OR related_invoice_id=$1) ORDER BY a.id`, [rootId])).rows;
     const order = inv.external_order_id ? (await pool.query('SELECT id, store_id, external_id, order_number, external_status, state FROM external_orders WHERE id=$1', [inv.external_order_id])).rows[0] : null;
     const change = inv.register === 'sales' && ['invoice', 'vat_invoice'].includes(inv.doc_type) ? await changeBlockers(pool, inv.id).then(({blockers, annulled}) => ({blockers, annulled})) : null;
-    return {...inv, lines, vat, entry, related, balance, allocations, order, change};
+    const currentLines = change ? (await currentSalesLines(pool, inv.id)).lines : null;
+    const openCorrection = change ? (await pool.query(`SELECT id, document_id FROM proposals WHERE corrects_invoice_id=$1 AND kind='correction' AND status='open' LIMIT 1`, [inv.id])).rows[0] || null : null;
+    return {...inv, lines, vat, entry, related, balance, allocations, order, change, currentLines, openCorrection};
   });
 }

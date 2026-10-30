@@ -16,6 +16,11 @@ export async function emailDraft(db, invoiceId) {
   if (!inv) throw new AppError(404, 'not_found', 'Pardavimo sąskaita nerasta.');
   const company = (await db.query('SELECT name, email, phone FROM company_settings WHERE id=1')).rows[0];
   const no = `${inv.series} ${inv.number}`.trim();
+  // After corrections with the same number: the current total and due date.
+  const g = (await db.query(`SELECT sum(gross_total) AS g, count(*) AS n FROM invoices WHERE id=$1 OR (related_invoice_id=$1 AND doc_type='correction')`, [inv.id])).rows[0];
+  const lastData = Number(g.n) > 1 ? (await db.query(`SELECT p.data FROM invoices i JOIN proposals p ON p.id=i.proposal_id WHERE i.related_invoice_id=$1 AND i.doc_type='correction' ORDER BY i.id DESC LIMIT 1`, [inv.id])).rows[0]?.data : null;
+  inv.gross_total = g.g; inv.annulled = Number(g.n) > 1 && money.isZero(g.g);
+  if (lastData?.dueDate) inv.due_date = lastData.dueDate;
   const sent = (await db.query(`SELECT recipients, status, sent_at, error FROM invoice_emails WHERE invoice_id=$1 ORDER BY id DESC LIMIT 10`, [inv.id])).rows;
   return {
     invoice: inv, to: inv.cp_email || '', subject: `${inv.doc_type === 'credit_note' ? 'Kreditinė sąskaita' : 'Sąskaita faktūra'} ${no}`,
@@ -61,6 +66,10 @@ export async function sendInvoiceEmail({pool, storage, config}, user, invoiceId,
   if (!subject) throw new AppError(400, 'subject', 'Įrašykite laiško temą.');
   const draft = await emailDraft(pool, invoiceId);
   const inv = draft.invoice;
+  if (inv.annulled) throw new AppError(409, 'annulled', 'Sąskaita anuliuota – jos siųsti negalima.');
+  // A correction re-issues the PDF in the background: do not send the old one meanwhile.
+  const pending = (await pool.query(`SELECT 1 FROM jobs WHERE type='render_invoice_pdf' AND payload->>'invoiceId'=$1 AND status IN ('queued','running','pending') LIMIT 1`, [String(inv.id)])).rowCount;
+  if (pending) throw new AppError(409, 'pdf_pending', 'Pataisytos sąskaitos PDF dar ruošiamas – pabandykite po kelių sekundžių.');
   const attachment = await invoicePdf(pool, storage, inv);
   const company = (await pool.query('SELECT email FROM company_settings WHERE id=1')).rows[0];
   let providerId = '', error = '';

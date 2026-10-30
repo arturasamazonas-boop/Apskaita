@@ -36,7 +36,7 @@ export async function invoiceDetail(main, id, state) {
   const inv = await get(`/api/invoices/${id}`);
   const base = inv.register === 'sales' ? 'pardavimai' : 'pirkimai';
   const actions = [];
-  if (inv.register === 'sales' && ['vat_invoice', 'invoice'].includes(inv.doc_type) && can(state.user, 'write')) actions.push(h('button', {class: 'btn', onclick: () => creditNote(inv)}, 'Kreditinė sąskaita / grąžinimas'));
+  if (inv.register === 'sales' && ['vat_invoice', 'invoice'].includes(inv.doc_type) && can(state.user, 'write') && !inv.change?.annulled) actions.push(h('button', {class: 'btn', onclick: () => creditNote(inv)}, 'Kreditinė sąskaita / grąžinimas'));
   if (inv.document_id) actions.push(h('a', {class: 'btn', href: inv.register === 'sales' && !inv.document_id ? '#' : `#/dokumentai/${inv.document_id}`}, 'Dokumentas ir failai'));
   if (inv.register === 'sales') actions.push(h('button', {class: 'btn', onclick: () => guard(async () => { const {url} = await get(`/api/invoices/${inv.id}/pdf-link`); window.open(apiUrl(url), '_blank', 'noopener'); })}, 'PDF'));
   if (inv.register === 'sales' && can(state.user, 'write') && !inv.change?.annulled) actions.push(h('button', {class: 'btn btn-primary', onclick: () => guard(() => emailDialog(inv))}, '✉ Siųsti el. paštu'));
@@ -54,6 +54,7 @@ export async function invoiceDetail(main, id, state) {
   }
   const cp = inv.counterparty_snapshot || {};
   clear(main, pageHeader(`${DOC_TYPE[inv.doc_type] || ''} ${inv.series} ${inv.number}`, h('a', {class: 'btn btn-small', href: `#/${base}`}, '‹ Sąrašas'), ...actions),
+    inv.openCorrection ? h('p', {class: 'issue issue-warning'}, 'Pradėtas šios sąskaitos taisymas dar nepatvirtintas. ', h('a', {href: `#/deze/${inv.openCorrection.document_id}`}, 'Tęsti taisymą')) : null,
     inv.change?.annulled ? h('p', {class: 'issue issue-error'}, 'ANULIUOTA – visos šios sąskaitos sumos atšauktos (žr. susijusius koregavimus).') : null,
     inv.change && inv.change.blockers.length && !inv.change.annulled ? h('p', {class: 'hint'}, `Taisyti ar anuliuoti nebegalima: ${inv.change.blockers.join(' ')}`) : null,
     h('div', {class: 'cols'},
@@ -73,7 +74,7 @@ export async function invoiceDetail(main, id, state) {
 }
 
 async function creditNote(inv) {
-  const {modal} = await import('../core.mjs');
+  inv = {...inv, lines: inv.currentLines || inv.lines}; // the invoice as corrected (same number)
   const qty = inv.lines.map((l) => input({value: '0', inputmode: 'decimal', 'aria-label': `Kiekis ${l.description}`}));
   const reason = input({placeholder: 'Pvz. grąžintos prekės'});
   const dt = input({type: 'date', value: today()});

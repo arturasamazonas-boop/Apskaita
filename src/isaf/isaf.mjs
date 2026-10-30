@@ -78,8 +78,10 @@ export async function buildIsaf(db, {from, to, dataType = 'F', now = new Date(),
       if (!money.eq(groupNet, corr)) docErr(`PVM eilučių apmokestinamoji vertė ${groupNet} nesutampa su sąskaitos suma ${corr}.`);
       const refs = inv.relatedInvoice ? `<References><Reference><ReferenceNo>${esc(`${inv.relatedInvoice.series}${inv.relatedInvoice.number}`.replace(/\s+/g, ''))}</ReferenceNo><ReferenceDate>${inv.relatedInvoice.issue_date}</ReferenceDate></Reference></References>` : '<References/>';
       const vpd = inv.vat_point_date && inv.vat_point_date !== inv.issue_date && inv.vat_point_date >= '2016-07-01' ? `<VATPointDate>${inv.vat_point_date}</VATPointDate>` : '<VATPointDate xsi:nil="true"/>';
+      // A sales invoice annulled here (a correction to zero, same number) is reported as AN – anuliuota.
+      const annulled = register === 'sales' && inv.vat.length && inv.vat.every((v) => money.isZero(v.taxable) && money.isZero(v.vat)) && Number(corr) === 0;
       if (register === 'sales') {
-        xmlInvoices.push(`<Invoice><InvoiceNo>${esc(no)}</InvoiceNo>${partyXml('CustomerInfo', cp)}<InvoiceDate>${inv.issue_date}</InvoiceDate><InvoiceType>${TYPE[inv.doc_type]}</InvoiceType><SpecialTaxation/>${refs}${vpd}<DocumentTotals>${totals.join('')}</DocumentTotals></Invoice>`);
+        xmlInvoices.push(`<Invoice><InvoiceNo>${esc(no)}</InvoiceNo>${partyXml('CustomerInfo', cp)}<InvoiceDate>${inv.issue_date}</InvoiceDate><InvoiceType>${annulled ? 'AN' : TYPE[inv.doc_type]}</InvoiceType><SpecialTaxation/>${refs}${vpd}<DocumentTotals>${totals.join('')}</DocumentTotals></Invoice>`);
       } else {
         xmlInvoices.push(`<Invoice><InvoiceNo>${esc(no)}</InvoiceNo>${partyXml('SupplierInfo', cp)}<InvoiceDate>${inv.issue_date}</InvoiceDate><InvoiceType>${TYPE[inv.doc_type]}</InvoiceType><SpecialTaxation/>${refs}${vpd}<RegistrationAccountDate>${inv.registered_on}</RegistrationAccountDate><DocumentTotals>${totals.join('')}</DocumentTotals></Invoice>`);
       }

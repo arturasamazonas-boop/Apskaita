@@ -77,6 +77,17 @@ export async function createManualDraft(db, user, b) {
   }
 }
 
+/**
+ * The invoice as it stands now: its own lines, or – after corrections with the same number – the lines of the latest
+ * correction (each correction reverses all earlier lines and repeats the full new content). Annulled: no lines.
+ */
+export async function currentSalesLines(db, invoiceId) {
+  const c = (await db.query(`SELECT id FROM invoices WHERE related_invoice_id=$1 AND doc_type='correction' ORDER BY id DESC LIMIT 1`, [invoiceId])).rows[0];
+  if (!c) return {lines: (await db.query('SELECT * FROM invoice_lines WHERE invoice_id=$1 ORDER BY line_no', [invoiceId])).rows, correctionId: null};
+  const lines = (await db.query(`SELECT * FROM invoice_lines WHERE invoice_id=$1 AND description NOT LIKE 'Atšaukiama: %' ORDER BY line_no`, [c.id])).rows.map((l, i) => ({...l, line_no: i + 1}));
+  return {lines, correctionId: String(c.id)};
+}
+
 /** Sales credit note (return/discount) linked to a posted invoice; lines and prices copied from the snapshot. */
 export async function createCreditNote(pool, user, invoiceId, b) {
   requireCap(user, 'write');
@@ -84,7 +95,9 @@ export async function createCreditNote(pool, user, invoiceId, b) {
     const inv = (await db.query('SELECT * FROM invoices WHERE id=$1', [invoiceId])).rows[0];
     if (!inv) throw new AppError(404, 'not_found', 'Sąskaita nerasta.');
     if (inv.register !== 'sales' || !['vat_invoice', 'invoice'].includes(inv.doc_type)) throw new AppError(422, 'not_sales', 'Kreditinę sąskaitą galima išrašyti tik pardavimo sąskaitai. Tiekėjų kreditines įkelkite į dokumentų dėžutę.');
-    const orig = (await db.query('SELECT * FROM invoice_lines WHERE invoice_id=$1 ORDER BY line_no', [inv.id])).rows;
+    // Credited against the invoice as corrected (same number); an annulled invoice has nothing left to credit.
+    const {lines: orig, correctionId} = await currentSalesLines(db, inv.id);
+    if (correctionId && !orig.length) throw new AppError(409, 'annulled', 'Sąskaita anuliuota – kredituoti nėra ką.');
     const credited = (await db.query(`SELECT l.description, l.sku, sum(l.quantity) AS q, sum(l.discount) AS d FROM invoices c JOIN invoice_lines l ON l.invoice_id=c.id WHERE c.related_invoice_id=$1 AND c.doc_type='credit_note' GROUP BY 1,2`, [inv.id])).rows;
     const lines = [];
     for (const req of b.lines || []) {
@@ -127,7 +140,8 @@ export function renderInvoicePdf(inv, lines, vatRows) {
     const title = inv.doc_type === 'credit_note' ? 'KREDITINĖ PVM SĄSKAITA FAKTŪRA' : inv.doc_type === 'vat_invoice' ? 'PVM SĄSKAITA FAKTŪRA' : 'SĄSKAITA FAKTŪRA';
     doc.font('b').fontSize(16).text(inv.doc_type === 'credit_note' && !inv.company_snapshot.vatRegistered ? 'KREDITINĖ SĄSKAITA FAKTŪRA' : title, {align: 'center'});
     doc.font('r').fontSize(10).text(`Serija ${inv.series} Nr. ${inv.number}`, {align: 'center'});
-    if (inv.corrected) doc.fontSize(9).fillColor('#a00').text(`Pataisyta ${inv.corrected} (pakeičia anksčiau išrašytą to paties numerio sąskaitą)`, {align: 'center'}).fillColor('#000');
+    if (inv.annulled) doc.font('b').fontSize(13).fillColor('#a00').text(`ANULIUOTA ${inv.annulled}${inv.annulReason ? ` – ${inv.annulReason}` : ''}`, {align: 'center'}).font('r').fillColor('#000');
+    else if (inv.corrected) doc.fontSize(9).fillColor('#a00').text(`Pataisyta ${inv.corrected} (pakeičia anksčiau išrašytą to paties numerio sąskaitą)`, {align: 'center'}).fillColor('#000');
     doc.moveDown(0.5).fontSize(9).text(`Išrašymo data: ${inv.issue_date}`);
     if (inv.vat_point_date) doc.text(`PVM apskaičiavimo (tiekimo) data: ${inv.vat_point_date}`);
     if (inv.due_date) doc.text(`Apmokėti iki: ${inv.due_date}`);
@@ -152,6 +166,8 @@ export function renderInvoicePdf(inv, lines, vatRows) {
       doc.text(fmt(l.unit_price), 385, y, {lineBreak: false}); doc.text(l.tax_code === 'BE_PVM' ? '–' : String(Number(l.vat_rate)), 440, y, {lineBreak: false}); doc.text(fmt(l.net), 485, y, {lineBreak: false});
       y += Math.max(h, 12) + 4;
     }
+    // Totals, amount in words, payment details and signatures stay together on one page.
+    if (y + 13 * (vatRows.length + 2) + 190 > 800) { doc.addPage(); y = 50; }
     doc.moveTo(40, y).lineTo(555, y).stroke(); y += 8;
     doc.fontSize(9).text('Suma be PVM:', 360, y); doc.text(fmt(inv.net_total), 485, y); y += 13;
     for (const v of vatRows) { if (v.rate === null) continue; doc.text(`PVM ${Number(v.rate)} %:`, 360, y); doc.text(fmt(v.vat), 485, y); y += 13; }
@@ -163,7 +179,7 @@ export function renderInvoicePdf(inv, lines, vatRows) {
     if (inv.notes) { y = doc.y + 6; doc.text(`Pastabos: ${inv.notes}`, 40, y, {width: 515}); }
     // Signature lines: who issued the invoice (the user who approved it) and who received it.
     y = Math.max(doc.y + 36, y + 36);
-    if (y > 760) { doc.addPage(); y = 60; }
+    if (y > 740) { doc.addPage(); y = 60; }
     const sign = (x, label, name) => {
       doc.font('b').fontSize(9).text(label, x, y, {lineBreak: false}); doc.font('r');
       if (name) doc.text(name, x, y + 14, {width: 240});
@@ -188,12 +204,19 @@ export async function renderAndStorePdf({pool, storage}, invoiceId, {correctionI
     // Corrected invoice (same number): the lines as they are now, totals of the invoice with all its corrections.
     const c = (await pool.query(`SELECT * FROM invoices WHERE id=$1 AND related_invoice_id=$2 AND doc_type='correction'`, [correctionId, inv.id])).rows[0];
     if (!c) return {skipped: 'no_correction'};
-    lines = (await pool.query(`SELECT * FROM invoice_lines WHERE invoice_id=$1 AND description NOT LIKE 'Atšaukiama: %' ORDER BY line_no`, [c.id])).rows.map((l, i) => ({...l, line_no: i + 1}));
+    lines = (await currentSalesLines(pool, inv.id)).lines;
     const tot = (await pool.query(`SELECT sum(net_total) AS n, sum(vat_total) AS v, sum(gross_total) AS g FROM invoices WHERE id=$1 OR (related_invoice_id=$1 AND doc_type='correction')`, [inv.id])).rows[0];
     vat = (await pool.query(`SELECT tax_code, rate, sum(taxable) AS taxable, sum(vat) AS vat FROM invoice_vat_rows WHERE invoice_id IN (SELECT id FROM invoices WHERE id=$1 OR (related_invoice_id=$1 AND doc_type='correction')) GROUP BY 1,2 HAVING sum(taxable) <> 0 OR sum(vat) <> 0`, [inv.id])).rows;
-    if (!lines.length) return {skipped: 'annulled'};
-    corrected = String(c.approved_at || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
-    inv = {...inv, net_total: tot.n, vat_total: tot.v, gross_total: tot.g, approved_by: c.approved_by};
+    corrected = String(c.approved_at instanceof Date ? c.approved_at.toISOString() : c.approved_at || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+    const cd = (await pool.query('SELECT data FROM proposals WHERE id=$1', [c.proposal_id])).rows[0]?.data || {};
+    if (!lines.length) {
+      // Annulled: the original content, marked as annulled.
+      lines = (await pool.query('SELECT * FROM invoice_lines WHERE invoice_id=$1 ORDER BY line_no', [inv.id])).rows;
+      vat = (await pool.query('SELECT * FROM invoice_vat_rows WHERE invoice_id=$1', [inv.id])).rows;
+      inv = {...inv, annulled: corrected, annulReason: String(cd.notes || '').replace(/^Anuliuota:\s*/, '')};
+    } else {
+      inv = {...inv, net_total: tot.n, vat_total: tot.v, gross_total: tot.g, approved_by: c.approved_by, due_date: cd.dueDate || inv.due_date, proposal_id: c.proposal_id};
+    }
   }
   const rel = inv.related_invoice_id ? (await pool.query('SELECT series, number FROM invoices WHERE id=$1', [inv.related_invoice_id])).rows[0] : null;
   const iban = (await pool.query(`SELECT iban FROM bank_accounts WHERE active AND kind='bank' ORDER BY id LIMIT 1`)).rows[0]?.iban || '';
@@ -202,7 +225,7 @@ export async function renderAndStorePdf({pool, storage}, invoiceId, {correctionI
   const buf = await renderInvoicePdf({...inv, related: rel ? `${rel.series} ${rel.number}` : '', company_iban: iban, issued_by_name: issuer?.name || '', notes: notes || '', corrected}, lines, vat);
   await tx(pool, async (db) => {
     // The issued PDF is the immutable original of this generated document; a correction adds a newer one.
-    await addFile(db, storage, {documentId: inv.document_id, buffer: buf, mime: 'application/pdf', originalName: `${inv.series}${inv.number}${corrected ? '-pataisyta' : ''}.pdf`, role: 'generated', note: corrected ? `Pataisyta ${corrected}` : 'Sugeneruota patvirtinus'});
+    await addFile(db, storage, {documentId: inv.document_id, buffer: buf, mime: 'application/pdf', originalName: `${inv.series}${inv.number}${inv.annulled ? '-anuliuota' : corrected ? '-pataisyta' : ''}.pdf`, role: 'generated', note: inv.annulled ? `Anuliuota ${corrected}` : corrected ? `Pataisyta ${corrected}` : 'Sugeneruota patvirtinus'});
   });
   return {ok: true};
 }

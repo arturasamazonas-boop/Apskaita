@@ -280,6 +280,8 @@ export async function rejectProposal(pool, user, proposalId, {contentHash: hash,
     if (p.status !== 'open' || p.content_hash !== hash) throw new AppError(409, 'stale', 'Pasiūlymas pasikeitė. Atnaujinkite puslapį.');
     await db.query(`UPDATE proposals SET status='rejected', decided_by=$2, decided_at=now(), decision_note=$3 WHERE id=$1`, [p.id, user.id, str(reason, 500)]);
     if (p.document_id && p.kind !== 'correction') await db.query(`UPDATE documents SET processing_status='rejected', updated_at=now() WHERE id=$1`, [p.document_id]);
+    // A correction that is dropped leaves the posted invoice as it was.
+    if (p.document_id && p.kind === 'correction') await db.query(`UPDATE documents SET processing_status='posted', updated_at=now() WHERE id=$1 AND EXISTS (SELECT 1 FROM invoices WHERE document_id=$1)`, [p.document_id]);
     if (p.external_order_id) await db.query(`UPDATE external_orders SET state='ignored', state_note=$2, updated_at=now() WHERE id=$1`, [p.external_order_id, `Atmesta: ${str(reason, 200)}`]);
     await audit(db, {userId: user.id, action: 'proposal.reject', entityType: 'proposal', entityId: p.id, details: {reason: str(reason, 500), documentId: p.document_id}});
     return {ok: true};
@@ -316,6 +318,21 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
       : computeProposal(data, {...ctx, duplicates});
     if (blocking) throw new AppError(422, 'validation', 'Pasiūlymas turi neišspręstų klaidų.', {issues: issues.filter((i) => i.level === 'error')});
     const company = ctx.company;
+    // A sales invoice issued here is corrected only while nothing depends on it, checked again at approval (it may
+    // have been paid or its VAT return filed since the correction was opened); buyer, dates and currency stay as issued.
+    if (p.kind === 'correction' && data.register === 'sales' && p.corrects_invoice_id) {
+      await db.query('SELECT id FROM invoices WHERE id=$1 FOR UPDATE', [p.corrects_invoice_id]);
+      const {changeBlockers} = await import('../sales/edit.mjs');
+      const {invoice: orig, blockers} = await changeBlockers(db, p.corrects_invoice_id);
+      if (blockers.length) throw new AppError(409, 'locked', blockers.join(' '));
+      const d10 = (v) => (v ? String(v instanceof Date ? v.toISOString() : v).slice(0, 10) : '');
+      const changed = [];
+      if (String(data.counterparty?.id || '') !== String(orig.counterparty_id || '')) changed.push('pirkėją');
+      if (d10(data.issueDate) !== d10(orig.issue_date)) changed.push('išrašymo datą');
+      if (d10(data.vatPointDate) !== d10(orig.vat_point_date)) changed.push('PVM apskaičiavimo datą');
+      if ((data.currency || 'EUR') !== orig.currency) changed.push('valiutą');
+      if (changed.length) throw new AppError(422, 'locked_fields', `Taisant sąskaitą negalima keisti: ${changed.join(', ')}. Anuliuokite ją ir išrašykite naują.`);
+    }
     // Counterparty record (created on approval, never from AI alone).
     let cpId = data.counterparty.id;
     if (!cpId) {
