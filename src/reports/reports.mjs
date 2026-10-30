@@ -54,7 +54,7 @@ export async function generalLedger(db, {account, from, to, today, limit = 20000
   const sums = (await db.query(`SELECT coalesce(sum(l.debit),0) AS d, coalesce(sum(l.credit),0) AS c FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code LIKE $1 || '%' AND e.entry_date BETWEEN $2 AND $3`, [account, from, to])).rows[0];
   const scope = !account ? 'visos sąskaitos' : single ? `${single} ${acc?.name || ''}`.trim() : `sąskaitos, prasidedančios ${account} (${used.length})`;
   const title = !account ? 'Didžioji knyga: visos operacijos' : single ? `Didžioji knyga: ${single} ${acc?.name || ''}`.trim() : `Didžioji knyga: ${account}…`;
-  return report(title, `Užregistruoti įrašai (${scope}) ${from}–${to}${single ? ', su einamuoju likučiu' : ''} ir nuorodomis į šaltinio dokumentus.${hasMore ? ` Rodoma pirmųjų ${lim} eilučių – susiaurinkite laikotarpį arba sąskaitą.` : ''}`,
+  return report(title, `Užregistruoti įrašai (${scope}) ${from}–${to}${single ? ', su einamuoju likučiu' : ''} ir nuorodomis į šaltinio dokumentus.${hasMore ? ` Rodoma pirmųjų ${lim} eilučių.` : ''}`,
     [['entry_date', 'Data', 'date'], ['entry_id', 'Įrašas'], ...(single ? [] : [['account_code', 'Sąskaita'], ['account_name', 'Pavadinimas']]), ['description', 'Aprašymas'], ['counterparty', 'Kontrahentas'], ['debit', 'Debetas', 'money'], ['credit', 'Kreditas', 'money'], ...(single ? [['balance', 'Likutis', 'money']] : [])],
     rows, {filters: {account, from, to}, opening: account ? opening : undefined, hasMore, matchedAccounts: matched.slice(0, 50),
       totals: {debit: sums.d, credit: sums.c, ...(account && {closing: money.add(opening, money.sub(sums.d, sums.c))})}, drill: {column: 'entry_id', to: 'entry'}});
@@ -63,7 +63,7 @@ export async function generalLedger(db, {account, from, to, today, limit = 20000
 /** Cost-of-sales completeness: months with goods sales but no confirmed COGS posting. */
 export async function cogsGaps(db, from, to) {
   const r = await db.query(`SELECT DISTINCT to_char(i.issue_date, 'YYYY-MM') AS period FROM invoices i JOIN invoice_lines l ON l.invoice_id=i.id
-    WHERE i.register='sales' AND l.line_type='revenue_goods' AND l.cogs_amount IS NULL AND i.issue_date BETWEEN $1 AND $2
+    WHERE i.register='sales' AND l.line_type='revenue_goods' AND l.cogs_amount IS NULL AND (l.product_id IS NOT NULL OR l.net > 0) AND i.issue_date BETWEEN $1 AND $2
       AND NOT EXISTS (SELECT 1 FROM cogs_periods c WHERE c.period = to_char(i.issue_date, 'YYYY-MM')
         AND NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id = c.journal_entry_id)) ORDER BY 1`, [from, to]);
   return r.rows.map((x) => x.period);

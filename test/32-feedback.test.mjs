@@ -62,8 +62,15 @@ test('cash orders: correct with the same number, delete only the last one, cash 
   assert.equal((await acc.del(`/api/cash/orders/${a.id}`)).status, 409, 'not the last one');
   const d = await acc.del(`/api/cash/orders/${b.id}`);
   assert.equal(d.status, 200, JSON.stringify(d.body));
+  assert.equal((await acc.raw('GET', `/api/cash/orders/${b.id}/pdf`, null, {raw: true})).status, 200, 'PDF of a deleted order');
   const c = (await mk({kind: 'receipt', date: '2026-10-07', amount: '10'})).body;
   assert.equal(c.number, b.number, 'the freed number is used again');
+  // Cancelled first, then deleted: neither entry stays in the cash book.
+  const x = (await mk({kind: 'receipt', date: '2026-10-07', amount: '5'})).body;
+  await acc.post(`/api/cash/orders/${x.id}/cancel`, {reason: 'Klaidingas orderis'});
+  assert.equal((await acc.del(`/api/cash/orders/${x.id}`)).status, 200);
+  assert.ok(!(await acc.get('/api/cash/book?from=2026-10-01&to=2026-10-31')).body.days.some((d) => d.rows.some((r) => r.orderId === x.id)));
+  assert.equal((await acc.get(`/api/cash/orders/${a.id}`)).body.revisions[0].amount, '100.00');
   assert.equal((await acc.get('/api/cash/book?from=2026-10-01&to=2026-10-31')).body.closing, '90.00');
   const pay = (await mk({kind: 'payment', date: '2026-10-08', amount: '85'})).body;
   assert.ok(pay.id, JSON.stringify(pay));
@@ -137,4 +144,53 @@ test('employment contract printed from the employee card', async () => {
   const ft = (await acc.post('/api/employees', {first_name: 'Tomas', last_name: 'Terminuotas', employment_start: '2026-11-02', employment_end: '2026-12-31', contract_type: 'fixed_term', base_salary: '1200'})).body;
   assert.equal((await acc.raw('POST', `/api/employees/${ft.id}/contract`, {probationMonths: '2'})).status, 400);
   assert.equal((await acc.raw('POST', `/api/employees/${ft.id}/contract`, {probationMonths: '1', employerRep: null}, {raw: true})).status, 200);
+});
+
+test('moving average: inventory account is empty when stock is; expensed purchases are not costed twice', async () => {
+  const mkProd = async (sku) => (await acc.post('/api/products', {sku, name: sku, kind: 'goods', unit: 'vnt.', unit_price: '20', track_stock: true})).body;
+  const inv = async (register, prod, qty, price, date, extra = {}) => {
+    const d = await acc.post('/api/manual-invoices', {register, series: 'MA', number: `${sku()}`, issueDate: date, counterparty: register === 'sales' ? {name: 'UAB Pirkėjas', companyCode: '301111111'} : {name: 'UAB Tiekėjas', companyCode: '302222222', vatCode: 'LT222222219'},
+      lines: [{productId: String(prod.id), quantity: qty, unitPrice: price, taxCode: 'PVM1', ...extra}]});
+    const r = await acc.post(`/api/proposals/${d.body.proposal.id}/approve`, {contentHash: d.body.proposal.content_hash});
+    assert.equal(r.status, 200, JSON.stringify(r.body)); return r.body;
+  };
+  let n = 0; const sku = () => ++n;
+  const a = await mkProd('MA-1');
+  await inv('purchase', a, '10', '5', '2026-05-02'); assert.equal((await inv('sales', a, '10', '20', '2026-05-03')).cogs, '50.00');
+  await inv('purchase', a, '10', '7', '2026-05-04'); assert.equal((await inv('sales', a, '10', '20', '2026-05-05')).cogs, '70.00');
+  const left = (await t.app.pool.query(`SELECT coalesce(sum(debit - credit),0) AS v FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE account_code='204' AND e.entry_date BETWEEN '2026-05-01' AND '2026-05-31'`)).rows[0].v;
+  assert.equal(left, '0.00');
+  // Bought straight into expenses (6000): the sale books no further cost.
+  const b = await mkProd('MA-2');
+  await inv('purchase', b, '5', '10', '2026-05-06', {accountCode: '6000', lineType: 'expense', vatTreatment: 'deductible'});
+  assert.equal((await inv('sales', b, '5', '20', '2026-05-07')).cogs, '0.00');
+});
+
+test('depreciation: an asset entered after months were calculated gets a supplementary run', async () => {
+  const late = await acc.post('/api/fixed-assets', {inv_no: 'ST-2', name: 'Vėlai įvestas', cost_account: '1240', acquisition_date: '2026-01-05', cost: '600', useful_life_months: 12});
+  assert.equal(late.status, 200, JSON.stringify(late.body));
+  const r = await acc.post('/api/depreciation/runs', {period: '2026-09', catchUp: true});
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.total, '400.00'); // February–September, 8 × 50.00, as supplementary runs
+  assert.equal((await acc.post('/api/depreciation/runs', {period: '2026-09', catchUp: true})).status, 422);
+});
+
+test('correcting a sale in a month whose cost of sales was confirmed monthly keeps the cost right', async () => {
+  await t.app.pool.query('UPDATE company_settings SET auto_cogs=false WHERE id=1');
+  try {
+    const prod = (await acc.post('/api/products', {sku: 'MC-1', name: 'MC-1', kind: 'goods', unit: 'vnt.', track_stock: true})).body;
+    const buy = await acc.post('/api/manual-invoices', {register: 'purchase', series: 'MC', number: '1', issueDate: '2026-04-02', counterparty: {name: 'UAB Tiekėjas', companyCode: '302222222', vatCode: 'LT222222219'}, lines: [{productId: String(prod.id), quantity: '20', unitPrice: '10', taxCode: 'PVM1'}]});
+    await acc.post(`/api/proposals/${buy.body.proposal.id}/approve`, {contentHash: buy.body.proposal.content_hash});
+    const s = await acc.post('/api/manual-invoices', {register: 'sales', issueDate: '2026-04-10', counterparty: {name: 'UAB Pirkėjas', companyCode: '301111111'}, lines: [{productId: String(prod.id), quantity: '4', unitPrice: '20', taxCode: 'PVM1'}]});
+    const sale = (await acc.post(`/api/proposals/${s.body.proposal.id}/approve`, {contentHash: s.body.proposal.content_hash})).body;
+    const c = (await acc.get('/api/cogs/proposal?period=2026-04')).body;
+    assert.equal(c.total, '40.00');
+    assert.equal((await acc.post('/api/journal', {date: c.date, kind: 'cogs', cogsPeriod: '2026-04', description: 'Savikaina 2026-04', lines: c.lines})).status, 200);
+    const cor = (await acc.post(`/api/invoices/${sale.invoiceId}/correct`, {})).body;
+    const p = (await acc.get(`/api/proposals/${cor.proposalId}`)).body;
+    const ed = (await acc.put(`/api/proposals/${p.id}`, {contentHash: p.content_hash, data: {...p.data, lines: p.data.lines.map((l) => ({...l, quantity: '5'}))}})).body;
+    assert.equal((await acc.post(`/api/proposals/${ed.id}/approve`, {contentHash: ed.content_hash})).status, 200);
+    const v = (await t.app.pool.query(`SELECT coalesce(sum(l.debit - l.credit),0) AS v FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code='6000' AND e.entry_date BETWEEN '2026-04-01' AND '2026-04-30'`)).rows[0].v;
+    assert.equal(v, '50.00');
+  } finally { await t.app.pool.query('UPDATE company_settings SET auto_cogs=true WHERE id=1'); }
 });

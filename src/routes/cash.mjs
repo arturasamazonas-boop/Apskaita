@@ -36,7 +36,9 @@ async function loadOrder(db, id) {
   const o = (await db.query(`SELECT o.*, a.name AS account_name, c.name AS counterparty_name, c.company_code AS counterparty_code, i.series AS invoice_series, i.number AS invoice_number
     FROM cash_orders o JOIN accounts a ON a.code=o.account_code LEFT JOIN counterparties c ON c.id=o.counterparty_id LEFT JOIN invoices i ON i.id=o.invoice_id WHERE o.id=$1`, [id])).rows[0];
   if (!o) throw new AppError(404, 'not_found', 'Orderis nerastas.');
-  return {...o, id: String(o.id), amount: money.norm(o.amount), doc_date: String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10)};
+  const revisions = (await db.query(`SELECT v.kind, v.before->>'amount' AS amount, v.before->>'doc_date' AS doc_date, v.before->>'person_name' AS person_name, v.before->>'account_code' AS account_code,
+      v.reason, v.changed_at, u.name AS changed_by FROM cash_order_revisions v LEFT JOIN users u ON u.id=v.changed_by WHERE v.order_id=$1 ORDER BY v.id`, [o.id])).rows;
+  return {...o, id: String(o.id), amount: money.norm(o.amount), doc_date: String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10), revisions};
 }
 
 function renderOrderPdf(o, company) {
@@ -109,7 +111,7 @@ export function register(r, {pool}) {
     const o = await loadOrder(pool, params.id);
     const company = (await pool.query('SELECT * FROM company_settings WHERE id=1')).rows[0];
     const pdf = await renderOrderPdf(o, company);
-    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${o.series}${o.number}.pdf"`, 'Cache-Control': 'no-store'});
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${`${o.series}${o.number}`.replace(/[^\w.-]/g, '_')}.pdf"; filename*=UTF-8''${encodeURIComponent(`${o.series}${o.number}.pdf`)}`, 'Cache-Control': 'no-store'});
     res.end(pdf);
   });
   // Validates an order's fields and works out the corresponding account. Used for new and corrected orders.
@@ -211,7 +213,7 @@ export function register(r, {pool}) {
       const o = (await db.query('SELECT * FROM cash_orders WHERE id=$1 FOR UPDATE', [params.id])).rows[0];
       if (!o) throw new AppError(404, 'not_found', 'Orderis nerastas.');
       if (o.status !== 'posted') throw new AppError(409, 'not_posted', 'Taisyti galima tik galiojantį orderį.');
-      const before = await loadOrder(db, o.id);
+      const {revisions: _r, ...before} = await loadOrder(db, o.id);
       const rev = await unpost(db, o, 'edit', `taisoma: ${reason}`, user);
       const v = await prepare(db, b, o.kind);
       await db.query(`UPDATE cash_orders SET doc_date=$2, cash_account=$3, purpose=$4, invoice_id=$5, counterparty_id=$6, employee_id=$7, person_name=$8, person_code=$9, account_code=$10, amount=$11, basis=$12, attachment=$13 WHERE id=$1`,
@@ -224,7 +226,7 @@ export function register(r, {pool}) {
         const low = await lowestBalanceFrom(db, acct, oldDate < v.date ? oldDate : v.date);
         if (money.cmp(low, '0') < 0) throw new AppError(422, 'cash_negative', `Po pataisymo kasos (${acct}) likutis kurią nors dieną taptų neigiamas (${low} Eur).`);
       }
-      await audit(db, {userId: user.id, action: 'cash.edit', entityType: 'cash_order', entityId: o.id, details: {reason, oldEntry: o.journal_entry_id, reversal: rev.id, newEntry: e.id}});
+      await audit(db, {userId: user.id, action: 'cash.edit', entityType: 'cash_order', entityId: o.id, details: {reason, oldEntry: o.journal_entry_id, reversal: rev.id, newEntry: e.id, before: {amount: before.amount, date: before.doc_date, person: before.person_name, account: before.account_code}, after: {amount: v.amount, date: v.date, person: v.personName, account: v.account}}});
       return {...(await loadOrder(db, o.id)), warnings: v.warnings};
     });
   });
@@ -238,12 +240,14 @@ export function register(r, {pool}) {
       if (!o || o.status === 'deleted') throw new AppError(404, 'not_found', 'Orderis nerastas.');
       const ser = (await db.query('SELECT * FROM cash_order_series WHERE kind=$1 FOR UPDATE', [o.kind])).rows[0];
       if (o.series !== ser.prefix || Number(o.number) !== Number(ser.next_number) - 1) throw new AppError(409, 'not_last', `Ištrinti galima tik paskutinį serijos orderį (${ser.prefix} ${String(Number(ser.next_number) - 1).padStart(ser.padding, '0')}), kad numeracija liktų be spragų. Šį orderį anuliuokite arba pataisykite.`);
-      const before = await loadOrder(db, o.id);
+      const {revisions: _r, ...before} = await loadOrder(db, o.id);
       let rev = null;
       if (o.status === 'posted') rev = await unpost(db, o, 'delete', `ištrinta: ${reason}`, user);
       if (rev) await db.query(`INSERT INTO cash_order_revisions(order_id, kind, old_entry_id, reversal_entry_id, before, reason, changed_by) VALUES ($1,'delete',$2,$3,$4,$5,$6)`, [o.id, o.journal_entry_id, rev.id, before, reason, user.id]);
+      // Already cancelled: its entry and the cancelling entry also leave the cash book.
+      else if (o.status === 'cancelled' && o.cancel_entry_id) await db.query(`INSERT INTO cash_order_revisions(order_id, kind, old_entry_id, reversal_entry_id, before, reason, changed_by) VALUES ($1,'delete',$2,$3,$4,$5,$6)`, [o.id, o.journal_entry_id, o.cancel_entry_id, before, reason, user.id]);
       // The number goes back to the series; the row keeps its history under a suffixed number.
-      await db.query(`UPDATE cash_orders SET status='deleted', number=number || '-ištr-' || id, cancel_entry_id=coalesce($2, cancel_entry_id), cancel_reason=$3 WHERE id=$1`, [o.id, rev?.id || null, reason]);
+      await db.query(`UPDATE cash_orders SET status='deleted', number=number || '-del-' || id, cancel_entry_id=coalesce($2, cancel_entry_id), cancel_reason=$3 WHERE id=$1`, [o.id, rev?.id || null, reason]);
       await db.query('UPDATE cash_order_series SET next_number = next_number - 1 WHERE kind=$1', [o.kind]);
       await audit(db, {userId: user.id, action: 'cash.delete', entityType: 'cash_order', entityId: o.id, details: {number: `${o.series} ${o.number}`, reason, reversal: rev?.id || null}});
       return {ok: true, freedNumber: `${o.series} ${o.number}`};

@@ -6,7 +6,7 @@ const PURPOSE = {
   receipt: [['invoice', 'Pirkėjo sąskaitos apmokėjimas'], ['advance', 'Gautas avansas'], ['bank', 'Paimta iš banko'], ['accountable', 'Atskaitingo asmens grąžinti pinigai'], ['other', 'Kita (nurodyti sąskaitą)']],
   payment: [['invoice', 'Tiekėjo sąskaitos apmokėjimas'], ['advance', 'Sumokėtas avansas'], ['bank', 'Įnešta į banką'], ['accountable', 'Išduota atskaitingam asmeniui (avansas)'], ['other', 'Kita (nurodyti sąskaitą)']],
 };
-const STATUS = {posted: ['Užregistruotas', 'done'], cancelled: ['Anuliuotas', 'muted']};
+const STATUS = {posted: ['Užregistruotas', 'done'], cancelled: ['Anuliuotas', 'muted'], deleted: ['Ištrintas', 'muted']};
 const tabs = (cur) => h('div', {class: 'tabs'}, [['', 'Orderiai'], ['knyga', 'Kasos knyga']].map(([k, t]) => h('a', {class: ['tab', cur === k && 'active'], href: `#/kasa${k ? '/' + k : ''}`}, t)));
 const pdf = (id) => { location.href = apiUrl(`/api/cash/orders/${id}/pdf`); };
 
@@ -36,12 +36,16 @@ async function list(main, state) {
 }
 
 async function newOrder(main, kind, state, edit = null) {
-  const [accounts, employees] = await Promise.all([get('/api/accounts'), get('/api/employees?active=true')]);
+  const [accounts, allEmployees] = await Promise.all([get('/api/accounts'), get('/api/employees')]);
+  // Active employees, plus the one on the order being corrected (may have left since).
+  const employees = allEmployees.filter((e) => e.active || String(e.id) === String(edit?.employee_id || ''));
+  const cashAccounts = accounts.filter((a) => a.active && a.postable !== false && a.code.startsWith('272'));
   const f = {
     date: input({type: 'date', value: edit?.doc_date || today()}), purpose: select(PURPOSE[kind], edit?.purpose || 'invoice'), amount: input({inputmode: 'decimal', value: edit ? edit.amount : ''}), basis: input({placeholder: 'pvz. Apmokėjimas pagal PVM SF', value: edit?.basis || ''}),
     attachment: input({placeholder: 'pvz. sąskaita faktūra, kvitas', value: edit?.attachment || ''}), personName: input({value: edit?.person_name || ''}), personCode: input({placeholder: 'asmens ar įmonės kodas (nebūtina)', value: edit?.person_code || ''}),
     invoice: select([['', '— pasirinkite —']], ''), cp: select([['', '— pasirinkite —']], ''), cpSearch: input({type: 'search', placeholder: 'Ieškoti kontrahento'}),
     employee: select([['', '— pasirinkite —'], ...employees.map((e) => [e.id, `${e.first_name} ${e.last_name}`])], ''),
+    cash: select(cashAccounts.map((a) => [a.code, `${a.code} ${a.name}`]), edit?.cash_account || cashAccounts[0]?.code || '272'),
     account: select([['', '— pasirinkite —'], ...accounts.filter((a) => a.active && a.postable !== false && !a.code.startsWith('272')).map((a) => [a.code, `${a.code} ${a.name}`])], ''),
   };
   let invoices = [];
@@ -77,14 +81,14 @@ async function newOrder(main, kind, state, edit = null) {
     const reason = edit ? await promptDialog(`Taisyti ${edit.series} ${edit.number}`, 'Kas taisoma (bus įrašyta į audito žurnalą)', {minLength: 3}) : null;
     if (edit && !reason) return;
     const r = await (edit ? (b) => put(`/api/cash/orders/${edit.id}`, {...b, reason}) : (b) => post('/api/cash/orders', b))({kind, date: f.date.value, purpose: f.purpose.value, amount: f.amount.value, basis: f.basis.value, attachment: f.attachment.value, personName: f.personName.value, personCode: f.personCode.value,
-      invoiceId: f.invoice.value || undefined, counterpartyId: f.cp.value || undefined, employeeId: f.employee.value || undefined, accountCode: f.account.value || undefined});
+      invoiceId: f.invoice.value || undefined, counterpartyId: f.cp.value || undefined, employeeId: f.employee.value || undefined, accountCode: f.account.value || undefined, cashAccount: f.cash.value || undefined});
     r.warnings?.forEach((w) => toast(w, 'error'));
     toast(`${r.series} ${r.number} ${edit ? 'pataisytas (senas įrašas atšauktas, užregistruotas naujas)' : 'užregistruotas'}.`, 'ok');
     location.hash = `#/kasa/${r.id}`;
   });
   clear(main, pageHeader(edit ? `Taisyti ${kind === 'receipt' ? 'KPO' : 'KIO'} ${edit.series} ${edit.number}` : KIND[kind]), tabs(''),
     section(null, h('form', {onsubmit: submit},
-      h('div', {class: 'form-grid'}, field('Data', f.date), field('Operacija', f.purpose), field('Suma, €', f.amount)), extra,
+      h('div', {class: 'form-grid'}, field('Data', f.date), field('Operacija', f.purpose), field('Suma, €', f.amount), cashAccounts.length > 1 || edit ? field('Kasa', f.cash) : null), extra,
       h('div', {class: 'form-grid'}, field(kind === 'receipt' ? 'Gauta iš' : 'Išmokėta (kam)', f.personName), field('Kodas', f.personCode), field('Pagrindas', f.basis), field('Priedai', f.attachment)),
       h('p', {class: 'hint'}, `Numeris (${kind === 'receipt' ? 'KPO' : 'KIO'}) suteikiamas išsaugant. ${kind === 'payment' ? 'Išmokėti galima tik tiek, kiek kasoje yra tos dienos pabaigoje. ' : ''}Atsiskaitymai grynaisiais virš 5 000 € pagal vieną sandorį ribojami.`),
       h('button', {class: 'btn btn-primary'}, edit ? 'Išsaugoti pataisymą' : 'Registruoti ir kontuoti'))));
@@ -109,14 +113,16 @@ async function card(main, id, state) {
       if (!reason) return;
       await post(`/api/cash/orders/${o.id}/cancel`, {reason}); toast('Orderis anuliuotas atvirkštiniu įrašu.', 'ok'); card(main, id, state);
     })}, 'Anuliuoti') : null,
-    can(state.user, 'approve') ? h('button', {class: 'btn btn-danger', onclick: () => guard(async () => {
+    o.status !== 'deleted' && can(state.user, 'approve') ? h('button', {class: 'btn btn-danger', onclick: () => guard(async () => {
       if (!await confirmDialog('Ištrinti orderį', `Ištrinti ${o.series} ${o.number}? Ištrinti galima tik paskutinį serijos orderį: jo įrašas atšaukiamas, o numeris vėl laisvas kitam orderiui.`, 'Ištrinti')) return;
       const r = await del(`/api/cash/orders/${o.id}`); toast(`Ištrinta. Numeris ${r.freedNumber} vėl laisvas.`, 'ok'); location.hash = '#/kasa';
     })}, 'Ištrinti') : null), tabs(''),
     section(KIND[o.kind], h('dl', {class: 'details'},
       ...[['Data', o.doc_date], [o.kind === 'receipt' ? 'Gauta iš' : 'Išmokėta', [who, o.person_code || o.counterparty_code].filter(Boolean).join(', ')], ['Pagrindas', o.basis || (o.invoice_number ? `Sąskaita ${o.invoice_series || ''} ${o.invoice_number}` : '—')],
         ['Korespondencinė sąskaita', `${o.account_code} ${o.account_name}`], ['Kasos sąskaita', o.cash_account], ['Suma', `${money(o.amount)} €`], ['Priedai', o.attachment || '—'],
-        ['Būsena', o.status === 'cancelled' ? `Anuliuotas: ${o.cancel_reason}` : 'Užregistruotas'], ['Įrašas', o.journal_entry_id ? `#${o.journal_entry_id}` : '—']].flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)]))));
+        ['Būsena', o.status === 'cancelled' ? `Anuliuotas: ${o.cancel_reason}` : o.status === 'deleted' ? `Ištrintas: ${o.cancel_reason}` : 'Užregistruotas'], ['Įrašas', o.journal_entry_id ? `#${o.journal_entry_id}` : '—']].flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)]))),
+    o.revisions?.length ? section('Pakeitimų istorija', table([{label: 'Kada', render: (v) => String(v.changed_at).slice(0, 16).replace('T', ' ')}, {label: 'Veiksmas', render: (v) => (v.kind === 'edit' ? 'Pataisyta' : 'Ištrinta')},
+      {label: 'Buvo: data', key: 'doc_date'}, {label: 'Buvo: suma', num: true, render: (v) => money(v.amount)}, {label: 'Buvo: asmuo', key: 'person_name'}, {label: 'Buvo: kor. sąsk.', key: 'account_code'}, {label: 'Priežastis', key: 'reason'}, {label: 'Kas', key: 'changed_by'}], o.revisions)) : null);
 }
 
 async function book(main) {

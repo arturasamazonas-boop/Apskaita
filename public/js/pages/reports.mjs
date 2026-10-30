@@ -1,6 +1,6 @@
 // Ataskaitos: financial statements from the ledger, registers, aging, sales, drill-down, CSV/XLSX export, i.SAF, journal.
 import {isafView} from '../lib/isaf-view.mjs';
-import {h, clear, get, post, api, pageHeader, section, table, money, date, dateTime, guard, select, input, field, can, modal, toast, yearStart, monthStart, today, debounce} from '../core.mjs';
+import {h, clear, get, post, api, pageHeader, section, table, money, date, dateTime, guard, select, input, field, can, modal, toast, yearStart, monthStart, today, debounce, promptDialog} from '../core.mjs';
 
 const REPORTS = [
   ['pelnas', 'profit-loss', 'Pelnas (nuostoliai) pagal sąskaitas', 'period'], ['balansas', 'balance-sheet', 'Balansas pagal sąskaitas', 'asOf'], ['bandomasis', 'trial-balance', 'Bandomasis balansas', 'period'],
@@ -26,16 +26,16 @@ export async function render(main, rest, state) {
 async function reportView(body, [key, name, title, mode], rest) {
   const params = new URLSearchParams(location.hash.split('?')[1] || '');
   const f = {from: input({type: 'date', value: params.get('from') || yearStart()}), to: input({type: 'date', value: params.get('to') || today()}), asOf: input({type: 'date', value: params.get('asOf') || today()}),
-    account: input({value: params.get('account') || rest[1] || '', placeholder: 'visos; arba pradžia, pvz. 27', list: 'ledger-accounts', inputmode: 'numeric', autocomplete: 'off'}), groupBy: select(mode === 'purchases' ? [['account', 'Pagal sąskaitą'], ['supplier', 'Pagal tiekėją']] : [['month', 'Pagal mėnesį'], ['store', 'Pagal parduotuvę'], ['customer', 'Pagal pirkėją'], ['product', 'Pagal prekę']], params.get('groupBy') || (mode === 'purchases' ? 'account' : 'month'))};
+    account: input({value: params.has('account') ? params.get('account') : rest[1] || '', placeholder: 'visos; arba pradžia, pvz. 27', list: 'ledger-accounts', inputmode: 'numeric', autocomplete: 'off'}), groupBy: select(mode === 'purchases' ? [['account', 'Pagal sąskaitą'], ['supplier', 'Pagal tiekėją']] : [['month', 'Pagal mėnesį'], ['store', 'Pagal parduotuvę'], ['customer', 'Pagal pirkėją'], ['product', 'Pagal prekę']], params.get('groupBy') || (mode === 'purchases' ? 'account' : 'month'))};
   const inputs = mode === 'asOf' ? [field('Dienai', f.asOf)] : [field('Nuo', f.from), field('Iki', f.to), mode === 'ledger' ? field('Sąskaita', f.account) : null, ['sales', 'purchases'].includes(mode) ? field('Grupuoti', f.groupBy) : null];
   const out = h('div');
-  let loadSeq = 0;
+  let loadSeq = 0, ledgerLimit = 500; // the ledger shows 500 lines at a time ("Rodyti daugiau"); exports have everything
   const qs = () => new URLSearchParams(mode === 'asOf' ? {asOf: f.asOf.value} : {from: f.from.value, to: f.to.value, ...(mode === 'ledger' && {account: f.account.value}), ...(['sales', 'purchases'].includes(mode) && {groupBy: f.groupBy.value})});
   const load = async () => {
     // Keep the period in the address, so Back, bookmarks and shared links show the same report.
     history.replaceState(null, '', `${location.hash.split('?')[0]}?${qs()}`);
     const my = ++loadSeq;
-    const r = await get(`/api/reports/${name}?${qs()}`);
+    const r = await get(`/api/reports/${name}?${qs()}${mode === 'ledger' ? `&limit=${ledgerLimit}` : ''}`);
     if (my !== loadSeq) return; // a newer filter was typed meanwhile
     if (r.matchedAccounts) clear(accList, r.matchedAccounts.map((a) => h('option', {value: a.code}, `${a.code} ${a.name}`)));
     const drill = r.drill;
@@ -56,6 +56,7 @@ async function reportView(body, [key, name, title, mode], rest) {
       r.balanced === false ? h('div', {class: 'banner banner-warn'}, 'Dėmesio: ataskaita nesubalansuota.') : null,
       r.opening !== undefined ? h('p', null, `Pradinis likutis: ${money(r.opening)}`) : null,
       table(cols, r.rows, {onRow}),
+      mode === 'ledger' && r.hasMore ? h('div', {class: 'actions'}, h('span', {class: 'hint'}, `Rodoma ${r.rows.length} eilučių. `), h('button', {class: 'btn btn-small', onclick: () => { ledgerLimit = Math.min(ledgerLimit + 2000, 20000); guard(load); }}, 'Rodyti daugiau')) : null,
       r.totals ? h('div', {class: 'totals'}, Object.entries(r.totals).filter(([, v]) => typeof v !== 'object').map(([k, v]) => h('div', null, h('span', null, {debit: 'Debetas', credit: 'Kreditas', closing: 'Galutinis', revenue: 'Pajamos', expenses: 'Sąnaudos', result: 'Rezultatas', assets: 'Turtas', liabilities: 'Įsipareigojimai', equity: 'Nuosavybė', check: 'Skirtumas', vat: 'PVM', net: 'Be PVM', outstanding: 'Likutis'}[k] || k), h('strong', null, money(v))))) : null);
   };
   const exportBtn = (fmt) => h('button', {class: 'btn btn-small', onclick: () => guard(async () => {
@@ -65,7 +66,7 @@ async function reportView(body, [key, name, title, mode], rest) {
   })}, fmt.toUpperCase());
   // Ledger: the account box filters while typing (by the start of the account code); empty shows every operation.
   const accList = h('datalist', {id: 'ledger-accounts'});
-  if (mode === 'ledger') f.account.addEventListener('input', debounce(() => guard(load), 350));
+  if (mode === 'ledger') f.account.addEventListener('input', debounce(() => { ledgerLimit = 500; guard(load); }, 350));
   clear(body, h('div', {class: 'filters'}, inputs, accList, h('button', {class: 'btn btn-primary', onclick: () => guard(load)}, 'Rodyti'), exportBtn('csv'), exportBtn('xlsx')), out);
   await load();
 }
@@ -160,10 +161,10 @@ async function cogs(body, state) {
   const periods = await get('/api/cogs-periods');
   const month = input({type: 'month', value: today().slice(0, 7)}), amount = input({inputmode: 'decimal'}), note = input();
   const calcBox = h('div');
-  let accounts = {debit: '6000', credit: '204'};
+  let accounts = {debit: '6000', credit: '204'}, calcLines = null, calcFor = null;
   const calc = () => guard(async () => {
     const c = await get(`/api/cogs/proposal?period=${month.value}`);
-    accounts = c.accounts;
+    accounts = c.accounts; calcLines = c.lines; calcFor = {period: c.period, total: c.total};
     amount.value = c.total; note.value = 'apskaičiuota pagal svertinę vidutinę savikainą';
     clear(calcBox, section(`Apskaičiuota savikaina ${c.period}: ${money(c.total)} €`,
       c.posted ? h('p', {class: 'issue issue-warning'}, `Šio mėnesio savikaina jau užregistruota (įrašas #${c.posted}). Norėdami pakeisti, pirmiausia atšaukite tą įrašą žurnale.`) : null,
@@ -171,7 +172,12 @@ async function cogs(body, state) {
       table([{label: 'Kodas', key: 'sku'}, {label: 'Prekė', key: 'name'}, {label: 'Parduota', num: true, render: (r) => `${Number(r.quantity)} ${r.unit || ''}`},
         {label: 'Vid. savikaina', num: true, render: (r) => (r.unitCost === null ? '—' : money(r.unitCost))}, {label: 'Šaltinis', render: (r) => ({average: 'pirkimų vidurkis', card: 'kortelės kaina', none: 'nežinoma'}[r.source])},
         {label: 'Savikaina', num: true, render: (r) => (r.amount === null ? '—' : money(r.amount))}], c.rows, {empty: 'Šį mėnesį parduotų prekių su kortelėmis nėra.'}),
-      h('p', {class: 'hint'}, `${c.method} Įrašas: D ${c.accounts.debit} / K ${c.accounts.credit}, ${c.date}. Suma įrašyta į formą žemiau – peržiūrėkite ir registruokite.`)));
+      h('p', {class: 'hint'}, `${c.method} Įrašas: D ${c.accounts.debit} / K ${[...new Set(c.lines.filter((l) => l.credit).map((l) => l.account))].join(', ') || c.accounts.credit}, ${c.date}. Suma įrašyta į formą žemiau – peržiūrėkite ir registruokite.`),
+      Number(c.total) === 0 && !c.posted && can(state.user, 'approve') ? h('button', {class: 'btn', onclick: () => guard(async () => {
+        const note = await promptDialog(`Patvirtinti ${c.period} be savikainos`, 'Paaiškinimas (pvz., parduotų prekių savikaina jau sąnaudose)', {minLength: 5});
+        if (!note) return;
+        await post('/api/cogs/confirm', {period: c.period, note}); toast('Mėnuo patvirtintas – pelno ataskaita nebežymima kaip neišsami.', 'ok'); cogs(body, state);
+      })}, 'Patvirtinti, kad papildomos savikainos nėra') : null));
   });
   clear(body, h('h2', null, 'Parduotų prekių savikaina'),
     h('p', {class: 'hint'}, 'Atsargos apskaitomos pirkimo metu (204), o savikaina registruojama atskirai. Ją galima apskaičiuoti automatiškai pagal prekių judėjimą arba įvesti ranka. Kol mėnesio savikaina neužregistruota, pelno ataskaita žymima kaip neišsami.'),
@@ -181,7 +187,9 @@ async function cogs(body, state) {
       const [y, m] = month.value.split('-');
       const last = new Date(Date.UTC(Number(y), Number(m), 0)).toISOString().slice(0, 10);
       const r = await guard(() => post('/api/journal', {date: last, kind: 'cogs', cogsPeriod: month.value, description: `Parduotų prekių savikaina ${month.value}${note.value ? ' – ' + note.value : ''}`,
-        lines: [{account: accounts.debit, debit: amount.value}, {account: accounts.credit, credit: amount.value}]}), 'Savikaina užregistruota.');
+        // The calculated lines (credited where the goods are kept) when the amount was not changed by hand.
+        lines: calcLines?.length && calcFor?.period === month.value && Number(calcFor.total) === Number(String(amount.value).replace(',', '.')) ? calcLines
+          : [{account: accounts.debit, debit: amount.value}, {account: accounts.credit, credit: amount.value}]}), 'Savikaina užregistruota.');
       if (r) cogs(body, state);
     }}, h('div', {class: 'form-grid'}, field('Mėnuo', month), field('Suma (EUR)', amount, 'Įrašas: D 6000 / K 204'), field('Pastaba', note)),
       h('div', {class: 'actions'}, h('button', {type: 'button', class: 'btn', onclick: calc}, 'Apskaičiuoti pagal prekių judėjimą'), h('button', {class: 'btn btn-primary'}, 'Registruoti')))) : null,

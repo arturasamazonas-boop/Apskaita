@@ -320,6 +320,20 @@ export function register(r, {pool, storage}) {
       return {ok: true};
     });
   });
+  // A month whose remaining sales have no cost to book (e.g. goods without a product card whose cost is in the
+  // purchases): the accountant confirms it so the profit (loss) is no longer marked incomplete.
+  r.post('/api/cogs/confirm', async ({req, user}) => {
+    requireCap(user, 'approve');
+    const b = await readJson(req);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(b.period || '')) || String(b.note || '').trim().length < 5) throw new AppError(400, 'bad_request', 'Nurodykite mėnesį ir paaiškinimą.');
+    return tx(pool, async (db) => {
+      const live = (await db.query(`SELECT c.* FROM cogs_periods c WHERE c.period=$1 AND (c.journal_entry_id IS NULL OR NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id=c.journal_entry_id)) FOR UPDATE`, [b.period])).rows[0];
+      if (live) throw new AppError(409, 'cogs_exists', `Savikaina už ${b.period} jau patvirtinta.`);
+      await db.query(`INSERT INTO cogs_periods(period, journal_entry_id, confirmed_by, note) VALUES ($1,NULL,$2,$3) ON CONFLICT (period) DO UPDATE SET journal_entry_id=NULL, confirmed_by=EXCLUDED.confirmed_by, confirmed_at=now(), note=EXCLUDED.note`, [b.period, user.id, `Be papildomos savikainos: ${String(b.note).trim().slice(0, 280)}`]);
+      await audit(db, {userId: user.id, action: 'cogs.confirm_none', entityType: 'cogs_period', entityId: b.period, details: {note: String(b.note).slice(0, 300)}});
+      return {ok: true};
+    });
+  });
   r.get('/api/cogs/proposal', async ({user, query}) => {
     requireCap(user, 'read');
     try { return await cogsProposal(pool, {period: query.period}); } catch (e) { if (e.status === 400) throw new AppError(400, 'bad_period', e.message); throw e; }

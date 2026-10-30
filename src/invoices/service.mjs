@@ -8,6 +8,7 @@ import {AppError, tx} from '../db.mjs';
 import {audit} from '../audit.mjs';
 import {requireCap} from '../auth/auth.mjs';
 import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
+import {stockPositions} from '../ledger/stock-cost.mjs';
 import {postEntry} from '../ledger/ledger.mjs';
 import {extractPdf, extractImage, extractDocx, plainText} from '../extraction/text.mjs';
 import {parseInvoice, PROVIDER} from '../extraction/invoice-parser.mjs';
@@ -383,15 +384,32 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     // Cost of sales with the sale (perpetual inventory): goods lines take the product's weighted average cost on the
     // invoice date; a credit note returns the goods at the cost of the original sale. D cost of sales / K inventory.
     // A correction reverses the cost of the old lines (in the delta below) and books the cost of the new ones.
-    const cogs = data.register === 'sales' && company.auto_cogs !== false ? await saleCost(db, data, lines, ctx.roles) : null;
+    // Correcting a sale in a month whose cost of sales was already confirmed by a monthly entry: the cost of the old
+    // and the new lines is booked now, so the confirmed month stays right.
+    const monthConfirmed = p.kind === 'correction' && data.register === 'sales' && (await db.query(`SELECT 1 FROM cogs_periods c WHERE c.period=$1
+      AND (c.journal_entry_id IS NULL OR NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id=c.journal_entry_id))`, [String(data.issueDate).slice(0, 7)])).rowCount > 0;
+    const cogs = data.register === 'sales' && (company.auto_cogs !== false || monthConfirmed) ? await saleCost(db, data, lines, ctx.roles) : null;
+    const costLabel = `${series} ${number} savikaina`.trim();
+    const costSide = (account, v, debitWhenPositive) => { const pos = money.sign(v) > 0 === debitWhenPositive, amt = money.abs(v); return {account, debit: pos ? amt : '0', credit: pos ? '0' : amt, counterpartyId: null, description: costLabel}; };
     if (cogs?.total && !money.isZero(cogs.total)) {
-      const pos = money.sign(cogs.total) > 0, amt = money.abs(cogs.total), label = `${series} ${number} savikaina`.trim();
-      entryLines.push({account: ctx.roles.cogs || '6000', debit: pos ? amt : '0', credit: pos ? '0' : amt, counterpartyId: null, description: label},
-        {account: ctx.roles.inventory || '204', debit: pos ? '0' : amt, credit: pos ? amt : '0', counterpartyId: null, description: label});
+      entryLines.push(costSide(ctx.roles.cogs || '6000', cogs.total, true));
+      for (const [account, v] of cogs.byAccount) if (!money.isZero(v)) entryLines.push(costSide(account, v, false)); // credited where the goods are kept (204, 203, 201…)
     }
     if (p.kind === 'correction') {
       const delta = await correctionDelta(db, p.corrects_invoice_id, {lines, totals, vatRows, entryLines});
       ({lines, totals, vatRows, entryLines} = delta);
+      if (monthConfirmed) {
+        // Old lines costed by the monthly entry (no cost on the line): their cost goes back now.
+        const old = lines.filter((l) => l.cogsAmount === null && l.productId && l.lineType === 'revenue_goods' && money.sign(l.quantity) < 0);
+        const back = old.length ? await saleCost(db, {...data, relatedInvoiceId: null}, old, ctx.roles) : null;
+        if (back) {
+          for (const [l, v] of back.byLine) l.cogsAmount = v;
+          if (!money.isZero(back.total)) {
+            entryLines.push(costSide(ctx.roles.cogs || '6000', back.total, true));
+            for (const [account, v] of back.byAccount) if (!money.isZero(v)) entryLines.push(costSide(account, v, false));
+          }
+        }
+      }
       relatedId = p.corrects_invoice_id;
       const n = (await db.query(`SELECT count(*) AS n FROM invoices WHERE related_invoice_id=$1 AND doc_type='correction'`, [relatedId])).rows[0].n;
       numberKeyValue = `${computed.numberKey}K${Number(n) + 1}`;
@@ -435,7 +453,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     if (p.kind === 'correction' && data.register === 'sales') await enqueue(db, 'render_invoice_pdf', {invoiceId: String(relatedId), correctionId: String(invoiceId)}, {idempotencyKey: `pdf:${relatedId}:c${invoiceId}`});
     if (p.external_order_id) await db.query(`UPDATE external_orders SET state='posted', invoice_id=COALESCE(invoice_id,$2), updated_at=now() WHERE id=$1`, [p.external_order_id, invoiceId]);
     await audit(db, {userId: user.id, action: 'proposal.approve', entityType: 'proposal', entityId: p.id, details: {invoiceId, journalEntryId: entry.id, version: p.version, contentHash: p.content_hash, documentId: p.document_id, gross: totals.gross}});
-    return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim(), ...(cogs && {cogs: cogs.total, cogsMissing: cogs.missing})};
+    return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim(), ...(cogs && {cogs: cogs.total, cogsMissing: cogs.missing, cogsCardPrice: cogs.cardPriced})};
   });
 }
 
@@ -451,20 +469,22 @@ async function saleCost(db, data, lines, roles) {
   if (!goods.length) return null;
   const ids = [...new Set(goods.map((l) => String(l.productId)))];
   const products = new Map((await db.query(`SELECT id, sku, name, kind, purchase_price, track_stock FROM products WHERE id = ANY($1::bigint[])`, [ids])).rows.map((r) => [String(r.id), r]));
-  const avg = new Map((await db.query(`SELECT product_id, sum(quantity * unit_price) AS value, sum(quantity) AS qty FROM stock_moves
-    WHERE product_id = ANY($1::bigint[]) AND move_date <= $2 AND quantity > 0 AND kind IN ('purchase','opening','adjustment') AND unit_price IS NOT NULL GROUP BY product_id`, [ids, data.issueDate])).rows
-    .filter((r) => Number(r.qty) > 0).map((r) => [String(r.product_id), fromUnits(divRound(toUnits(r.value, 4) * 10000n, toUnits(r.qty, 4)), 4)]));
+  const pos = await stockPositions(db, ids, data.issueDate, {roles});
   const original = data.relatedInvoiceId ? new Map((await db.query(`SELECT product_id, sum(cogs_amount) AS c, sum(quantity) AS q FROM invoice_lines WHERE invoice_id=$1 AND cogs_amount IS NOT NULL GROUP BY product_id`, [data.relatedInvoiceId])).rows
     .filter((r) => Number(r.q) !== 0).map((r) => [String(r.product_id), fromUnits(divRound(toUnits(r.c, 2) * 1000000n, toUnits(r.q, 4)), 4)])) : new Map();
-  const byLine = new Map(), missing = [];
+  const byLine = new Map(), byAccount = new Map(), missing = [], cardPriced = [];
   for (const l of goods) {
-    const prod = products.get(String(l.productId));
+    const prod = products.get(String(l.productId)), p = pos.get(String(l.productId));
     if (!prod || prod.kind !== 'goods' || prod.track_stock === false) continue;
-    const unit = (money.sign(l.quantity) < 0 && original.get(String(l.productId))) || avg.get(String(l.productId)) || (prod.purchase_price !== null && prod.purchase_price !== undefined ? money.norm(prod.purchase_price) : null);
+    if (p.expensed) { byLine.set(l, '0.00'); continue; } // bought straight into expenses: the cost is already there
+    let unit = (money.sign(l.quantity) < 0 && original.get(String(l.productId))) || p.unit;
+    if (unit === null && prod.purchase_price !== null && prod.purchase_price !== undefined) { unit = money.norm(prod.purchase_price); cardPriced.push(prod.sku || prod.name); }
     if (unit === null) { missing.push(prod.sku || prod.name); continue; }
-    byLine.set(l, fromUnits(divRound(toUnits(l.quantity, 4) * toUnits(unit, 4), 10n ** 6n), 2));
+    const cost = fromUnits(divRound(toUnits(l.quantity, 4) * toUnits(unit, 4), 10n ** 6n), 2);
+    byLine.set(l, cost);
+    byAccount.set(p.account, money.add(byAccount.get(p.account) || '0', cost));
   }
-  return {byLine, total: money.sum([...byLine.values()]), missing};
+  return {byLine, byAccount, total: money.sum([...byLine.values()]), missing, cardPriced};
 }
 
 /** Delta between the corrected data and what is currently posted for the invoice group. */

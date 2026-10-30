@@ -198,14 +198,15 @@ export function register(r, {pool}) {
   // One month's run: one journal entry on the month end.
   const postRun = async (db, period, user) => {
     const p = await preview(db, period);
-    if (p.alreadyPosted) throw new AppError(409, 'posted', `Nusidėvėjimas už ${period} jau paskaičiuotas.`);
+    // Already calculated for this month: only assets missing from it (entered later) get a supplementary run.
+    if (p.alreadyPosted && !p.lines.length) return null;
     if (p.blocked.length) throw new AppError(409, 'missing_runs', `Pirmiausia paskaičiuokite ankstesnius mėnesius: ${[...new Set(p.blocked.flatMap((x) => x.missing))].sort().join(', ')}.`);
     if (!p.lines.length) return null;
     const run = (await db.query(`INSERT INTO depreciation_runs(period, total, created_by) VALUES ($1,$2,$3) RETURNING id`, [period, p.total, user.id])).rows[0];
     const sum = (key) => { const m = new Map(); for (const l of p.lines) m.set(l[key], money.add(m.get(l[key]) || '0', l.amount)); return m; };
     const lines = [...[...sum('expense_account')].map(([account, debit]) => ({account, debit, description: `Nusidėvėjimas ${period}`})),
       ...[...sum('depreciation_account')].map(([account, credit]) => ({account, credit, description: `Sukauptas nusidėvėjimas ${period}`}))];
-    const e = await postEntry(db, {date: monthEnd(period), description: `Ilgalaikio turto nusidėvėjimas ${period}`, sourceType: 'depreciation', sourceId: run.id, idempotencyKey: `depreciation:${run.id}`, userId: user.id, lines});
+    const e = await postEntry(db, {date: monthEnd(period), description: `Ilgalaikio turto nusidėvėjimas ${period}${p.alreadyPosted ? ' (papildomas – vėliau įvestas turtas)' : ''}`, sourceType: 'depreciation', sourceId: run.id, idempotencyKey: `depreciation:${run.id}`, userId: user.id, lines});
     await db.query('UPDATE depreciation_runs SET journal_entry_id=$2 WHERE id=$1', [run.id, e.id]);
     for (const l of p.lines) await db.query('INSERT INTO depreciation_lines(run_id, asset_id, amount) VALUES ($1,$2,$3)', [run.id, l.id, l.amount]);
     await audit(db, {userId: user.id, action: 'depreciation.post', entityType: 'depreciation_run', entityId: run.id, details: {period, total: p.total, entryId: e.id}});
@@ -220,7 +221,7 @@ export function register(r, {pool}) {
       await db.query('LOCK TABLE depreciation_runs IN EXCLUSIVE MODE');
       if (!b.catchUp) {
         const one = await postRun(db, b.period, user);
-        if (!one) throw new AppError(422, 'empty', `Už ${b.period} nėra nudėvimo turto.`);
+        if (!one) throw new AppError((await preview(db, b.period)).alreadyPosted ? 409 : 422, 'empty', `Už ${b.period} nėra ką skaičiuoti (nusidėvėjimas jau paskaičiuotas arba nudėvimo turto nėra).`);
         return one;
       }
       // Catch up: every month from the first one not yet calculated up to the chosen month, each with its own entry.
@@ -228,13 +229,19 @@ export function register(r, {pool}) {
       const missing = [...new Set(p.blocked.flatMap((x) => x.missing))].sort();
       let period = missing[0] || b.period;
       const runs = [];
-      for (let n = 0; period <= b.period && n < 240; n++, period = nextPeriod(period)) {
-        if ((await db.query(`SELECT 1 FROM depreciation_runs WHERE period=$1 AND status='posted'`, [period])).rowCount) continue;
-        const r1 = await postRun(db, period, user);
-        if (r1) runs.push(r1);
+      let n = 0;
+      try {
+        for (; period <= b.period && n < 1200; n++, period = nextPeriod(period)) {
+          const r1 = await postRun(db, period, user);
+          if (r1) runs.push(r1);
+        }
+      } catch (e) {
+        if (/užrakint|locked/i.test(e.message)) throw new AppError(409, 'period_locked', `${e.message} Užrakintų mėnesių nusidėvėjimo skaičiuoti negalima: turtui įveskite sukauptą nusidėvėjimą pradžios dienai (turto kortelėje) arba atrakinkite laikotarpį.`);
+        throw e;
       }
       if (!runs.length) throw new AppError(422, 'empty', `Iki ${b.period} nėra ką skaičiuoti.`);
-      return {runs, total: money.sum(runs.map((x) => x.total)), months: runs.length, from: runs[0].period, to: runs[runs.length - 1].period};
+      return {runs, total: money.sum(runs.map((x) => x.total)), months: new Set(runs.map((x) => x.period)).size, from: runs[0].period, to: runs[runs.length - 1].period,
+        ...(period <= b.period && {more: `Paskaičiuota iki ${runs[runs.length - 1].period}; spauskite dar kartą likusiems mėnesiams.`})};
     });
   });
   r.post('/api/depreciation/runs/:id/cancel', async ({req, user, params}) => {

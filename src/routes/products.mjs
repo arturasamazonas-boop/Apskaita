@@ -1,6 +1,8 @@
 // Prekės: product cards, user-defined attributes (rodikliai), stock balances and movements (quantities from posted
 // invoices + manual movements).
 import {AppError, tx} from '../db.mjs';
+import {roleAccounts} from '../ledger/ledger.mjs';
+import {stockPositions} from '../ledger/stock-cost.mjs';
 import {requireCap} from '../auth/auth.mjs';
 import {readJson} from '../http.mjs';
 import {audit} from '../audit.mjs';
@@ -125,6 +127,9 @@ export function register(r, {pool}) {
         FROM products p LEFT JOIN st ON st.product_id=p.id
        WHERE p.track_stock AND ($2='' OR p.group_name=$2) AND ($3 <> 'true' OR coalesce(st.stock,0) <> 0)
        ORDER BY p.group_name, p.name`, [asOf, s(query.group, 80), query.nonzero || ''])).rows;
+    // Value and average on the moving average, as booked on the inventory accounts.
+    const pos = await stockPositions(pool, rows.map((x) => x.id), asOf, {roles: await roleAccounts(pool)});
+    for (const x of rows) { const p = pos.get(String(x.id)); if (p && !p.expensed) { x.value = p.value; x.avg_cost = p.unit; } }
     const total = rows.reduce((a, x) => a + Number(x.value || 0), 0);
     return {asOf, items: rows, totalValue: total.toFixed(2)};
   });

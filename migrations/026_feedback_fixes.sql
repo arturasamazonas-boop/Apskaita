@@ -39,3 +39,25 @@ ALTER TABLE invoice_lines ADD COLUMN cogs_amount numeric(18,2);
 ALTER TABLE company_settings ADD COLUMN auto_cogs boolean NOT NULL DEFAULT true;
 -- A company that already books the cost of sales monthly keeps doing so (no double counting); it can switch in the settings.
 UPDATE company_settings SET auto_cogs = false WHERE EXISTS (SELECT 1 FROM cogs_periods);
+
+-- Stock cost of a purchase includes VAT that cannot be deducted (a company that is not a VAT payer, or a
+-- non-deductible line): it is part of the goods' cost, as on the inventory account.
+CREATE OR REPLACE VIEW stock_moves AS
+  SELECT l.product_id, i.issue_date AS move_date,
+         CASE WHEN i.register='purchase' THEN 'purchase' ELSE 'sale' END AS kind,
+         CASE WHEN i.register='purchase' THEN l.quantity ELSE -l.quantity END AS quantity,
+         CASE WHEN l.quantity <> 0 THEN round((l.net + CASE WHEN i.register='purchase' AND l.vat_treatment='non_deductible' THEN l.vat ELSE 0 END) / l.quantity, 4) END AS unit_price,
+         'invoice'::text AS source_type, i.id AS source_id,
+         trim(i.series || ' ' || i.number) || CASE WHEN i.doc_type='credit_note' THEN ' (kreditinė)' ELSE '' END AS reference,
+         l.description AS note
+    FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id
+   WHERE l.product_id IS NOT NULL
+  UNION ALL
+  SELECT m.product_id, m.movement_date, m.kind, m.quantity, m.unit_cost, 'stock_movement', m.id, '', m.note
+    FROM stock_movements m;
+
+-- Depreciation: an asset entered late (its start before months already calculated) gets a supplementary run for
+-- those months, so a period can have more than one posted run (each asset still at most once per period).
+DROP INDEX depreciation_runs_posted_uq;
+CREATE INDEX depreciation_runs_period_idx ON depreciation_runs(period, status);
+CREATE UNIQUE INDEX depreciation_lines_asset_run_uq ON depreciation_lines(run_id, asset_id);
