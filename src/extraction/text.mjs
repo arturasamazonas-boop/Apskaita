@@ -28,6 +28,20 @@ export function wordsToRows(words, {gapFactor = 1.4} = {}) {
     const row = rows.find((r) => Math.abs(r.cy - w.cy) < Math.max(r.h, w.h) * 0.5);
     if (row) { row.words.push(w); row.cy = (row.cy * (row.words.length - 1) + w.cy) / row.words.length; row.h = Math.max(row.h, w.h); } else rows.push({cy: w.cy, h: w.h, words: [w]});
   }
+  // A tall word (a logo "KASTA" beside a two-line letterhead) can pull two text lines into one row. Two words one above
+  // the other (same x range, no vertical overlap) cannot be on one line: regroup such a row strictly, small words first.
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const stacked = r.words.some((a) => r.words.some((b) => a !== b && a.bbox[3] <= b.bbox[1] && Math.min(a.bbox[2], b.bbox[2]) > Math.max(a.bbox[0], b.bbox[0])));
+    if (!stacked) continue;
+    const sub = [];
+    for (const w of [...r.words].sort((a, b) => a.h - b.h || a.bbox[0] - b.bbox[0])) {
+      let best = null;
+      for (const s of sub) { const d = Math.abs(s.cy - w.cy); if (d < Math.min(s.h, w.h) * 0.5 && (!best || d < best.d)) best = {s, d}; }
+      if (best) { best.s.words.push(w); best.s.h = Math.max(best.s.h, w.h); } else sub.push({cy: w.cy, h: w.h, words: [w]});
+    }
+    if (sub.length > 1) { rows.splice(i, 1, ...sub); i += sub.length - 1; }
+  }
   rows.sort((a, b) => a.cy - b.cy);
   return rows.map((r) => {
     r.words.sort((a, b) => a.bbox[0] - b.bbox[0]);

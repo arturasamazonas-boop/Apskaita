@@ -67,6 +67,34 @@ function valueAfter(row, labelRe) {
   return null;
 }
 
+const DUE_LABEL_RE = /(apmoketi|apmokejimo|terminas|due|galioja|pristatymo)/;
+const DATE_TEXT_RE = /\d{4}\s?[-./]\s?\d{1,2}\s?[-./]\s?\d{1,2}|\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}\s*m\.?\s*[a-zA-ZąčęėįšųūžĄČĘĖĮŠŲŪŽ]+\s*\d{1,2}\s*d\.?/;
+
+/** The row without a due/delivery label and the date that follows it ("Data: 2026-10-15   Apmokėti iki: 2026-10-29"). */
+function withoutDueDate(row) {
+  const segs = row.segments?.length ? row.segments : [{text: row.text}];
+  const out = [];
+  let dropDate = false;
+  for (const s of segs) {
+    let text = s.text;
+    if (dropDate) {
+      dropDate = false;
+      const d = DATE_TEXT_RE.exec(text);
+      if (d && d.index <= 2) { text = text.slice(d.index + d[0].length).replace(/^[\s,;|]+/, ''); if (text) out.push({...s, text}); continue; }
+    }
+    const m = DUE_LABEL_RE.exec(fold(text));
+    if (!m) { out.push(s); continue; }
+    const before = text.slice(0, m.index).replace(/[\s,;|–-]+$/, '');
+    if (before) out.push({...s, text: before});
+    const after = text.slice(m.index);
+    const d = DATE_TEXT_RE.exec(after);
+    if (!d) { dropDate = true; continue; }
+    const rest = after.slice(d.index + d[0].length).replace(/^[\s,;|]+/, '');
+    if (rest) out.push({...s, text: rest});
+  }
+  return {...row, segments: out, text: out.map((s) => s.text).join('  ')};
+}
+
 function allRows(doc) {
   const out = [];
   for (const page of doc.pages) page.rows.forEach((row, idx) => out.push({page, row, idx, f: fold(row.text)}));
@@ -84,9 +112,13 @@ const TYPE_PATTERNS = [
   ['receipt', /\bkvitas\b|\bcekis\b|\breceipt\b/],
 ];
 
+// A bank-account line ("Banko sąskaita LT…", "Atsiskaitomoji sąskaita LT…") mentions "sąskaita" but is never the title.
+const BANK_ROW_RE = /(banko|bankas|atsiskaitomoji|a\.\s?s\.|a\/s|iban|\blt\d{2}\s?\d{4})/;
+const isTitleRow = (row) => { const f = fold(row.text); return f.length < 90 && !BANK_ROW_RE.test(f) && TYPE_PATTERNS.some(([, re]) => re.test(f)); };
+
 function detectTitle(page) {
   // The most specific title wins (a letterhead "Banko sąskaita LT…" above "PVM SĄSKAITA FAKTŪRA" is not the title).
-  const rows = page.rows.slice(0, 12).filter((row) => !/(banko|a\.\s?s\.|iban|\blt\d{2}\s?\d{4})/.test(fold(row.text)));
+  const rows = page.rows.slice(0, 12).filter((row) => !BANK_ROW_RE.test(fold(row.text)));
   for (const [type, re] of TYPE_PATTERNS) for (const row of rows) { const f = fold(row.text); if (re.test(f) && f.length < 90) return {type, row}; }
   return null;
 }
@@ -102,20 +134,24 @@ function findNumber(page) {
   for (const row of page.rows.slice(0, 14)) {
     const f = fold(row.text);
     if (/uzsakym|order|koreguojam|kredituojam|pagal saskait|mokejimo paskirt|kodas/.test(f)) continue;
+    // The line table's header ("Nr.  Paslaugos pavadinimas  Kiekis …") is not "Nr. <number>".
+    if (isHeaderRow(row)) continue;
     const m0 = NUM_RE[0].exec(f);
     const orig = (m) => row.text.slice(m.index, m.index + m[0].length);
-    if (m0) {
+    if (m0 && /\d/.test(m0[2])) {
       const o = orig(m0);
       const mm = /serija\s*:?\s*(\S{1,10})\s*,?\s*nr\.?\s*:?\s*(\S+)/i.exec(fold(o)) && /^(\S+\s*:?\s*)(\S{1,10})(\s*,?\s*\S+\s*:?\s*)(\S+)/.exec(o);
       return {series: (mm ? mm[2] : m0[1]).toUpperCase(), number: (mm ? mm[4] : m0[2]).toUpperCase(), page, row};
     }
-    for (const re of NUM_RE.slice(1)) {
+    for (const [k, re] of NUM_RE.entries()) {
+      if (k === 0) continue;
       const m = re.exec(f);
-      if (m) {
-        const raw = row.text.slice(m.index + m[0].length - m[1].length, m.index + m[0].length).trim().toUpperCase();
-        const parts = raw.split(/\s+/);
-        return parts.length === 2 && /^[A-Z]{1,6}$/.test(parts[0]) ? {series: parts[0], number: parts[1], page, row} : {series: '', number: raw.replace(/\s+/g, ''), page, row};
-      }
+      if (!m || !/\d/.test(m[1])) continue;
+      // A bare "Nr. …" row is weaker than a number printed in the title itself.
+      if (k === 2 && fromTitle) return fromTitle;
+      const raw = row.text.slice(m.index + m[0].length - m[1].length, m.index + m[0].length).trim().toUpperCase();
+      const parts = raw.split(/\s+/);
+      return parts.length === 2 && /^[A-Z]{1,6}$/.test(parts[0]) ? {series: parts[0], number: parts[1], page, row} : {series: '', number: raw.replace(/\s+/g, ''), page, row};
     }
   }
   return fromTitle;
@@ -195,7 +231,7 @@ function partyBlocks(doc) {
   // No "Pardavėjas" label: many invoices print the supplier as a letterhead above the title. Take the rows above the
   // title (or above the buyer) that carry a company code, VAT code or IBAN.
   if (!sellerAt) {
-    const titleIdx = rows.findIndex((row) => TYPE_PATTERNS.some(([, re]) => re.test(fold(row.text))) && fold(row.text).length < 90);
+    const titleIdx = rows.findIndex(isTitleRow);
     const end = Math.min(titleIdx >= 0 ? titleIdx : rows.length, buyerAt ? buyerAt.i : rows.length, 12);
     const top = rows.slice(0, end).filter((row) => !/^(data|israsymo|saskaitos data|serija|nr\.?)\b/.test(fold(row.text).trim()));
     if (top.some((row) => /kodas|\bk\.|pvm|\blt\d{2}|\b\d{9}\b/.test(fold(row.text)))) {
@@ -273,7 +309,7 @@ function parseParty(items) {
 
 // ---------------------------------------------------------------- line table
 const COLS = [
-  ['no', ['eil. nr.', 'eil nr', 'nr.', 'nr', 'no.', '#']],
+  ['no', ['eil. nr.', 'eil nr', 'eil.', 'eil', 'nr.', 'nr', 'no.', '#']],
   ['sku', ['kodas', 'prekes kodas', 'sku', 'artikulas', 'code']],
   ['description', ['prekes pavadinimas', 'paslaugos pavadinimas', 'pavadinimas', 'aprasymas', 'prekes', 'preke', 'paslauga', 'description', 'item', 'produktas']],
   ['quantity', ['kiekis', 'kiek.', 'qty', 'quantity']],
@@ -290,7 +326,8 @@ function headerColumns(row) {
   // DOCX tables: cells; PDF/OCR: words with x positions.
   const tokens = row.isTableRow
     ? row.segments.map((s, i) => ({t: fold(s.text).trim(), x0: i, x1: i + 1, cell: i}))
-    : (row.words || []).map((w) => ({t: fold(w.text), x0: w.bbox[0], x1: w.bbox[2]}));
+    : (row.segments?.length ? row.segments.flatMap((s, si) => (s.words || []).map((w) => ({w, si}))) : (row.words || []).map((w) => ({w, si: 0})))
+      .map(({w, si}) => ({t: fold(w.text), x0: w.bbox[0], x1: w.bbox[2], si}));
   const cols = [];
   if (row.isTableRow) {
     for (const tok of tokens) {
@@ -300,16 +337,32 @@ function headerColumns(row) {
     }
     return cols;
   }
-  let i = 0;
-  while (i < tokens.length) {
+  const matchAt = (i, maxLen = 99) => {
     let best = null;
     for (const [key, names] of COLS) {
       for (const n of names) {
         const parts = n.split(' ');
+        if (parts.length > maxLen) continue;
         const slice = tokens.slice(i, i + parts.length).map((x) => x.t.replace(/[:]/g, ''));
-        if (slice.length === parts.length && slice.every((s, k) => s === parts[k] || (k === parts.length - 1 && s === parts[k] + ','))) {
+        // A name of several words is one phrase: "Vnt." and "Kaina be PVM" far apart are two columns, not "vnt. kaina".
+        const onePhrase = tokens.slice(i, i + parts.length).every((x) => x.si === tokens[i].si);
+        if (slice.length === parts.length && onePhrase && slice.every((s, k) => s === parts[k] || (k === parts.length - 1 && s === parts[k] + ','))) {
           if (!best || parts.length > best.len) best = {key, len: parts.length};
         }
+      }
+    }
+    return best;
+  };
+  let i = 0;
+  while (i < tokens.length) {
+    let best = matchAt(i);
+    // "Vnt. Kaina be PVM": "vnt." + "kaina be pvm" reads more of the header than "vnt. kaina" + "be" + "pvm"; but
+    // "Mato vnt. Kaina" stays "mato vnt." + "kaina". The split wins only when it covers more words.
+    if (best && best.len > 1) {
+      const greedyEnd = i + best.len + (matchAt(i + best.len)?.len || 0);
+      for (let j = i + 1; j < i + best.len; j++) {
+        const later = matchAt(j), shorter = later && matchAt(i, j - i);
+        if (shorter && shorter.len === j - i && j + later.len > greedyEnd) { best = shorter; break; }
       }
     }
     if (!best) {
@@ -318,7 +371,9 @@ function headerColumns(row) {
       for (const [key, names] of COLS) for (const n of names) if (!n.includes(' ') && n.length >= 3 && tok.length > n.length && tok.endsWith(n) && (!best || n.length > best.n)) best = {key, len: 1, n: n.length};
     }
     if (best && !cols.some((c) => c.key === best.key)) {
-      cols.push({key: best.key, x0: tokens[i].x0, x1: tokens[i + best.len - 1].x1});
+      // A glued word ("PVMPVM%") holds this column's name only at its end: the span is that share of the word.
+      const x0 = best.n ? tokens[i].x1 - ((tokens[i].x1 - tokens[i].x0) * best.n) / tokens[i].t.replace(/[:]/g, '').length : tokens[i].x0;
+      cols.push({key: best.key, x0, x1: tokens[i + best.len - 1].x1});
       i += best.len;
     } else i++;
   }
@@ -340,15 +395,46 @@ function cellsByColumn(row, cols) {
     for (const c of cols) { const s = row.segments[c.cell]; if (s && s.text) out[c.key] = {text: s.text, seg: s}; }
     return out;
   }
+  // Text (left-aligned) goes by its left edge: a column starts at its header's left edge.
   const bounds = cols.map((c, i) => ({key: c.key, from: i === 0 ? -1 : c.x0 - 0.012, to: i === cols.length - 1 ? 2 : cols[i + 1].x0 - 0.012}));
-  for (const seg of row.segments || []) {
-    // Assign words individually so merged segments split on column boundaries.
-    for (const w of seg.words || []) {
-      const b = bounds.find((bb) => w.bbox[0] >= bb.from && w.bbox[0] < bb.to) || bounds[bounds.length - 1];
-      const cur = out[b.key];
-      if (cur) { cur.text += ' ' + w.text; cur.seg.words.push(w); cur.seg.bbox = [Math.min(cur.seg.bbox[0], w.bbox[0]), Math.min(cur.seg.bbox[1], w.bbox[1]), Math.max(cur.seg.bbox[2], w.bbox[2]), Math.max(cur.seg.bbox[3], w.bbox[3])]; }
-      else out[b.key] = {text: w.text, seg: {text: w.text, words: [w], bbox: [...w.bbox]}};
+  const byLeft = (x) => (bounds.find((bb) => x >= bb.from && x < bb.to) || bounds[bounds.length - 1]).key;
+  const underHeader = (bbox) => {
+    let key = null, best = 0;
+    for (const c of cols) { const o = Math.min(bbox[2], c.x1) - Math.max(bbox[0], c.x0); if (o > best) { best = o; key = c.key; } }
+    return key;
+  };
+  for (const tok of rowTokens(row, underHeader)) {
+    // Amounts are usually right-aligned or centred under their header and may be wider than it ("1 092,00" under
+    // "Suma"): the header they overlap most is their column. With no overlap (left header, right-aligned value) – left edge.
+    const key = (NUM_TOKEN_RE.test(tok.text) && underHeader(tok.bbox)) || byLeft(tok.bbox[0]);
+    const cur = out[key];
+    if (cur) { cur.text += ' ' + tok.text; cur.seg.words.push(...tok.words); cur.seg.bbox = [Math.min(cur.seg.bbox[0], tok.bbox[0]), Math.min(cur.seg.bbox[1], tok.bbox[1]), Math.max(cur.seg.bbox[2], tok.bbox[2]), Math.max(cur.seg.bbox[3], tok.bbox[3])]; }
+    else out[key] = {text: tok.text, seg: {text: tok.text, words: [...tok.words], bbox: [...tok.bbox]}};
+  }
+  return out;
+}
+
+const NUM_TOKEN_RE = /^[-+(]?\d[\d\s.,']*\)?\s?(?:%|€|eur)?$/i;
+
+/** Words of a row in reading order; space-separated thousands ("1 092,00", "1 184 000,00") are joined into one token. */
+function rowTokens(row, underHeader = () => null) {
+  const words = (row.segments?.length ? row.segments.flatMap((s) => s.words || []) : row.words || []).filter((w) => w.bbox);
+  const out = [];
+  for (const w of words) {
+    const prev = out[out.length - 1];
+    if (prev && /^[-(]?\d{1,3}(?: \d{3})*$/.test(prev.text) && /^\d{3}(?:[.,]\d{1,2})?\)?(?:€|EUR)?$/i.test(w.text)) {
+      // Only a gap about one space wide joins: the next column is further away.
+      const charW = Math.max((prev.bbox[2] - prev.bbox[0]) / prev.text.length, (w.bbox[2] - w.bbox[0]) / w.text.length);
+      const gap = w.bbox[0] - prev.bbox[2];
+      // Parts standing under two different headers are two cells (quantity "2" beside price "120,00").
+      const a = underHeader(prev.words[0].bbox), b = underHeader(w.bbox);
+      if (gap > -charW && gap < charW * 0.9 && !(a && b && a !== b)) {
+        prev.text += ' ' + w.text; prev.words.push(w);
+        prev.bbox = [prev.bbox[0], Math.min(prev.bbox[1], w.bbox[1]), w.bbox[2], Math.max(prev.bbox[3], w.bbox[3])];
+        continue;
+      }
     }
+    out.push({text: w.text, bbox: [...w.bbox], words: [w]});
   }
   return out;
 }
@@ -577,9 +663,10 @@ export function parseInvoice(doc) {
   const issue = (() => {
     for (const {page, row, f} of allRows(doc)) {
       if (page.page > 1) break;
-      // A due date may share the row ("Išrašymo data: … | Mokėjimo terminas: …"): only the matched part is judged.
-      const strong = valueAfter(row, /(saskaitos data|israsymo data|dokumento data|invoice date|date of issue)/);
-      const v = strong || (/apmoketi|terminas|due|galioja|pristatymo/.test(f) ? null : valueAfter(row, /(data|date)/));
+      // A due date may share the row ("Data: … Apmokėti iki: …", "Išrašyta …, apmokėti iki …"): only the rest is judged.
+      const r = DUE_LABEL_RE.test(f) ? withoutDueDate(row) : row;
+      const strong = valueAfter(r, /(saskaitos data|israsymo data|dokumento data|invoice date|date of issue|israsyta)/);
+      const v = strong || valueAfter(r, /(data|date)/);
       const d = v && parseDate(v.text);
       if (d) return field(d, srcOf(page, row, v.seg));
     }
@@ -588,8 +675,9 @@ export function parseInvoice(doc) {
     const anchor = rows.findIndex((row) => TYPE_PATTERNS.some(([, re]) => re.test(fold(row.text))) || /\bnr\.?\s*\S*\d/.test(fold(row.text)));
     for (let i = Math.max(anchor, 0); anchor >= 0 && i < Math.min(rows.length, anchor + 4); i++) {
       const f = fold(rows[i].text);
-      if (/apmoketi|terminas|due|galioja|pristatymo|uzsakym/.test(f)) continue;
-      const d = parseDate(rows[i].text);
+      if (/uzsakym/.test(f)) continue;
+      const r = DUE_LABEL_RE.test(f) ? withoutDueDate(rows[i]) : rows[i];
+      const d = parseDate(r.text);
       if (d) return {...field(d, srcOf(doc.pages[0], rows[i])), derived: 'Data be pavadinimo po dokumento antrašte.'};
     }
     return null;
