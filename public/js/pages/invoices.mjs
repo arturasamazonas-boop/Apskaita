@@ -53,13 +53,16 @@ export async function invoiceDetail(main, id, state) {
     })}, 'Anuliuoti'));
   }
   const cp = inv.counterparty_snapshot || {};
+  // A corrected invoice (same number) is shown as it stands now; the original and the corrections are listed below.
+  const shown = inv.corrected && !inv.change?.annulled ? {lines: inv.currentLines, net: inv.corrected.net, vat: inv.corrected.vat, gross: inv.corrected.gross} : {lines: inv.lines, net: inv.net_total, vat: inv.vat_total, gross: inv.gross_total};
   clear(main, pageHeader(`${DOC_TYPE[inv.doc_type] || ''} ${inv.series} ${inv.number}`, h('a', {class: 'btn btn-small', href: `#/${base}`}, '‹ Sąrašas'), ...actions),
     inv.openCorrection ? h('p', {class: 'issue issue-warning'}, 'Pradėtas šios sąskaitos taisymas dar nepatvirtintas. ', h('a', {href: `#/deze/${inv.openCorrection.document_id}`}, 'Tęsti taisymą')) : null,
+    inv.corrected && !inv.change?.annulled ? h('p', {class: 'issue issue-warning'}, 'Sąskaita pataisyta (numeris tas pats): rodomos dabartinės eilutės ir sumos. Pradinis įrašas ir koregavimai – „Susiję dokumentai“.') : null,
     inv.change?.annulled ? h('p', {class: 'issue issue-error'}, 'ANULIUOTA – visos šios sąskaitos sumos atšauktos (žr. susijusius koregavimus).') : null,
     inv.change && inv.change.blockers.length && !inv.change.annulled ? h('p', {class: 'hint'}, `Taisyti ar anuliuoti nebegalima: ${inv.change.blockers.join(' ')}`) : null,
     h('div', {class: 'cols'},
       section('Rekvizitai', h('dl', {class: 'dl'},
-        h('dt', null, 'Išrašyta'), h('dd', null, date(inv.issue_date)), h('dt', null, 'PVM data'), h('dd', null, date(inv.vat_point_date)), h('dt', null, 'Terminas'), h('dd', null, date(inv.due_date)),
+        h('dt', null, 'Išrašyta'), h('dd', null, date(inv.issue_date)), h('dt', null, 'PVM data'), h('dd', null, date(inv.vat_point_date)), h('dt', null, 'Terminas'), h('dd', null, date(inv.corrected?.dueDate || inv.due_date)),
         h('dt', null, inv.register === 'sales' ? 'Pirkėjas' : 'Tiekėjas'), h('dd', null, `${cp.name || ''} ${cp.companyCode ? `(${cp.companyCode})` : ''} ${cp.vatCode || ''}`),
         h('dt', null, 'Adresas'), h('dd', null, cp.address || '—'), h('dt', null, 'Užsakymas'), h('dd', null, inv.order ? `${inv.store_name || ''} #${inv.order.order_number} (${inv.order.state})` : inv.order_reference || '—'),
         h('dt', null, 'Patvirtino'), h('dd', null, `${inv.approved_by_name} ${dateTime(inv.approved_at)}`))),
@@ -67,8 +70,8 @@ export async function invoiceDetail(main, id, state) {
         h('dt', null, 'Apmokėta'), h('dd', null, eur(inv.balance.paid)), h('dt', null, 'Likutis'), h('dd', null, eur(inv.balance.outstanding))) : h('p', null, 'Susieta su kita sąskaita.'),
       table([{label: 'Data', render: (a) => date(a.booking_date || a.approved_at)}, {label: 'Tipas', key: 'kind'}, {label: 'Mokėtojas', key: 'counterparty_name'}, {label: 'Suma', num: true, render: (a) => money(a.amount)}], inv.allocations, {empty: 'Mokėjimų nėra.', onRow: (a) => a.transaction_id && (location.hash = `#/bankas/tx/${a.transaction_id}`)}))),
     section('Eilutės', table([{label: '#', key: 'line_no'}, {label: 'Aprašymas', key: 'description'}, {label: 'Kiekis', num: true, render: (l) => Number(l.quantity)}, {label: 'Kaina', num: true, render: (l) => money(l.unit_price)},
-      {label: 'Be PVM', num: true, render: (l) => money(l.net)}, {label: 'PVM', render: (l) => `${l.tax_code} ${Number(l.vat_rate)} %`}, {label: 'PVM suma', num: true, render: (l) => money(l.vat)}, {label: 'Sąskaita', key: 'account_code'}, {label: 'Tipas', render: (l) => LINE_TYPE[l.line_type] || l.line_type}, {label: 'PVM atskaita', render: (l) => VAT_T[l.vat_treatment] || ''}], inv.lines),
-    h('div', {class: 'totals'}, h('div', null, h('span', null, 'Be PVM'), h('strong', null, eur(inv.net_total))), h('div', null, h('span', null, 'PVM'), h('strong', null, eur(inv.vat_total))), h('div', null, h('span', null, 'Iš viso'), h('strong', null, eur(inv.gross_total))))),
+      {label: 'Be PVM', num: true, render: (l) => money(l.net)}, {label: 'PVM', render: (l) => `${l.tax_code} ${Number(l.vat_rate)} %`}, {label: 'PVM suma', num: true, render: (l) => money(l.vat)}, {label: 'Sąskaita', key: 'account_code'}, {label: 'Tipas', render: (l) => LINE_TYPE[l.line_type] || l.line_type}, {label: 'PVM atskaita', render: (l) => VAT_T[l.vat_treatment] || ''}], shown.lines),
+    h('div', {class: 'totals'}, h('div', null, h('span', null, 'Be PVM'), h('strong', null, eur(shown.net))), h('div', null, h('span', null, 'PVM'), h('strong', null, eur(shown.vat))), h('div', null, h('span', null, 'Iš viso'), h('strong', null, eur(shown.gross))))),
     section('Didžiosios knygos įrašas', table([{label: 'Sąskaita', render: (l) => `${l.account_code} ${l.account_name}`}, {label: 'Debetas', num: true, render: (l) => (Number(l.debit) ? money(l.debit) : '')}, {label: 'Kreditas', num: true, render: (l) => (Number(l.credit) ? money(l.credit) : '')}], inv.entry)),
     inv.related.length ? section('Susiję dokumentai', table([{label: 'Tipas', render: (r) => DOC_TYPE[r.doc_type]}, {label: 'Numeris', render: (r) => `${r.series} ${r.number}`}, {label: 'Data', render: (r) => date(r.issue_date)}, {label: 'Suma', num: true, render: (r) => money(r.gross_total)}], inv.related, {onRow: (r) => { location.hash = `#/${base}/s/${r.id}`; }})) : null);
 }

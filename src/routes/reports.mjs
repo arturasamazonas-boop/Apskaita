@@ -391,8 +391,12 @@ export function register(r, {pool, storage}) {
       WHERE a.invoice_id IN (SELECT id FROM invoices WHERE id=$1 OR related_invoice_id=$1) ORDER BY a.id`, [rootId])).rows;
     const order = inv.external_order_id ? (await pool.query('SELECT id, store_id, external_id, order_number, external_status, state FROM external_orders WHERE id=$1', [inv.external_order_id])).rows[0] : null;
     const change = inv.register === 'sales' && ['invoice', 'vat_invoice'].includes(inv.doc_type) ? await changeBlockers(pool, inv.id).then(({blockers, annulled}) => ({blockers, annulled})) : null;
-    const currentLines = change ? (await currentSalesLines(pool, inv.id)).lines : null;
+    const cur = change ? await currentSalesLines(pool, inv.id) : null;
+    const currentLines = cur ? cur.lines : null;
+    // After corrections (same number): the invoice as it stands now – totals of the original with all its corrections.
+    const corrected = cur?.correctionId ? {...(await pool.query(`SELECT sum(net_total) AS net, sum(vat_total) AS vat, sum(gross_total) AS gross FROM invoices WHERE id=$1 OR (related_invoice_id=$1 AND doc_type='correction')`, [inv.id])).rows[0],
+      dueDate: (await pool.query(`SELECT p.data->>'dueDate' AS d FROM invoices i JOIN proposals p ON p.id=i.proposal_id WHERE i.id=$1`, [cur.correctionId])).rows[0]?.d || null} : null;
     const openCorrection = change ? (await pool.query(`SELECT id, document_id FROM proposals WHERE corrects_invoice_id=$1 AND kind='correction' AND status='open' LIMIT 1`, [inv.id])).rows[0] || null : null;
-    return {...inv, lines, vat, entry, related, balance, allocations, order, change, currentLines, openCorrection};
+    return {...inv, lines, vat, entry, related, balance, allocations, order, change, currentLines, corrected, openCorrection};
   });
 }

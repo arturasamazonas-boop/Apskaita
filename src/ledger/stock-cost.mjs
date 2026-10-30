@@ -1,7 +1,9 @@
 // Inventory cost by moving average (svertinė vidutinė savikaina, slenkantis vidurkis): every receipt with a cost
 // re-averages what is in stock; every issue (sale, write-off) takes stock out at the current average. So the value
 // left equals the inventory account once everything is sold, and sales are costed at what the goods cost.
-// Purchase cost includes non-deductible VAT (stock_moves.unit_price, migration 026).
+// Purchase cost includes non-deductible VAT (stock_moves.unit_price, migration 026). The value follows the ledger:
+// a sale or a customer return with a cost booked on its line moves stock at exactly that cost, a return to the
+// supplier leaves at its own price, and goods bought straight into an expense account come in at no value.
 import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
 
 const units = (v, s) => toUnits(String(v ?? '0'), s);
@@ -14,15 +16,25 @@ export async function stockPositions(db, productIds, date, {roles = {}, before =
   const ids = [...new Set(productIds.map(String))];
   const out = new Map(ids.map((id) => [id, {qty: '0.0000', value: '0.00', unit: null, account: roles.inventory || '204', expensed: false, issues: []}]));
   if (!ids.length) return out;
-  const moves = (await db.query(`SELECT product_id, move_date, kind, quantity, unit_price, source_type, source_id FROM stock_moves
-    WHERE product_id = ANY($1::bigint[]) AND move_date <= $2 AND NOT (source_type='invoice' AND source_id = $3::bigint)
-    ORDER BY product_id, move_date, (quantity > 0) DESC, source_id`, [ids, date, before || 0])).rows;
+  const moves = (await db.query(`SELECT m.product_id, m.move_date, m.kind, m.quantity, m.unit_price, m.source_type, m.source_id, m.cost, a.type AS account_type FROM stock_moves m
+    LEFT JOIN accounts a ON a.code=m.account_code
+    WHERE m.product_id = ANY($1::bigint[]) AND m.move_date <= $2 AND NOT (m.source_type='invoice' AND m.source_id = $3::bigint)
+    ORDER BY m.product_id, m.move_date, (m.quantity > 0) DESC, m.source_id`, [ids, date, before || 0])).rows;
   const cards = new Map((await db.query(`SELECT id, purchase_price FROM products WHERE id = ANY($1::bigint[])`, [ids])).rows.map((r) => [String(r.id), r]));
   const state = new Map(ids.map((id) => [id, {q: 0n, v: 0n, avg: null}])); // q: 4 decimals, v: 2 decimals, avg: 4 decimals
   for (const m of moves) {
     const st = state.get(String(m.product_id));
     const q = units(m.quantity, 4);
-    if (q > 0n && m.unit_price !== null && m.unit_price !== undefined && ['purchase', 'opening', 'adjustment'].includes(m.kind)) {
+    const priced = m.unit_price !== null && m.unit_price !== undefined;
+    if (m.kind === 'purchase' && m.account_type === 'expense') {
+      st.q += q; // expensed when bought: in stock by quantity, but its cost is already in expenses
+    } else if (m.kind === 'sale' && m.cost !== null && m.cost !== undefined) {
+      const delta = -units(m.cost, 2); // the cost booked with the sale (negative cost on a return: back at that cost)
+      st.v += delta; st.q += q;
+      if (q < 0n) out.get(String(m.product_id)).issues.push({date: String(m.move_date).slice(0, 10), invoiceId: String(m.source_id), qty: fromUnits(-q, 4), cost: fromUnits(-delta, 2)});
+    } else if (q < 0n && priced && m.kind === 'purchase') {
+      st.v += divRound(q * units(m.unit_price, 4), 10n ** 6n); st.q += q; // returned to the supplier at its own price
+    } else if (q > 0n && priced && ['purchase', 'opening', 'adjustment'].includes(m.kind)) {
       st.v += divRound(q * units(m.unit_price, 4), 10n ** 6n); st.q += q;
     } else {
       // Issue (or a receipt without a cost, e.g. a sales return): at the current average.
@@ -35,10 +47,10 @@ export async function stockPositions(db, productIds, date, {roles = {}, before =
     }
     if (st.q > 0n) st.avg = divRound(st.v * 10n ** 6n, st.q);
   }
-  // The account goods are kept in: where the latest purchase of the product was booked (an expense account means
-  // purchases are expensed straight away – then the sale must not book a cost again).
+  // The account goods are kept in: where the latest stocked purchase of the product was booked. A product only ever
+  // bought straight into expenses is "expensed" – its sale must not book a cost again.
   const acc = (await db.query(`SELECT DISTINCT ON (l.product_id) l.product_id, l.account_code, a.type FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id JOIN accounts a ON a.code=l.account_code
-    WHERE i.register='purchase' AND l.product_id = ANY($1::bigint[]) AND i.issue_date <= $2 ORDER BY l.product_id, i.issue_date DESC, i.id DESC`, [ids, date])).rows;
+    WHERE i.register='purchase' AND l.product_id = ANY($1::bigint[]) AND i.issue_date <= $2 ORDER BY l.product_id, (a.type <> 'expense') DESC, i.issue_date DESC, i.id DESC`, [ids, date])).rows;
   for (const id of ids) {
     const st = state.get(id), o = out.get(id);
     o.qty = fromUnits(st.q, 4); o.value = fromUnits(st.v, 2);

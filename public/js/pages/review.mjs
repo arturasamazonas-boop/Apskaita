@@ -211,14 +211,14 @@ export async function render(main, [docId], state) {
   function drawForm(v) {
     const docTypes = Object.entries(DOC_TYPE).filter(([k]) => k !== 'correction');
     clear(form,
-      p.kind === 'correction' ? h('div', {class: 'banner banner-warn'}, 'Koregavimo pasiūlymas: dokumentas jau užregistruotas. Patvirtinus bus užregistruotas tik skirtumas, originalūs įrašai lieka nepakeisti.') : null,
+      p.kind === 'correction' ? h('div', {class: 'banner banner-warn'}, 'Koregavimo pasiūlymas: dokumentas jau užregistruotas. Patvirtinus bus užregistruotas tik skirtumas, originalūs įrašai lieka nepakeisti (jei keičiamas tik apmokėjimo terminas, pastabos ar eilučių aprašymai – naujas įrašas nekuriamas, tik išrašomas pataisytas PDF).') : null,
       p.status !== 'open' ? h('div', {class: 'banner'}, `Ši versija: ${{approved: 'patvirtinta', rejected: 'atmesta', superseded: 'pakeista naujesne'}[p.status]}.`, doc.invoices[0] ? h('a', {href: `#/${doc.invoices[0].register === 'sales' ? 'pardavimai' : 'pirkimai'}/s/${doc.invoices[0].id}`}, ' Atidaryti užregistruotą sąskaitą') : null) : null,
       issuesBox(v),
       section('Dokumentas', h('div', {class: 'form-grid'},
         fieldOf('Tipas', 'docType', {options: docTypes}), fieldOf('Registras', 'register', {options: [['', '— pasirinkite —'], ['purchase', 'Pirkimai'], ['sales', 'Pardavimai']]}),
         model.issueHere ? h('p', {class: 'hint'}, `Numeris bus suteiktas patvirtinant (serija ${model.seriesCode}).`) : [fieldOf('Serija', 'series'), fieldOf('Numeris', 'number')],
         fieldOf('Išrašymo data', 'issueDate', {type: 'date'}), fieldOf('Apmokėti iki', 'dueDate', {type: 'date'}), fieldOf('PVM apskaičiavimo data (jei kita)', 'vatPointDate', {type: 'date'}),
-        fieldOf('Valiuta', 'currency'), model.currency && model.currency !== 'EUR' ? fieldOf(`Kursas: ${model.currency} už 1 EUR`, 'fxRate') : null, fieldOf('Mokėjimo paskirtis', 'paymentReference'), fieldOf('Užsakymo nr.', 'orderReference'), fieldOf('Koreguojamas dokumentas', 'relatedDocument')),
+        fieldOf('Valiuta', 'currency'), model.currency && model.currency !== 'EUR' ? fieldOf(`Kursas: ${model.currency} už 1 EUR`, 'fxRate') : null, fieldOf('Mokėjimo paskirtis', 'paymentReference'), fieldOf('Užsakymo nr.', 'orderReference'), model.register === 'sales' && (model.issueHere || p.kind === 'correction') ? fieldOf('Pastabos (spausdinamos sąskaitoje)', 'notes') : null, fieldOf('Koreguojamas dokumentas', 'relatedDocument')),
       model.registerReason ? h('p', {class: 'hint'}, model.registerReason) : null),
       section(model.register === 'sales' ? 'Pirkėjas' : 'Tiekėjas', h('div', {class: 'form-grid'},
         fieldOf('Pavadinimas', 'counterparty.name'), fieldOf('Įmonės kodas', 'counterparty.companyCode'), fieldOf('PVM mokėtojo kodas', 'counterparty.vatCode'),
@@ -257,7 +257,14 @@ export async function render(main, [docId], state) {
     if (dirty) return toast('Pirmiausia išsaugokite pakeitimus.', 'error');
     const btn = bar.querySelector('.btn-primary'); if (btn) btn.disabled = true;
     const r = await guard(() => post(`/api/proposals/${p.id}/approve`, {contentHash: p.content_hash}));
-    if (r) { toast(r.alreadyApproved ? 'Jau buvo patvirtinta.' : `Patvirtinta ir užregistruota${r.number ? ` (${r.number})` : ''}.`, 'ok'); await goNext(); } else drawBar();
+    if (r) {
+      toast(r.alreadyApproved ? 'Jau buvo patvirtinta.' : `Patvirtinta ir užregistruota${r.number ? ` (${r.number})` : ''}.`, 'ok');
+      // Cost of sales that may need a look: sold more than was in stock (a purchase not entered yet), or no cost known.
+      if (r.cogsShort?.length) toast(`Parduota daugiau, nei buvo atsargose (${r.cogsShort.join(', ')}): savikaina paskaičiuota pagal paskutinę vidutinę kainą. Jei pirkimo sąskaita dar neįvesta – įveskite ją ir patikrinkite savikainą.`, 'error');
+      if (r.cogsCardPrice?.length) toast(`Savikaina pagal prekės kortelės pirkimo kainą (pirkimų nerasta): ${r.cogsCardPrice.join(', ')}.`, 'info');
+      if (r.cogsMissing?.length) toast(`Savikaina nežinoma (nėra pirkimų ir kortelės kainos): ${r.cogsMissing.join(', ')} – ji liks mėnesio savikainos patikrai.`, 'error');
+      await goNext();
+    } else drawBar();
   }
   async function reject() {
     const reason = await promptDialog('Atmesti dokumentą', 'Priežastis', {minLength: 3, multiline: true});

@@ -157,17 +157,20 @@ export function renderInvoicePdf(inv, lines, vatRows) {
     const yb = party(310, 'Pirkėjas', inv.counterparty_snapshot);
     let y = Math.max(ya, yb) + 16;
     const cols = [[40, 'Nr.'], [62, 'Pavadinimas'], [300, 'Kiekis'], [345, 'Vnt.'], [385, 'Kaina'], [440, 'PVM %'], [485, 'Suma be PVM']];
-    doc.font('b').fontSize(8.5); for (const [x, t] of cols) doc.text(t, x, y, {lineBreak: false}); doc.moveTo(40, y + 12).lineTo(555, y + 12).stroke(); y += 18; doc.font('r');
+    const head = () => { doc.font('b').fontSize(8.5); for (const [x, t] of cols) doc.text(t, x, y, {lineBreak: false}); doc.moveTo(40, y + 12).lineTo(555, y + 12).stroke(); y += 18; doc.font('r'); };
+    head();
     for (const l of lines) {
-      if (y > 740) { doc.addPage(); y = 50; }
       const h = doc.heightOfString(l.description, {width: 232});
+      // A row never splits across pages; the table header is repeated on the next page.
+      if (y + Math.max(h, 12) > 790) { doc.addPage(); y = 50; head(); }
       doc.text(String(l.line_no), 40, y, {lineBreak: false}); doc.text(l.description, 62, y, {width: 232});
       doc.text(String(Number(l.quantity)).replace('.', ','), 300, y, {lineBreak: false}); doc.text(l.unit, 345, y, {lineBreak: false});
       doc.text(fmt(l.unit_price), 385, y, {lineBreak: false}); doc.text(l.tax_code === 'BE_PVM' ? '–' : String(Number(l.vat_rate)), 440, y, {lineBreak: false}); doc.text(fmt(l.net), 485, y, {lineBreak: false});
       y += Math.max(h, 12) + 4;
     }
     // Totals, amount in words, payment details and signatures stay together on one page.
-    if (y + 13 * (vatRows.length + 2) + 190 > 800) { doc.addPage(); y = 50; }
+    const notesH = inv.notes ? doc.fontSize(9).heightOfString(`Pastabos: ${inv.notes}`, {width: 515}) + 6 : 0;
+    if (y + 13 * (vatRows.length + 2) + 190 + notesH > 800) { doc.addPage(); y = 50; }
     doc.moveTo(40, y).lineTo(555, y).stroke(); y += 8;
     doc.fontSize(9).text('Suma be PVM:', 360, y); doc.text(fmt(inv.net_total), 485, y); y += 13;
     for (const v of vatRows) { if (v.rate === null) continue; doc.text(`PVM ${Number(v.rate)} %:`, 360, y); doc.text(fmt(v.vat), 485, y); y += 13; }

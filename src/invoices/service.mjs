@@ -197,7 +197,11 @@ function sanitizeData(input, prev) {
     confirmations: Object.fromEntries(Object.entries(d.confirmations || {}).filter(([k, v]) => /^[a-zA-Z0-9_.]{1,80}$/.test(k) && v === true).map(([k]) => [k, true])),
     provenance: prev.provenance || {}, splitHint: prev.splitHint || null, extractionNotes: prev.extractionNotes || [],
     origin: prev.origin, storeId: prev.storeId, externalOrderId: prev.externalOrderId,
+    // Set when the draft was made (an invoice issued here and its series, annulment, PDF); not changed by editing.
+    issueHere: prev.issueHere, seriesCode: prev.seriesCode, annul: prev.annul, generatePdf: prev.generatePdf,
+    notes: d.notes !== undefined ? str(d.notes, 1000) : prev.notes,
   };
+  for (const k of ['issueHere', 'seriesCode', 'annul', 'generatePdf', 'notes']) if (out[k] === undefined) delete out[k];
   for (const k of ['sourceTotals.net', 'sourceTotals.vat', 'sourceTotals.gross']) if (!/^(-?\d+(\.\d{1,2})?)?$/.test(k.split('.').reduce((o, p) => o?.[p], out) || '')) throw new AppError(400, 'bad_amount', `Netinkama suma: ${k}`);
   return out;
 }
@@ -384,9 +388,9 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     // Cost of sales with the sale (perpetual inventory): goods lines take the product's weighted average cost on the
     // invoice date; a credit note returns the goods at the cost of the original sale. D cost of sales / K inventory.
     // A correction reverses the cost of the old lines (in the delta below) and books the cost of the new ones.
-    // Correcting a sale in a month whose cost of sales was already confirmed by a monthly entry: the cost of the old
-    // and the new lines is booked now, so the confirmed month stays right.
-    const monthConfirmed = p.kind === 'correction' && data.register === 'sales' && (await db.query(`SELECT 1 FROM cogs_periods c WHERE c.period=$1
+    // A sale (or a correction) in a month whose cost of sales was already confirmed by a monthly entry: its cost is
+    // booked now (for a correction also the old lines'), so the confirmed month stays right.
+    const monthConfirmed = data.register === 'sales' && (await db.query(`SELECT 1 FROM cogs_periods c WHERE c.period=$1
       AND (c.journal_entry_id IS NULL OR NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id=c.journal_entry_id))`, [String(data.issueDate).slice(0, 7)])).rowCount > 0;
     const cogs = data.register === 'sales' && (company.auto_cogs !== false || monthConfirmed) ? await saleCost(db, data, lines, ctx.roles) : null;
     const costLabel = `${series} ${number} savikaina`.trim();
@@ -398,7 +402,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     if (p.kind === 'correction') {
       const delta = await correctionDelta(db, p.corrects_invoice_id, {lines, totals, vatRows, entryLines});
       ({lines, totals, vatRows, entryLines} = delta);
-      if (monthConfirmed) {
+      if (monthConfirmed && company.auto_cogs === false) {
         // Old lines costed by the monthly entry (no cost on the line): their cost goes back now.
         const old = lines.filter((l) => l.cogsAmount === null && l.productId && l.lineType === 'revenue_goods' && money.sign(l.quantity) < 0);
         const back = old.length ? await saleCost(db, {...data, relatedInvoiceId: null}, old, ctx.roles) : null;
@@ -413,9 +417,14 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
       relatedId = p.corrects_invoice_id;
       const n = (await db.query(`SELECT count(*) AS n FROM invoices WHERE related_invoice_id=$1 AND doc_type='correction'`, [relatedId])).rows[0].n;
       numberKeyValue = `${computed.numberKey}K${Number(n) + 1}`;
-      if (!entryLines.length) throw new AppError(422, 'no_change', 'Koregavimas nekeičia apskaitos sumų.');
+      if (!entryLines.length) {
+        // Nothing to post: allowed when something printed on the invoice changes (due date, notes, line wording).
+        const prev = (await db.query(`SELECT p.data FROM invoices i JOIN proposals p ON p.id=i.proposal_id WHERE i.id=$1 OR (i.related_invoice_id=$1 AND i.doc_type='correction') ORDER BY i.id DESC LIMIT 1`, [relatedId])).rows[0]?.data || {};
+        const shown = (d) => JSON.stringify([d.dueDate || '', d.notes || '', d.paymentReference || '', d.orderReference || '', (d.lines || []).map((l) => [l.description, l.sku || '', String(Number(l.quantity || 0)), l.unit || '', String(Number(l.unitPrice || 0))])]);
+        if (shown(prev) === shown(data)) throw new AppError(422, 'no_change', 'Koregavimas nieko nekeičia.');
+      }
     }
-    const entry = await postEntry(db, {
+    const entry = p.kind === 'correction' && !entryLines.length ? {id: null} : await postEntry(db, {
       date: data.issueDate, description: `${data.register === 'sales' ? 'Pardavimas' : 'Pirkimas'} ${series} ${number} – ${data.counterparty.name}${p.kind === 'correction' ? ' (koregavimas)' : ''}`,
       sourceType: 'invoice', sourceId: invoiceId, idempotencyKey: `proposal:${p.id}`, userId: user.id, lines: entryLines,
     });
@@ -453,7 +462,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     if (p.kind === 'correction' && data.register === 'sales') await enqueue(db, 'render_invoice_pdf', {invoiceId: String(relatedId), correctionId: String(invoiceId)}, {idempotencyKey: `pdf:${relatedId}:c${invoiceId}`});
     if (p.external_order_id) await db.query(`UPDATE external_orders SET state='posted', invoice_id=COALESCE(invoice_id,$2), updated_at=now() WHERE id=$1`, [p.external_order_id, invoiceId]);
     await audit(db, {userId: user.id, action: 'proposal.approve', entityType: 'proposal', entityId: p.id, details: {invoiceId, journalEntryId: entry.id, version: p.version, contentHash: p.content_hash, documentId: p.document_id, gross: totals.gross}});
-    return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim(), ...(cogs && {cogs: cogs.total, cogsMissing: cogs.missing, cogsCardPrice: cogs.cardPriced})};
+    return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim(), ...(cogs && {cogs: cogs.total, cogsMissing: cogs.missing, cogsCardPrice: cogs.cardPriced, cogsShort: cogs.short})};
   });
 }
 
@@ -472,11 +481,16 @@ async function saleCost(db, data, lines, roles) {
   const pos = await stockPositions(db, ids, data.issueDate, {roles});
   const original = data.relatedInvoiceId ? new Map((await db.query(`SELECT product_id, sum(cogs_amount) AS c, sum(quantity) AS q FROM invoice_lines WHERE invoice_id=$1 AND cogs_amount IS NOT NULL GROUP BY product_id`, [data.relatedInvoiceId])).rows
     .filter((r) => Number(r.q) !== 0).map((r) => [String(r.product_id), fromUnits(divRound(toUnits(r.c, 2) * 1000000n, toUnits(r.q, 4)), 4)])) : new Map();
-  const byLine = new Map(), byAccount = new Map(), missing = [], cardPriced = [];
+  const byLine = new Map(), byAccount = new Map(), missing = [], cardPriced = [], short = [];
+  const sold = new Map(); // quantity sold per product on this invoice, to spot a sale of more than is in stock
   for (const l of goods) {
     const prod = products.get(String(l.productId)), p = pos.get(String(l.productId));
     if (!prod || prod.kind !== 'goods' || prod.track_stock === false) continue;
     if (p.expensed) { byLine.set(l, '0.00'); continue; } // bought straight into expenses: the cost is already there
+    if (money.sign(l.quantity) > 0) {
+      const q = (sold.get(String(l.productId)) || 0) + Number(l.quantity); sold.set(String(l.productId), q);
+      if (q > Number(p.qty) + 1e-9 && !short.includes(prod.sku || prod.name)) short.push(prod.sku || prod.name);
+    }
     let unit = (money.sign(l.quantity) < 0 && original.get(String(l.productId))) || p.unit;
     if (unit === null && prod.purchase_price !== null && prod.purchase_price !== undefined) { unit = money.norm(prod.purchase_price); cardPriced.push(prod.sku || prod.name); }
     if (unit === null) { missing.push(prod.sku || prod.name); continue; }
@@ -484,7 +498,7 @@ async function saleCost(db, data, lines, roles) {
     byLine.set(l, cost);
     byAccount.set(p.account, money.add(byAccount.get(p.account) || '0', cost));
   }
-  return {byLine, byAccount, total: money.sum([...byLine.values()]), missing, cardPriced};
+  return {byLine, byAccount, total: money.sum([...byLine.values()]), missing, cardPriced, short};
 }
 
 /** Delta between the corrected data and what is currently posted for the invoice group. */

@@ -36,7 +36,7 @@ export function numberWords(n) {
 
 /** "1234.50" EUR → "vienas tūkstantis du šimtai trisdešimt keturi eurai 50 ct". */
 export function amountWords(amount, currency = 'EUR') {
-  const s = String(amount ?? '0').trim();
+  const s = String(amount ?? '0').trim().replace(/\s/g, '').replace(',', '.');
   const neg = s.startsWith('-');
   const [w, f = '0'] = s.replace('-', '').split('.');
   const whole = Number(w || 0), cents = Number((f + '00').slice(0, 2));

@@ -16,15 +16,18 @@ const ltDate = (d) => {
 };
 
 export function contractDefaults(emp, company) {
-  const city = (/,\s*(?:LT-?\d{5}\s+)?([A-ZĄČĘĖĮŠŲŪŽ][a-ząčęėįšųūž]+)\s*$/.exec(company.address || '') || [])[1] || '';
+  // The city: the last part of the address that is not the country, without the postcode ("…, LT-01103 Vilnius", "…, Vilnius LT-01103", "…, Naujoji Akmenė, Lietuva").
+  const parts = String(company.address || '').split(',').map((x) => x.replace(/\b(?:LT-?)?\d{5}\b/gi, '').trim()).filter((x) => x && !/^(lietuva|lithuania|lt)$/i.test(x));
+  const last = parts.length > 1 ? parts[parts.length - 1] : '';
+  const city = /^[A-ZĄČĘĖĮŠŲŪŽ][a-ząčęėįšųūž]+(?:[\s-][A-ZĄČĘĖĮŠŲŪŽ][a-ząčęėįšųūž]+)*$/.test(last) ? last : '';
   const hours = Number(emp.hours_per_week || 40);
   return {
     number: '', date: String(emp.employment_start || '').slice(0, 10), place: city,
     workplace: company.address || '', duties: '', probationMonths: '0',
-    workTime: hours >= 40 ? 'Penkių darbo dienų savaitė, 40 valandų per savaitę (8 valandos per dieną), poilsio dienos – šeštadienis ir sekmadienis.'
+    workTime: hours === 40 ? 'Penkių darbo dienų savaitė, 40 valandų per savaitę (8 valandos per dieną), poilsio dienos – šeštadienis ir sekmadienis.'
       : `Darbo laiko norma – ${String(hours).replace('.', ',')} val. per savaitę (darbo dienos ir valandos – pagal darbo grafiką).`,
     payDays: 'Darbo užmokestis mokamas du kartus per mėnesį; darbuotojo prašymu – kartą per mėnesį, ne vėliau kaip iki kito mėnesio 10 d.',
-    leaveDays: hours >= 40 ? '20' : '20', employerRep: company.manager || '', employerRepTitle: company.manager_title || 'Direktorius',
+    leaveDays: '20', employerRep: company.manager || '', employerRepTitle: company.manager_title || 'Direktorius',
   };
 }
 
@@ -45,7 +48,7 @@ export function renderContractPdf(emp, company, opts) {
     const h = (text) => { doc.moveDown(0.3); doc.font('b').fontSize(10.5).text(text, {width: W}); doc.moveDown(0.3); };
     p(`Darbdavys ${employer}, juridinio asmens kodas ${company.company_code || '__________'}, buveinė ${company.address || '__________'}, kuriam atstovauja ${o.employerRepTitle ? o.employerRepTitle.toLowerCase() : 'vadovas'} ${o.employerRep || '__________________'}, ir darbuotojas (-a) ${emp.first_name} ${emp.last_name}, asmens kodas ${emp.personal_code || '___________'}, gyvenamoji vieta ${emp.address || '______________________________'}, sudarė šią darbo sutartį.`);
     const salary = emp.pay_type === 'hourly'
-      ? `${String(Number(emp.hourly_rate)).replace('.', ',')} Eur (${amountWords(money.norm(emp.hourly_rate)).replace(/^./, (c) => c.toLowerCase())}) už valandą neatskaičius mokesčių`
+      ? `${/\.\d{3,}$/.test(String(Number(emp.hourly_rate))) ? String(Number(emp.hourly_rate)).replace('.', ',') : fmt(emp.hourly_rate)} Eur (${amountWords(money.norm(emp.hourly_rate)).replace(/^./, (c) => c.toLowerCase())}) už valandą neatskaičius mokesčių`
       : `${fmt(emp.base_salary)} Eur (${amountWords(money.norm(emp.base_salary)).replace(/^./, (c) => c.toLowerCase())}) per mėnesį neatskaičius mokesčių`;
     const fixed = emp.contract_type === 'fixed_term';
     const items = [

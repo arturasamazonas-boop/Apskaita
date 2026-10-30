@@ -285,7 +285,7 @@ export function computeProposal(data, ctx) {
       else if (money.cmp(money.abs(diff), tol) <= 0) { used = money.norm(src.amount); note = `Dokumente PVM ${src.amount}, apskaičiuota ${computed}; skirtumas ${diff} neviršija apvalinimo per eilutes ribos (${tol}) – naudojama dokumento suma.`; info('sourceTotals.vat', 'vat_rounding', note); }
       else if (!conf['sourceTotals.vat']) err('sourceTotals.vat', 'vat_mismatch', `PVM ${Number(g.rate)} %: dokumente ${src.amount}, apskaičiuota ${computed} (skirtumas ${diff}). Patikrinkite eilutes, tarifą arba dokumento PVM sumą.`);
       else note = `Patvirtintas skirtumas: dokumente ${src.amount}, naudojama apskaičiuota ${computed}.`;
-    } else if (g.rate !== null && Number(g.rate) > 0 && data.origin !== 'manual' && data.origin !== 'store') {
+    } else if (g.rate !== null && Number(g.rate) > 0 && !['manual', 'store'].includes(data.origin) && !(data.origin === 'correction' && data.register === 'sales')) {
       warn('sourceTotals.vat', 'vat_not_printed', `PVM ${Number(g.rate)} % suma dokumente nerasta arba neperskaityta – naudojama apskaičiuota ${computed}.`);
     }
     vatGroups.push({taxCode: g.taxCode, isafCode: g.isafCode, rate: g.rate, taxable: g.taxable, vatComputed: computed, vatSource: src?.amount ?? null, vat: used, note});
@@ -311,7 +311,7 @@ export function computeProposal(data, ctx) {
   const st = data.sourceTotals || {};
   if (st.net !== '' && st.net !== undefined && isAmount(String(st.net)) && !money.eq(st.net, net) && !conf['sourceTotals.net']) err('sourceTotals.net', 'net_mismatch', `Eilučių suma be PVM ${net} nesutampa su dokumento suma ${st.net} (skirtumas ${money.sub(st.net, net)}). Galbūt praleista eilutė.`);
   if (st.gross !== '' && st.gross !== undefined && isAmount(String(st.gross)) && !money.eq(st.gross, gross) && !conf['sourceTotals.gross']) err('sourceTotals.gross', 'gross_mismatch', `Apskaičiuota bendra suma ${gross} nesutampa su dokumento suma ${st.gross} (skirtumas ${money.sub(st.gross, gross)}).`);
-  if ((st.gross === '' || st.gross === undefined) && data.origin !== 'manual' && data.origin !== 'store') warn('sourceTotals.gross', 'gross_missing', 'Dokumento bendra suma nerasta – patikrinkite apskaičiuotą sumą.');
+  if ((st.gross === '' || st.gross === undefined) && !['manual', 'store'].includes(data.origin) && !(data.origin === 'correction' && data.register === 'sales')) warn('sourceTotals.gross', 'gross_missing', 'Dokumento bendra suma nerasta – patikrinkite apskaičiuotą sumą.');
 
   // Sign consistency.
   const isCredit = data.docType === 'credit_note';
@@ -356,7 +356,7 @@ export function computeProposal(data, ctx) {
       entries.push({account, accountName: accounts.get(account)?.name || '', debit: pos ? money.norm(amt) : '0.00', credit: pos ? '0.00' : money.abs(amt), counterparty: cp ? data.counterparty?.name : ''});
     }
     if (data.register === 'sales' && ctx.company?.auto_cogs !== false && data.lines.some((l) => l.productId && l.lineType === 'revenue_goods')) {
-      issues.push({level: 'info', field: 'entries', code: 'cogs_with_sale', message: 'Patvirtinus kartu bus užregistruota parduotų prekių savikaina (D 6000 / K 204) pagal prekių vidutinę savikainą sąskaitos dieną.'});
+      issues.push({level: 'info', field: 'entries', code: 'cogs_with_sale', message: 'Patvirtinus kartu bus užregistruota parduotų prekių savikaina (D 6000 / K atsargų sąskaita, kurioje apskaitomos prekės) pagal slankiąją vidutinę savikainą sąskaitos dieną.'});
     }
     const d = money.sum(entries.map((e) => e.debit)), c = money.sum(entries.map((e) => e.credit));
     // Lines without an account already have their own error; the unbalanced entry is only its consequence then.

@@ -195,13 +195,18 @@ export function register(r, {pool}) {
     requireCap(user, 'read');
     return (await pool.query(`SELECT r.*, (SELECT count(*) FROM depreciation_lines l WHERE l.run_id=r.id) AS assets FROM depreciation_runs r ORDER BY r.period DESC, r.id DESC LIMIT 240`)).rows;
   });
+  const nextPeriod = (p) => { const [y, m] = p.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; };
   // One month's run: one journal entry on the month end.
   const postRun = async (db, period, user) => {
     const p = await preview(db, period);
+    if (p.blocked.length) throw new AppError(409, 'missing_runs', `Pirmiausia paskaičiuokite ankstesnius mėnesius: ${[...new Set(p.blocked.flatMap((x) => x.missing))].sort().join(', ')} (mygtukas „Skaičiuoti visus mėnesius iki …“).`);
     // Already calculated for this month: only assets missing from it (entered later) get a supplementary run.
-    if (p.alreadyPosted && !p.lines.length) return null;
-    if (p.blocked.length) throw new AppError(409, 'missing_runs', `Pirmiausia paskaičiuokite ankstesnius mėnesius: ${[...new Set(p.blocked.flatMap((x) => x.missing))].sort().join(', ')}.`);
     if (!p.lines.length) return null;
+    const locked = (await db.query('SELECT locked_through FROM company_settings WHERE id=1')).rows[0]?.locked_through;
+    if (locked && monthEnd(period) <= String(locked).slice(0, 10)) {
+      const first = nextPeriod(String(locked).slice(0, 7));
+      throw new AppError(409, 'period_locked', `Laikotarpis užrakintas iki ${String(locked).slice(0, 10)}, todėl už ${period} nusidėvėjimo skaičiuoti negalima. Skaičiuoti galima nuo ${first}: turtui, kurio ankstesni mėnesiai užrakinti, kortelėje įveskite iki ${String(locked).slice(0, 10)} sukauptą nusidėvėjimą (tada skaičiuojama nuo ${first}) arba atrakinkite laikotarpį.`);
+    }
     const run = (await db.query(`INSERT INTO depreciation_runs(period, total, created_by) VALUES ($1,$2,$3) RETURNING id`, [period, p.total, user.id])).rows[0];
     const sum = (key) => { const m = new Map(); for (const l of p.lines) m.set(l[key], money.add(m.get(l[key]) || '0', l.amount)); return m; };
     const lines = [...[...sum('expense_account')].map(([account, debit]) => ({account, debit, description: `Nusidėvėjimas ${period}`})),
@@ -212,7 +217,6 @@ export function register(r, {pool}) {
     await audit(db, {userId: user.id, action: 'depreciation.post', entityType: 'depreciation_run', entityId: run.id, details: {period, total: p.total, entryId: e.id}});
     return {id: String(run.id), entryId: String(e.id), total: p.total, assets: p.lines.length, period};
   };
-  const nextPeriod = (p) => { const [y, m] = p.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; };
   r.post('/api/depreciation/runs', async ({req, user}) => {
     requireCap(user, 'approve');
     const b = await readJson(req);
@@ -236,7 +240,7 @@ export function register(r, {pool}) {
           if (r1) runs.push(r1);
         }
       } catch (e) {
-        if (/užrakint|locked/i.test(e.message)) throw new AppError(409, 'period_locked', `${e.message} Užrakintų mėnesių nusidėvėjimo skaičiuoti negalima: turtui įveskite sukauptą nusidėvėjimą pradžios dienai (turto kortelėje) arba atrakinkite laikotarpį.`);
+        if (e.code !== 'period_locked' && /užrakint|locked/i.test(e.message)) throw new AppError(409, 'period_locked', `Užrakintų mėnesių nusidėvėjimo skaičiuoti negalima: turtui įveskite sukauptą nusidėvėjimą pradžios dienai (turto kortelėje) arba atrakinkite laikotarpį.`);
         throw e;
       }
       if (!runs.length) throw new AppError(422, 'empty', `Iki ${b.period} nėra ką skaičiuoti.`);

@@ -26,7 +26,9 @@ export async function changeBlockers(db, invoiceId) {
   if (company.locked_through && String(inv.issue_date).slice(0, 10) <= String(company.locked_through).slice(0, 10)) out.push(`Laikotarpis užrakintas (iki ${String(company.locked_through).slice(0, 10)}).`);
   const filed = (await db.query(`SELECT form FROM tax_filings WHERE period=$1 AND form IN ('FR0600','ISAF')`, [date.slice(0, 7)])).rows.map((r) => r.form);
   if (filed.length) out.push(`${date.slice(0, 7)} ${filed.join(' ir ')} jau pažymėta kaip pateikta – pakeitimą įforminkite kreditine sąskaita.`);
-  const annulled = group.length > 1 && money.isZero(money.sum(group.map((g) => g.gross_total)));
+  // Annulled: corrected to zero (a fully credited invoice is not annulled – its credit note is a separate document).
+  const corr = group.filter((g) => g.id === inv.id || g.doc_type === 'correction');
+  const annulled = corr.length > 1 && money.isZero(money.sum(corr.map((g) => g.gross_total)));
   if (annulled) out.push('Sąskaita anuliuota.');
   return {invoice: inv, blockers: out, annulled};
 }

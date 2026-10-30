@@ -25,18 +25,17 @@ async function newRun(main, state) {
   const d = new Date();
   const period = input({type: 'month', value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`});
   const norm = input({inputmode: 'numeric'}), pay = input({type: 'date'});
-  // Pay day: the 10th of the next month (a Saturday/Sunday moves to the Friday before); change it if salaries are paid otherwise.
-  const payDay = (p) => { const [y, m] = p.split('-').map(Number); const x = new Date(Date.UTC(m === 12 ? y + 1 : y, m % 12, 10)); while (x.getUTCDay() % 6 === 0) x.setUTCDate(x.getUTCDate() - 1); return x.toISOString().slice(0, 10); };
+  // Pay day proposed by the server: the 10th of the next month, on a weekend or public holiday the working day before.
   const refresh = async () => {
     if (!/^\d{4}-\d{2}$/.test(period.value)) return;
-    pay.value = payDay(period.value);
-    norm.value = (await get(`/api/payroll/working-days?period=${period.value}`)).days;
+    const w = await get(`/api/payroll/working-days?period=${period.value}`);
+    norm.value = w.days; pay.value = w.payment_date;
   };
   period.addEventListener('change', () => guard(refresh));
   clear(main, pageHeader('Naujas darbo užmokesčio žiniaraštis'), tabs(''),
     section(null, h('form', {onsubmit: async (e) => { e.preventDefault(); const r = await guard(() => post('/api/payroll/runs', {period: period.value, norm_days: norm.value, payment_date: pay.value}), 'Žiniaraštis sukurtas.'); if (r) location.hash = `#/atlyginimai/${r.id}`; }},
       h('div', {class: 'form-grid'}, field('Mėnuo', period), field('Darbo dienų norma', norm, 'Pagal darbo dienas be švenčių; galite pakeisti'), field('Išmokėjimo data', pay, 'Pagal šią datą algos patenka į GPM313 (pvz., rugsėjo DU, išmokėtas spalio 10 d., – spalio GPM313)')),
-      h('p', {class: 'hint'}, 'Į žiniaraštį įtraukiami visi aktyvūs tą mėnesį dirbę darbuotojai. Dirbtos dienos užpildomos pagal normą (pradėjusiems ar baigusiems darbą mėnesio viduryje – proporcingai) – jas galėsite pakeisti.'),
+      h('p', {class: 'hint'}, 'Į žiniaraštį įtraukiami visi tą mėnesį dirbę darbuotojai (ir vėliau atleisti). Dirbtos dienos užpildomos pagal normą (pradėjusiems ar baigusiems darbą mėnesio viduryje – proporcingai) – jas galėsite pakeisti.'),
       h('button', {class: 'btn btn-primary'}, 'Sukurti žiniaraštį'))));
   await refresh();
 }
@@ -50,7 +49,7 @@ async function runSheet(main, id, state) {
   const num = (v, attrs = {}) => input({value: Number(v) ? String(v).replace(/\.00$/, '') : '', inputmode: 'decimal', class: 'num-input', disabled: !draft, ...attrs});
   const cols = [
     {label: 'Darbuotojas', render: (l) => h('div', null, h('a', {href: `#/atlyginimai/darbuotojai/${l.employee_id}`}, `${l.first_name} ${l.last_name}`), h('div', {class: 'hint'}, l.position || '', l.pay_type === 'hourly' ? ` · ${money(l.hourly_rate)} €/val.` : ` · ${money(l.base_salary)} €/mėn.`))},
-    {label: 'Dirbta d.', render: (l) => h('div', null, inputs.get(l.employee_id).worked_days, inputs.get(l.employee_id).payment_date ? h('label', {class: 'hint', title: 'Atleidžiamam darbuotojui atsiskaitoma paskutinę darbo dieną – ši data naudojama GPM313'}, 'Išmokėta ', inputs.get(l.employee_id).payment_date) : null)},
+    {label: 'Dirbta d.', render: (l) => h('div', null, inputs.get(l.employee_id).worked_days, inputs.get(l.employee_id).payment_date ? h('label', {class: 'hint', title: 'Atleidžiamam darbuotojui atsiskaitoma darbo santykių pabaigos dieną (DK 146 str.) – ši data naudojama GPM313; galite ją pakeisti'}, 'Išmokėta ', inputs.get(l.employee_id).payment_date) : null)},
     {label: 'Val.', render: (l) => (l.pay_type === 'hourly' ? inputs.get(l.employee_id).worked_hours : '')},
     {label: 'Priedai', render: (l) => inputs.get(l.employee_id).bonus},
     {label: 'Atostoginiai', render: (l) => h('span', {class: 'row-actions'}, inputs.get(l.employee_id).vacation_pay, draft ? h('button', {class: 'btn btn-small', type: 'button', title: 'Apskaičiuoti pagal vidutinį darbo užmokestį (3 mėn.)', onclick: () => guard(async () => {
@@ -193,7 +192,8 @@ async function contractDialog(id, e) {
   const m = modal(`Darbo sutartis – ${fullName(e)}`, h('form', {onsubmit: (ev) => { ev.preventDefault(); guard(async () => {
     const res = await api('POST', `/api/employees/${id}/contract`, Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.value])), {raw: true});
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Sutarties sugeneruoti nepavyko.');
-    window.open(URL.createObjectURL(await res.blob()), '_blank', 'noopener'); m.close();
+    const a = h('a', {href: URL.createObjectURL(await res.blob()), download: `darbo-sutartis-${fullName(e).replace(/[^\p{L}\d]+/gu, '-')}.pdf`});
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); m.close();
   }); }},
   h('p', {class: 'hint'}, 'Duomenys imami iš darbuotojo kortelės (asmens kodas, adresas, pareigos, darbo pradžia, atlyginimas, sutarties rūšis) ir įmonės rekvizitų. Patikslinkite trūkstamas sąlygas.'),
   h('div', {class: 'form-grid'}, field('Sutarties Nr.', f.number), field('Sudarymo data', f.date), field('Sudarymo vieta', f.place), field('Darbovietė', f.workplace), field('Išbandymas', f.probationMonths), field('Kasmetinės atostogos, d. d.', f.leaveDays),
