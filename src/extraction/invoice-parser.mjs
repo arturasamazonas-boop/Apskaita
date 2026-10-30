@@ -85,10 +85,9 @@ const TYPE_PATTERNS = [
 ];
 
 function detectTitle(page) {
-  for (const row of page.rows.slice(0, 10)) {
-    const f = fold(row.text);
-    for (const [type, re] of TYPE_PATTERNS) if (re.test(f) && f.length < 90) return {type, row};
-  }
+  // The most specific title wins (a letterhead "Banko sąskaita LT…" above "PVM SĄSKAITA FAKTŪRA" is not the title).
+  const rows = page.rows.slice(0, 12).filter((row) => !/(banko|a\.\s?s\.|iban|\blt\d{2}\s?\d{4})/.test(fold(row.text)));
+  for (const [type, re] of TYPE_PATTERNS) for (const row of rows) { const f = fold(row.text); if (re.test(f) && f.length < 90) return {type, row}; }
   return null;
 }
 
@@ -177,10 +176,16 @@ function partyBlocks(doc) {
     const take = (who, at, endIdx) => {
       if (!at) return;
       headerInline(who, at);
+      // Keep only the column of the label: a document box on the other side (series, due date) is not the party.
+      const x0 = at.seg?.bbox?.[0];
+      const sameColumn = (seg) => x0 === undefined || !seg.bbox || (x0 < 0.45 ? seg.bbox[0] < 0.48 : seg.bbox[0] >= x0 - 0.05);
       for (let i = at.i + 1; i < Math.min(rows.length, endIdx, at.i + 9); i++) {
         const f = fold(rows[i].text);
         if (stopRe.test(f) || rows[i].isTableRow) break;
-        blocks[who].push({page, row: rows[i], seg: {...(rows[i].segments?.[0] || {}), text: rows[i].text, words: rows[i].words, bbox: rows[i].bbox}});
+        const segs = (rows[i].segments || []).filter(sameColumn);
+        if (rows[i].segments?.length && !segs.length) continue;
+        const text = segs.length ? segs.map((x) => x.text).join(' ') : rows[i].text;
+        blocks[who].push({page, row: rows[i], seg: {...(segs[0] || rows[i].segments?.[0] || {}), text, words: segs.length ? segs.flatMap((x) => x.words || []) : rows[i].words, bbox: segs[0]?.bbox || rows[i].bbox}});
       }
     };
     const sEnd = buyerAt && sellerAt && buyerAt.i > sellerAt.i ? buyerAt.i : rows.length;
@@ -232,6 +237,20 @@ function parseParty(items) {
     if (p.address.status === 'missing') {
       if ((m = /(?:adresas|address|buveine)\s*:?\s*(.+)/.exec(f))) { p.address = field(t.slice(m.index + m[0].length - m[1].length).trim(), src); claimed = true; }
       else if (!claimed && STREET_RE.test(f) && !/^(bankas|bank|tel|el\.)/.test(f)) { p.address = field(t, src); claimed = true; }
+    }
+    // "UAB X, į. k. …, PVM k. …, Gatvė 7, LT-01234 Miestas, a. s. …" – name and address from the comma parts.
+    if (claimed && /,|·|;/.test(t)) {
+      const parts = t.split(/\s*[,·;|]\s*/).filter(Boolean);
+      const isDetail = (x) => /(\bk\.|kodas|pvm|\blt\d{2}|iban|a\.\s?s\.|tel\.|el\.\s?p|@)/i.test(x);
+      if (p.name.status === 'missing' && parts[0] && !isDetail(parts[0]) && !STREET_RE.test(fold(parts[0]))) p.name = field(parts[0].replace(/^[^:]*:\s*/, (m) => (/(pardavejas|tiekejas|seller|supplier)/i.test(fold(m)) ? '' : m)).trim(), src);
+      if (p.address.status === 'missing') {
+        const at = parts.findIndex((x) => STREET_RE.test(fold(x)) && !isDetail(x));
+        if (at >= 0) {
+          let addr = parts[at];
+          if (parts[at + 1] && /^((LT|lt)-?\d{5}\s+)?[A-ZĄČĘĖĮŠŲŪŽ][a-ząčęėįšųūž]+$/.test(parts[at + 1]) && !isDetail(parts[at + 1])) addr += `, ${parts[at + 1]}`;
+          p.address = field(addr, src);
+        }
+      }
     }
     if (claimed || /^(bankas|bank|swift|bic|tel|el\. ?p|e-?mail|www|faks)/.test(f)) continue;
     if (p.name.status === 'missing' && t.length >= 2 && !/:\s*$/.test(t)) p.name = field(t, src);
@@ -292,6 +311,11 @@ function headerColumns(row) {
           if (!best || parts.length > best.len) best = {key, len: parts.length};
         }
       }
+    }
+    if (!best) {
+      // OCR may glue header words ("pvmpvm%"): a word ending with a column name counts as that column.
+      const tok = tokens[i].t.replace(/[:]/g, '');
+      for (const [key, names] of COLS) for (const n of names) if (!n.includes(' ') && n.length >= 3 && tok.length > n.length && tok.endsWith(n) && (!best || n.length > best.n)) best = {key, len: 1, n: n.length};
     }
     if (best && !cols.some((c) => c.key === best.key)) {
       cols.push({key: best.key, x0: tokens[i].x0, x1: tokens[i + best.len - 1].x1});
@@ -418,6 +442,12 @@ function lastAmount(row, labelRe) {
   }
   if (!afterLabel) return null;
   const leftover = parts.map((p) => p.text).join(' ').trim();
+  // The amount at the end, with thousands separated by spaces or dots ("4 798,30", "1.234,56 EUR").
+  const big = /(-?\d{1,3}(?:[ \u00a0.]\d{3})+[.,]\d{2}|-?\d+[.,]\d{2})\s*(?:EUR|€|Eur)?\s*$/.exec(leftover);
+  if (big) {
+    const v = parseAmount(big[1].replace(/[ \u00a0]/g, ''));
+    if (v !== null) return {value: v, seg: parts.at(-1)?.seg || segs.at(-1)};
+  }
   for (const p of parts.slice().reverse()) {
     for (const tok of p.text.split(/\s+/).reverse()) {
       const clean = tok.replace(/(EUR|€)$/i, '');
@@ -432,6 +462,7 @@ function lastAmount(row, labelRe) {
 
 function parseTotals(doc) {
   const t = {net: missing('Suma be PVM nerasta.'), vat: missing('PVM suma nerasta.'), gross: missing('Bendra suma nerasta.'), vatByRate: []};
+  const plainTotals = [];
   for (const {page, row, f} of allRows(doc)) {
     const lf = f.trim();
     let m;
@@ -443,7 +474,13 @@ function parseTotals(doc) {
       else t[key] = field(a.value, src);
     };
     const NET = /^(suma be pvm|is viso be pvm|viso be pvm|tarpine suma|subtotal|net total|apmokestinama suma)/;
-    const RATE = /^(?:pvm|vat)\s*\(?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*(%|4(?=\s*:))\s*\)?/;
+    const RATE = /^(?:pvm|vat)\s*\(?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*(%|4(?=\s*:)|4(?=\s+-?\d))\s*\)?/;
+    // Several rates on one row: "PVM 21 %: 63,00  PVM 5 %: 4,20".
+    const multi = [...row.text.matchAll(/(?:PVM|VAT)\s*\(?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%\s*\)?\s*[:=]?\s*(-?\d{1,3}(?:[ \u00a0.]\d{3})*[.,]\d{2})/gi)];
+    if (multi.length >= 2) {
+      for (const mm of multi) t.vatByRate.push({rate: mm[1].replace(',', '.'), ...field(parseAmount(mm[2].replace(/[ \u00a0]/g, '')), srcOf(page, row))});
+      continue;
+    }
     const VAT = /^(pvm suma|pvm:|pvm$|vat:|vat amount|viso pvm)/;
     const GROSS = /^(is viso su pvm|viso su pvm|suma su pvm|bendra suma|is viso moketi|moketi|apmoketi|grand total|total|is viso|viso)\b/;
     if (NET.test(lf)) put('net', NET);
@@ -453,16 +490,32 @@ function parseTotals(doc) {
         const src = srcOf(page, row, a.seg);
         const rate = m[1].replace(',', '.');
         const entry = a.value === null ? {rate, value: null, status: 'uncertain', reason: `PVM suma neįskaitoma („${a.raw}“).`, source: src, raw: a.raw} : {rate, ...field(a.value, src)};
+        if (m[2] === '4' && !['0', '5', '9', '12', '21'].includes(rate)) continue; // "4" as "%" only for a real rate
         if (m[2] === '4') { entry.rateUncertain = 'Procento ženklas atpažintas kaip „4“ – tarifas nustatytas pagal kontekstą.'; }
         t.vatByRate.push(entry);
       }
     } else if (VAT.test(lf)) put('vat', VAT);
     else if (GROSS.test(lf) && !/be pvm/.test(lf) && !/(iki|terminas|data|zodziais)\b/.test(lf)) {
+      // A total row with three amounts: net, VAT, gross.
+      const amounts = [...row.text.matchAll(/-?\d{1,3}(?:[ \u00a0.]\d{3})*[.,]\d{2}(?!\d)/g)].map((x) => parseAmount(x[0].replace(/[ \u00a0]/g, ''))).filter((x) => x !== null);
+      if (amounts.length === 3 && money.eq(money.add(amounts[0], amounts[1]), amounts[2])) {
+        const src = srcOf(page, row);
+        if (t.net.status !== 'ok') t.net = field(amounts[0], src);
+        if (t.vat.status !== 'ok') t.vat = field(amounts[1], src);
+        t.gross = field(amounts[2], src);
+        continue;
+      }
+      // Plain "Iš viso" may be the net when VAT and "su PVM" rows follow – decided after all rows are read.
+      if (/^(is viso|viso)\b/.test(lf) && !/su pvm|moketi/.test(lf)) { const a = lastAmount(row, GROSS); if (a?.value !== null && a?.value !== undefined) plainTotals.push({value: a.value, src: srcOf(page, row, a.seg)}); }
       // A due-date row ("Apmokėti iki …") or an unreadable amount never replaces a total that was read.
       const before = t.gross;
       if (t.gross.status !== 'ok' || /su pvm|moketi/.test(lf)) put('gross', GROSS);
       if (before.status === 'ok' && t.gross.status !== 'ok') t.gross = before;
     }
+  }
+  if (t.net.status !== 'ok' && t.gross.status === 'ok') {
+    const net = plainTotals.find((x) => !money.eq(x.value, t.gross.value) && money.cmp(x.value, t.gross.value) < 0);
+    if (net) t.net = {...field(net.value, net.src), derived: '„Iš viso“ prieš PVM eilutę – suma be PVM.'};
   }
   if (t.vat.status === 'missing' && t.vatByRate.length) {
     const ok = t.vatByRate.every((r) => r.value !== null);
@@ -524,10 +577,20 @@ export function parseInvoice(doc) {
   const issue = (() => {
     for (const {page, row, f} of allRows(doc)) {
       if (page.page > 1) break;
-      if (/apmoketi|terminas|due|galioja|pristatymo/.test(f)) continue;
-      const v = valueAfter(row, /(saskaitos data|israsymo data|dokumento data|invoice date|date of issue|data|date)/);
+      // A due date may share the row ("Išrašymo data: … | Mokėjimo terminas: …"): only the matched part is judged.
+      const strong = valueAfter(row, /(saskaitos data|israsymo data|dokumento data|invoice date|date of issue)/);
+      const v = strong || (/apmoketi|terminas|due|galioja|pristatymo/.test(f) ? null : valueAfter(row, /(data|date)/));
       const d = v && parseDate(v.text);
       if (d) return field(d, srcOf(page, row, v.seg));
+    }
+    // No label: the first date printed just under the title or the number ("Serija AB Nr. 1" / "2026-10-15").
+    const rows = doc.pages[0].rows;
+    const anchor = rows.findIndex((row) => TYPE_PATTERNS.some(([, re]) => re.test(fold(row.text))) || /\bnr\.?\s*\S*\d/.test(fold(row.text)));
+    for (let i = Math.max(anchor, 0); anchor >= 0 && i < Math.min(rows.length, anchor + 4); i++) {
+      const f = fold(rows[i].text);
+      if (/apmoketi|terminas|due|galioja|pristatymo|uzsakym/.test(f)) continue;
+      const d = parseDate(rows[i].text);
+      if (d) return {...field(d, srcOf(doc.pages[0], rows[i])), derived: 'Data be pavadinimo po dokumento antrašte.'};
     }
     return null;
   })();

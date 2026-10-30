@@ -359,7 +359,8 @@ export function computeProposal(data, ctx) {
       issues.push({level: 'info', field: 'entries', code: 'cogs_with_sale', message: 'Patvirtinus kartu bus užregistruota parduotų prekių savikaina (D 6000 / K 204) pagal prekių vidutinę savikainą sąskaitos dieną.'});
     }
     const d = money.sum(entries.map((e) => e.debit)), c = money.sum(entries.map((e) => e.credit));
-    if (!money.eq(d, c)) err('entries', 'unbalanced', `Įrašas nesubalansuotas: debetas ${d}, kreditas ${c}.`);
+    // Lines without an account already have their own error; the unbalanced entry is only its consequence then.
+    if (!money.eq(d, c) && eLines.every((l) => l.accountCode)) err('entries', 'unbalanced', `Įrašas nesubalansuotas: debetas ${d}, kreditas ${c}.`);
     for (const r of ['payable', 'receivable', 'vat_input', 'vat_output']) if (!roles[r]) err('entries', 'mapping', `Nenustatytas kontavimo susiejimas „${r}“.`);
   }
 
