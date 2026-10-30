@@ -58,7 +58,7 @@ try {
   await page.getByLabel('Suma, €').fill('250');
   await page.getByLabel('Gauta iš').fill('Petras Petraitis');
   await page.click('button:text("Registruoti ir kontuoti")');
-  await page.waitForSelector('h1:text("KPO KPO 000001")');
+  await page.waitForSelector('h1:text("KPO 000001")');
   const [f3] = await Promise.all([page.waitForEvent('download'), page.click('button:text("PDF (spausdinti)")')]);
   assert.equal(f3.suggestedFilename(), 'KPO000001.pdf');
   await page.goto(t.base + '/#/kasa/knyga');
