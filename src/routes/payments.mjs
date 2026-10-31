@@ -40,7 +40,9 @@ export function register(r, {pool}) {
       const run = (await pool.query('SELECT * FROM payroll_runs WHERE id=$1', [b.runId])).rows[0];
       if (!run) throw new AppError(404, 'not_found', 'Žiniaraštis nerastas.');
       if (run.status !== 'approved') throw new AppError(409, 'draft', 'Mokėjimus galima ruošti tik patvirtintam žiniaraščiui.');
-      const lines = (await pool.query(`SELECT l.to_pay, e.id AS employee_id, e.first_name, e.last_name, e.iban FROM payroll_lines l JOIN employees e ON e.id=l.employee_id WHERE l.run_id=$1 AND l.to_pay > 0 ORDER BY e.last_name`, [run.id])).rows;
+      // Leavers paid on their own (earlier) pay date – their final pay is already settled – are left out.
+      const lines = (await pool.query(`SELECT l.to_pay, e.id AS employee_id, e.first_name, e.last_name, e.iban FROM payroll_lines l JOIN employees e ON e.id=l.employee_id
+        WHERE l.run_id=$1 AND l.to_pay > 0 AND (l.payment_date IS NULL OR l.payment_date >= $2::date) ORDER BY e.last_name`, [run.id, exec])).rows;
       payments = lines.map((l) => ({name: `${l.first_name} ${l.last_name}`, label: `${l.first_name} ${l.last_name}`, iban: l.iban, amount: money.norm(l.to_pay), endToEndId: `DU${run.period}E${l.employee_id}`, remittance: `Darbo užmokestis ${run.period}`}));
     } else {
       kind = 'invoices';

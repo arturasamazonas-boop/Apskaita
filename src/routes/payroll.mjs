@@ -40,8 +40,14 @@ async function saveEmployee(pool, user, id, b) {
   if ('first_name' in v && (!v.first_name || !v.last_name)) throw new AppError(400, 'name', 'Nurodykite vardą ir pavardę.');
   if ('employment_start' in v && !isDate(v.employment_start)) throw new AppError(400, 'start', 'Nurodykite darbo pradžios datą.');
   if (v.employment_end && !isDate(v.employment_end)) throw new AppError(400, 'end', 'Netinkama darbo pabaigos data.');
+  if (v.employment_end || v.employment_start) {
+    const cur = id ? (await pool.query('SELECT employment_start, employment_end FROM employees WHERE id=$1', [id])).rows[0] || {} : {};
+    const st = v.employment_start || String(cur.employment_start || '').slice(0, 10), en = 'employment_end' in v ? v.employment_end : (cur.employment_end ? String(cur.employment_end).slice(0, 10) : null);
+    if (st && en && en < st) throw new AppError(400, 'end', 'Darbo pabaiga negali būti ankstesnė už darbo pradžią.');
+  }
   if (v.personal_code && !/^[3-6]\d{10}$/.test(v.personal_code)) throw new AppError(400, 'personal_code', 'Asmens kodas – 11 skaitmenų.');
   for (const k of ['base_salary', 'hourly_rate', 'hours_per_week', 'npd_fixed']) if (v[k] !== null && v[k] !== undefined && !isNum(v[k])) throw new AppError(400, k, 'Netinkamas skaičius.');
+  if (v.hours_per_week !== undefined && !(Number(v.hours_per_week) > 0 && Number(v.hours_per_week) <= 48)) throw new AppError(400, 'hours_per_week', 'Darbo valandų per savaitę – daugiau nei 0 ir ne daugiau kaip 48 (DK 114 str.).');
   const payType = v.pay_type || (id && (await pool.query('SELECT pay_type FROM employees WHERE id=$1', [id])).rows[0]?.pay_type);
   if (!id && payType === 'monthly' && !v.base_salary) throw new AppError(400, 'base_salary', 'Nurodykite mėnesinį atlyginimą (bruto).');
   if (!id && payType === 'hourly' && !v.hourly_rate) throw new AppError(400, 'hourly_rate', 'Nurodykite valandinį įkainį.');
@@ -58,8 +64,12 @@ async function saveEmployee(pool, user, id, b) {
 async function loadRun(db, id, lock = false) {
   const run = (await db.query(`SELECT * FROM payroll_runs WHERE id=$1${lock ? ' FOR UPDATE' : ''}`, [id])).rows[0];
   if (!run) throw new AppError(404, 'not_found', 'Žiniaraštis nerastas.');
-  run.lines = (await db.query(`SELECT l.*, e.first_name, e.last_name, e.position, e.personal_code, e.pay_type, e.base_salary, e.hourly_rate, e.contract_type, e.pension_extra, e.apply_npd, e.npd_fixed, e.iban, e.expense_account, e.employment_end
+  run.lines = (await db.query(`SELECT l.*, e.first_name, e.last_name, e.position, e.personal_code, e.pay_type, e.base_salary, e.hourly_rate, e.contract_type, e.pension_extra, e.apply_npd, e.npd_fixed, e.iban, e.expense_account, e.employment_end, e.employment_start
     FROM payroll_lines l JOIN employees e ON e.id=l.employee_id WHERE l.run_id=$1 ORDER BY e.last_name, e.first_name`, [id])).rows;
+  // People on the sheet who were not employed in this month at all (dates changed on the card after it was made).
+  const pStart = `${run.period}-01`, pEnd = periodEnd(run.period);
+  run.warnings = run.lines.filter((l) => (l.employment_end && String(l.employment_end).slice(0, 10) < pStart) || String(l.employment_start).slice(0, 10) > pEnd)
+    .map((l) => `${l.first_name} ${l.last_name}: pagal kortelę ${String(l.employment_start).slice(0, 10) > pEnd ? `pradeda dirbti ${String(l.employment_start).slice(0, 10)}` : `nebedirba nuo ${String(l.employment_end).slice(0, 10)}`} – patikrinkite, ar jis turi būti šiame žiniaraštyje.`);
   run.totals = Object.fromEntries(AMOUNTS.map((k) => [k, money.sum(run.lines.map((l) => l[k]))]));
   run.totals.sodra_total = money.sum([run.totals.vsd, run.totals.psd, run.totals.pension, run.totals.employer_sodra]);
   run.totals.cost = money.add(run.totals.gross, run.totals.employer_sodra);
@@ -120,7 +130,8 @@ export function register(r, {pool}) {
       const termDays = (Date.parse(endD) - Date.parse(start)) / 86400000 + 1;
       const plus = (n) => { const p = new Date(`${start}T00:00:00Z`); p.setUTCMonth(p.getUTCMonth() + n); return p.toISOString().slice(0, 10); };
       const probDays = (Date.parse(plus(Number(opts.probationMonths))) - Date.parse(start)) / 86400000;
-      if (endD < plus(6) && probDays > termDays / 2) throw new AppError(400, 'probation', `Terminuotai sutarčiai, trumpesnei nei 6 mėn. (${Math.round(termDays)} d.), išbandymas negali būti ilgesnis nei pusė termino (DK 36 str.).`);
+      const sixMonthsLast = new Date(Date.parse(`${plus(6)}T00:00:00Z`) - 86400000).toISOString().slice(0, 10); // last day of a 6-month term
+      if (endD < sixMonthsLast && probDays > termDays / 2) throw new AppError(400, 'probation', `Terminuotai sutarčiai, trumpesnei nei 6 mėn. (${Math.round(termDays)} d.), išbandymas negali būti ilgesnis nei pusė termino (DK 36 str.).`);
     }
     if (opts.date && !isDate(opts.date)) throw new AppError(400, 'date', 'Netinkama sutarties data.');
     const pdf = await renderContractPdf(e, (await pool.query('SELECT * FROM company_settings WHERE id=1')).rows[0], opts);
@@ -154,7 +165,7 @@ export function register(r, {pool}) {
   });
   r.get('/api/payroll/working-days', async ({user, query}) => {
     requireCap(user, 'read');
-    if (!/^\d{4}-\d{2}$/.test(s(query.period, 7))) throw new AppError(400, 'period', 'Netinkamas laikotarpis.');
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(s(query.period, 7))) throw new AppError(400, 'period', 'Netinkamas laikotarpis.');
     return {period: query.period, days: workingDays(query.period), payment_date: defaultPayDate(query.period)};
   });
 
@@ -210,6 +221,7 @@ export function register(r, {pool}) {
       const run = await loadRun(db, params.id, true);
       if (run.status !== 'draft') throw new AppError(409, 'approved', 'Patvirtinto žiniaraščio keisti negalima – pirmiausia atšaukite patvirtinimą.');
       if (b.norm_days !== undefined) { const n = Number(b.norm_days); if (!Number.isInteger(n) || n < 0 || n > 31) throw new AppError(400, 'norm', 'Netinkama darbo dienų norma.'); run.norm_days = n; }
+      if (b.payment_date !== undefined && b.payment_date !== '' && !isDate(b.payment_date)) throw new AppError(400, 'payment_date', 'Netinkama išmokėjimo data.');
       await db.query('UPDATE payroll_runs SET norm_days=$2, payment_date=$3, note=$4 WHERE id=$1', [run.id, run.norm_days, isDate(b.payment_date) ? b.payment_date : run.payment_date, b.note !== undefined ? s(b.note, 300) : run.note]);
       const params2 = await paramsFor(db, periodEnd(run.period));
       const byEmp = new Map((b.lines || []).map((l) => [String(l.employee_id), l]));
@@ -231,17 +243,22 @@ export function register(r, {pool}) {
         const own = byEmp.get(String(l.employee_id))?.payment_date;
         const pEnd = periodEnd(run.period), pStart = `${run.period}-01`;
         const leaves = e.employment_end && e.employment_end >= pStart && e.employment_end <= pEnd;
-        if (own !== undefined && own !== '') {
+        const cur = l.payment_date ? String(l.payment_date).slice(0, 10) : null;
+        // Worked days for the part of the month the person was employed (to = null: until the month end).
+        const daysUpTo = (to) => { const from = e.employment_start > pStart ? e.employment_start : pStart; return workingDates(run.period).filter((d) => d >= from && (!to || d <= to)).length; };
+        const setDays = (n) => { inp.worked_days = String(n); if (e.pay_type === 'hourly') inp.worked_hours = String(Math.round(n * Number(e.hours_per_week) / 5 * 100) / 100); };
+        if (own !== undefined && own !== '' && own !== cur) {
           if (!isDate(own)) throw new AppError(400, 'payment_date', `${e.first_name} ${e.last_name}: netinkama išmokėjimo data.`);
-          await db.query('UPDATE payroll_lines SET payment_date=$2 WHERE id=$1', [l.id, own]); // kept as chosen, also when it equals the sheet's date
-        } else if (leaves && !l.payment_date) {
-          // Leaving this month (end date entered after the sheet was made, or added by hand): paid on the last day,
-          // and a full month of worked days is cut to the days up to the end date.
-          await db.query('UPDATE payroll_lines SET payment_date=$2 WHERE id=$1', [l.id, e.employment_end]);
-          if (Number(inp.worked_days) === Number(run.norm_days)) {
-            const from = e.employment_start > pStart ? e.employment_start : pStart;
-            inp.worked_days = String(workingDates(run.period).filter((d) => d >= from && d <= e.employment_end).length);
-            if (e.pay_type === 'hourly') inp.worked_hours = String(Math.round(Number(inp.worked_days) * Number(e.hours_per_week) / 5 * 100) / 100);
+          // Chosen by the user: kept as chosen (also when it equals the sheet's date) and no longer follows the end date.
+          await db.query('UPDATE payroll_lines SET payment_date=$2, payment_date_manual=true WHERE id=$1', [l.id, own]);
+        } else if (!l.payment_date_manual) {
+          // Set by the program: follows the end date. Leaving this month – paid on the leaving day; the end date moved
+          // or removed – the date and the pro-rated worked days follow (days changed by hand are kept).
+          const want = leaves ? String(e.employment_end).slice(0, 10) : null;
+          if (want !== cur) {
+            await db.query('UPDATE payroll_lines SET payment_date=$2 WHERE id=$1', [l.id, want]);
+            const autoDays = [Number(run.norm_days), daysUpTo(null), ...(cur ? [daysUpTo(cur)] : [])];
+            if (autoDays.includes(Number(inp.worked_days))) setDays(want ? daysUpTo(want) : e.employment_start > pStart ? daysUpTo(null) : Number(run.norm_days));
           }
         }
         await recalcLine(db, run, l, e, inp, params2);

@@ -42,8 +42,10 @@ async function newRun(main, state) {
 
 async function runSheet(main, id, state) {
   const [run, allEmps] = await Promise.all([get(`/api/payroll/runs/${id}`), get('/api/employees')]);
-  // Active employees, plus anyone who left during this month (final pay), even if already marked inactive.
-  const emps = allEmps.filter((x) => x.active || (x.employment_end && x.employment_end.slice(0, 7) === run.period));
+  // Who can be on this month's sheet: employed during the month (started by its end, not left before it), also if
+  // already marked inactive because they leave this month or later.
+  const pStart = `${run.period}-01`;
+  const emps = allEmps.filter((x) => String(x.employment_start || '').slice(0, 7) <= run.period && (x.employment_end ? String(x.employment_end).slice(0, 10) >= pStart : x.active));
   const draft = run.status === 'draft' && can(state.user, 'write');
   const inputs = new Map();
   const num = (v, attrs = {}) => input({value: Number(v) ? String(v).replace(/\.00$/, '') : '', inputmode: 'decimal', class: 'num-input', disabled: !draft, ...attrs});
@@ -92,6 +94,7 @@ async function runSheet(main, id, state) {
   if (run.status === 'draft' && !run.approval_no && can(state.user, 'write')) actions.push(h('button', {class: 'btn btn-danger', onclick: async () => { if (await confirmDialog('Ištrinti žiniaraštį?', `Žiniaraštis už ${run.period} bus ištrintas.`, 'Ištrinti')) { if (await guard(() => del(`/api/payroll/runs/${id}`), 'Ištrinta.')) location.hash = '#/atlyginimai'; } }}, 'Ištrinti'));
   if (run.lines.length) actions.push(h('button', {class: 'btn', onclick: () => payslip(run, run.lines, state.company?.name)}, 'Visi algalapiai'));
   clear(main, pageHeader(`Darbo užmokesčio žiniaraštis ${run.period}`, badge(STATUS, run.status), ...actions), tabs(''),
+    ...(run.warnings || []).map((w) => h('p', {class: 'issue issue-warning'}, w)),
     p.vdu ? null : h('p', {class: 'issue issue-warning'}, `Parametruose nuo ${date(p.effective_from)} nenurodytas VDU, todėl 60 VDU riba (GPM 32 %, VSD lubos) neskaičiuojama. Kai VDU bus patvirtintas, įrašykite jį skiltyje „Tarifai ir parametrai“ ir perskaičiuokite žiniaraštį.`),
     h('div', {class: 'filters'}, field('Darbo dienų norma', norm), field('Išmokėjimo data', pay), draft && missing.length ? field('Darbuotojai', addSel) : null,
       run.journal_entry_id ? h('a', {class: 'btn btn-small', href: `#/ataskaitos/zurnalas/${run.journal_entry_id}`}, `DK įrašas #${run.journal_entry_id}`) : null),
@@ -115,7 +118,7 @@ async function runSheet(main, id, state) {
 function payslipBody(run, l, company) {
   const row = (t, v, strong) => h('tr', null, h('td', null, t), h('td', {class: 'num'}, strong ? h('strong', null, money(v)) : money(v)));
   return h('div', {class: 'payslip'},
-    company ? h('p', {class: 'hint'}, company) : null, h('h3', null, `Algalapis ${run.period}: ${l.first_name} ${l.last_name}`), h('p', null, `${l.position || ''} · darbo dienų norma ${run.norm_days}, dirbta ${Number(l.worked_days)}${Number(l.worked_hours) ? `, valandų ${Number(l.worked_hours)}` : ''} · išmokėjimo data ${date(run.payment_date)}`),
+    company ? h('p', {class: 'hint'}, company) : null, h('h3', null, `Algalapis ${run.period}: ${l.first_name} ${l.last_name}`), h('p', null, `${l.position || ''} · darbo dienų norma ${run.norm_days}, dirbta ${Number(l.worked_days)}${Number(l.worked_hours) ? `, valandų ${Number(l.worked_hours)}` : ''} · išmokėjimo data ${date(l.payment_date || run.payment_date)}`),
     h('table', {class: 'grid'}, h('tbody', null, h('tr', null, h('th', {colspan: 2}, 'Priskaičiuota')), row('Darbo užmokestis', l.base), Number(l.bonus) ? row('Priedai, premijos', l.bonus) : null,
       Number(l.vacation_pay) ? row('Atostoginiai', l.vacation_pay) : null, Number(l.sick_pay) ? row('Ligos išmoka (darbdavio)', l.sick_pay) : null, Number(l.other_pay) ? row('Kitos išmokos', l.other_pay) : null,
       row('Iš viso priskaičiuota', l.gross, true), h('tr', null, h('th', {colspan: 2}, 'Išskaičiuota')), row(`GPM (taikytas NPD ${money(l.npd)})`, l.gpm), row('VSD', l.vsd), row('PSD', l.psd),

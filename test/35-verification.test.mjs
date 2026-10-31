@@ -181,3 +181,27 @@ test('cash order history shows what changed; a deleted order keeps its number on
   const page = await generalLedger(t.app.pool, {account: '', from: '2026-01-01', to: '2026-12-31', today: '2026-12-31', limit: 5});
   assert.ok(all.rows.length > 5 && page.rows.length === 5);
 });
+
+test('round 3: six-month term is not shorter than six months; end before start refused; a leaver\'s automatic date follows the end date', async () => {
+  const six = (await acc.post('/api/employees', {first_name: 'Šešis', last_name: 'Mėnesiai', employment_start: '2026-09-01', employment_end: '2027-02-28', contract_type: 'fixed_term', base_salary: '1200'})).body;
+  assert.equal((await acc.raw('POST', `/api/employees/${six.id}/contract`, {probationMonths: '3'}, {raw: true})).status, 200);
+  assert.equal((await acc.post('/api/employees', {first_name: 'Atgal', last_name: 'Datos', employment_start: '2026-09-01', employment_end: '2026-08-01', base_salary: '1200'})).status, 400);
+  assert.equal((await acc.post('/api/employees', {first_name: 'Per', last_name: 'Daug', employment_start: '2026-09-01', hours_per_week: '200', base_salary: '1200'})).status, 400);
+  const e = (await acc.post('/api/employees', {first_name: 'Judrus', last_name: 'Išėjimas', employment_start: '2025-01-01', base_salary: '1500'})).body;
+  const run = (await acc.post('/api/payroll/runs', {period: '2028-03'})).body;
+  const card = async (end) => acc.put(`/api/employees/${e.id}`, {...(await acc.get(`/api/employees/${e.id}`)).body, employment_end: end});
+  const lineOf = (r) => r.lines.find((l) => String(l.employee_id) === String(e.id));
+  await card('2028-03-10');
+  let r = (await acc.put(`/api/payroll/runs/${run.id}`, {lines: []})).body;
+  assert.deepEqual([lineOf(r).payment_date, Number(lineOf(r).worked_days)], ['2028-03-10', 8]);
+  await card('2028-03-24'); // moved later in the month: date and days follow
+  r = (await acc.put(`/api/payroll/runs/${run.id}`, {lines: []})).body;
+  assert.deepEqual([lineOf(r).payment_date, Number(lineOf(r).worked_days)], ['2028-03-24', 18]);
+  await card('2028-04-15'); // postponed to next month: paid with the payroll again, full month
+  r = (await acc.put(`/api/payroll/runs/${run.id}`, {lines: []})).body;
+  assert.deepEqual([lineOf(r).payment_date, Number(lineOf(r).worked_days)], [null, Number(r.norm_days)]);
+  await card('2028-02-20'); // left before this month: the sheet warns
+  r = (await acc.get(`/api/payroll/runs/${run.id}`)).body;
+  assert.ok(r.warnings.some((w) => /Judrus Išėjimas/.test(w)));
+  await acc.del(`/api/payroll/runs/${run.id}`);
+});
