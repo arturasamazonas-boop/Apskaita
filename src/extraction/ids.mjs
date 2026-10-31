@@ -51,4 +51,4 @@ export function normalizeName(name) {
 
 const FOLD = {ą: 'a', č: 'c', ę: 'e', ė: 'e', į: 'i', š: 's', ų: 'u', ū: 'u', ž: 'z', Ą: 'a', Č: 'c', Ę: 'e', Ė: 'e', Į: 'i', Š: 's', Ų: 'u', Ū: 'u', Ž: 'z'};
 /** Lowercase + strip Lithuanian diacritics, 1:1 per character (indices preserved). */
-export function fold(s) { return String(s).replace(/[ąčęėįšųūžĄČĘĖĮŠŲŪŽ]/g, (c) => FOLD[c]).toLowerCase(); }
+export function fold(s) { return String(s).replace(/[ąčęėįšųūžĄČĘĖĮŠŲŪŽéèÉÈ]/g, (c) => FOLD[c] || 'e').toLowerCase(); } // é/è: OCR's reading of ė

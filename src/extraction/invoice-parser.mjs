@@ -67,7 +67,7 @@ function valueAfter(row, labelRe) {
   return null;
 }
 
-const DUE_LABEL_RE = /(apmoketi|apmokejimo|terminas|due|galioja|pristatymo)/;
+const DUE_LABEL_RE = /(apmoketi|apmokejimo|moketi iki|terminas|due|galioja|pristatymo)/;
 const DATE_TEXT_RE = /\d{4}\s?[-./]\s?\d{1,2}\s?[-./]\s?\d{1,2}|\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}\s*m\.?\s*[a-zA-ZąčęėįšųūžĄČĘĖĮŠŲŪŽ]+\s*\d{1,2}\s*d\.?/;
 
 /** The row without a due/delivery label and the date that follows it ("Data: 2026-10-15   Apmokėti iki: 2026-10-29"). */
@@ -173,7 +173,7 @@ function numberInTitle(page) {
 
 // ---------------------------------------------------------------- parties
 const SELLER_RE = /^(pardavejas|tiekejas|paslaugu teikejas|seller|supplier|vendor|isdave|rangovas)\b/;
-const BUYER_RE = /^(pirkejas|uzsakovas|gavejas|klientas|buyer|customer|bill to|mokėtojas|mokatojas)\b/;
+const BUYER_RE = /^(pirkejas|uzsakovas|gavejas|klientas|buyer|customer|bill to|moketojas|mokatojas)\b/; // de-accented text
 
 function partyBlocks(doc) {
   const page = doc.pages[0];
@@ -315,6 +315,7 @@ const COLS = [
   ['quantity', ['kiekis', 'kiek.', 'qty', 'quantity']],
   ['unit', ['mato vnt.', 'mato vnt', 'mat. vnt.', 'mato', 'mat.vnt.', 'vnt.', 'unit']],
   ['unitPrice', ['kaina be pvm', 'vnt. kaina', 'kaina', 'unit price', 'price']],
+  ['discountPct', ['nuolaida %', 'nuolaida, %', 'nuolaida%', 'nuol. %', 'discount %', 'discount%']],
   ['discount', ['nuolaida', 'discount']],
   ['vatRate', ['pvm %', 'pvm%', 'pvm tarifas', 'tarifas', 'vat %', 'vat%', 'pvm, %']],
   ['net', ['suma be pvm', 'suma be', 'verte be pvm', 'net amount', 'net', 'suma', 'amount', 'verte']],
@@ -451,7 +452,7 @@ function parseLines(doc) {
       if (hdr) { cols = hdr; inTable = true; ended = false; tableFound = true; continue; }
       if (!inTable || ended) continue;
       if (TOTAL_RE.test(f.replace(/^[^a-z]*/, ''))) { ended = true; continue; }
-      if (/^\(?tesinys\)?$|^perkelta|^puslapis/.test(f)) continue;
+      if (/^\(?tesinys\)?$|^perkelta|^puslapis|^psl\.?\s*\d+\s*(?:is|iš|\/)\s*\d+$|^\d+\s*\/\s*\d+$/.test(f)) continue; // page footers
       const cells = cellsByColumn(row, cols);
       const num = (k) => {
         if (!cells[k]) return null;
@@ -476,10 +477,12 @@ function parseLines(doc) {
       const src = (k) => (cells[k] ? srcOf(page, row, cells[k].seg) : srcOf(page, row));
       const fnum = (k) => { const v = num(k); return v === null ? missing('Stulpelyje nėra reikšmės.') : field(v, src(k)); };
       let discount = missing('Nuolaida nenurodyta.');
-      if (cells.discount) {
-        const raw = cells.discount.text;
+      const dk = cells.discount ? 'discount' : cells.discountPct ? 'discountPct' : null;
+      if (dk) {
+        // A percentage when the cell or its column header ("Nuolaida %") says so.
+        const raw = cells[dk].text;
         const v = parseAmount(raw.replace('%', ''));
-        if (v !== null) discount = field(v, src('discount'), raw.includes('%') ? {percent: true} : {});
+        if (v !== null) discount = field(v, src(dk), raw.includes('%') || dk === 'discountPct' ? {percent: true} : {});
       }
       const line = {
         page: page.page,
@@ -595,7 +598,8 @@ function parseTotals(doc) {
       if (/^(is viso|viso)\b/.test(lf) && !/su pvm|moketi/.test(lf)) { const a = lastAmount(row, GROSS); if (a?.value !== null && a?.value !== undefined) plainTotals.push({value: a.value, src: srcOf(page, row, a.seg)}); }
       // A due-date row ("Apmokėti iki …") or an unreadable amount never replaces a total that was read.
       const before = t.gross;
-      if (t.gross.status !== 'ok' || /su pvm|moketi/.test(lf)) put('gross', GROSS);
+      // "Mokėti" (after an advance or overpayment) is what is left to pay, not the invoice total: only when no total was read.
+      if (t.gross.status !== 'ok' || (/su pvm/.test(lf) && !/^(is viso )?(moketi|apmoketi)\b/.test(lf))) put('gross', GROSS);
       if (before.status === 'ok' && t.gross.status !== 'ok') t.gross = before;
     }
   }
@@ -659,7 +663,7 @@ export function parseInvoice(doc) {
   const title = detectTitle(page1);
   const docType = title ? field(title.type, srcOf(page1, title.row)) : missing('Dokumento tipas neatpažintas (nerasta antraštė).');
   const num = findNumber(page1);
-  const due = labelField(doc, /(apmoketi iki|apmokejimo terminas|mokejimo terminas|apmoketi|due date|payment due|terminas)/, parseDate, {pageLimit: 1});
+  const due = labelField(doc, /(apmoketi iki|moketi iki|apmokejimo terminas|mokejimo terminas|apmoketi|due date|payment due|terminas)/, parseDate, {pageLimit: 1});
   const issue = (() => {
     for (const {page, row, f} of allRows(doc)) {
       if (page.page > 1) break;
