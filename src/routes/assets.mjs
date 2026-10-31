@@ -204,7 +204,7 @@ export function register(r, {pool}) {
     if (!p.lines.length) return null;
     const locked = (await db.query('SELECT locked_through FROM company_settings WHERE id=1')).rows[0]?.locked_through;
     if (locked && monthEnd(period) <= String(locked).slice(0, 10)) {
-      const first = nextPeriod(String(locked).slice(0, 7));
+      const lk = String(locked).slice(0, 10), first = monthEnd(lk.slice(0, 7)) === lk ? nextPeriod(lk.slice(0, 7)) : lk.slice(0, 7); // locked mid-month: that month's end is still open
       throw new AppError(409, 'period_locked', `Laikotarpis užrakintas iki ${String(locked).slice(0, 10)}, todėl už ${period} nusidėvėjimo skaičiuoti negalima. Skaičiuoti galima nuo ${first}: turtui, kurio ankstesni mėnesiai užrakinti, kortelėje įveskite iki ${String(locked).slice(0, 10)} sukauptą nusidėvėjimą (tada skaičiuojama nuo ${first}) arba atrakinkite laikotarpį.`);
     }
     const run = (await db.query(`INSERT INTO depreciation_runs(period, total, created_by) VALUES ($1,$2,$3) RETURNING id`, [period, p.total, user.id])).rows[0];
@@ -256,7 +256,7 @@ export function register(r, {pool}) {
       const run = (await db.query(`SELECT * FROM depreciation_runs WHERE id=$1 FOR UPDATE`, [params.id])).rows[0];
       if (!run || run.status !== 'posted') throw new AppError(404, 'not_found', 'Galiojantis žiniaraštis nerastas.');
       const later = await db.query(`SELECT period FROM depreciation_runs WHERE status='posted' AND period > $1 ORDER BY period`, [run.period]);
-      if (later.rowCount) throw new AppError(409, 'later_runs', `Pirmiausia atšaukite vėlesnius žiniaraščius: ${later.rows.map((x) => x.period).join(', ')}.`);
+      if (later.rowCount) throw new AppError(409, 'later_runs', `Pirmiausia atšaukite vėlesnius žiniaraščius: ${[...new Set(later.rows.map((x) => x.period))].join(', ')}.`);
       const disposed = await db.query(`SELECT a.inv_no FROM fixed_assets a JOIN depreciation_lines l ON l.asset_id=a.id WHERE l.run_id=$1 AND a.status='disposed'`, [run.id]);
       if (disposed.rowCount) throw new AppError(409, 'disposed', `Žiniaraštyje yra jau nurašytas turtas (${disposed.rows.map((x) => x.inv_no).join(', ')}).`);
       const rev = await reverseEntry(db, {entryId: run.journal_entry_id, date: monthEnd(run.period), reason: `nusidėvėjimas ${run.period}: ${s(b.reason, 200)}`, userId: user.id});

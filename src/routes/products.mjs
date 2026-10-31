@@ -129,7 +129,7 @@ export function register(r, {pool}) {
        ORDER BY p.group_name, p.name`, [asOf, s(query.group, 80), query.nonzero || ''])).rows;
     // Value and average on the moving average, as booked on the inventory accounts.
     const pos = await stockPositions(pool, rows.map((x) => x.id), asOf, {roles: await roleAccounts(pool)});
-    for (const x of rows) { const p = pos.get(String(x.id)); if (p && !p.expensed) { x.value = p.value; x.avg_cost = p.unit; } }
+    for (const x of rows) { const p = pos.get(String(x.id)); if (p) { x.value = p.expensed ? '0.00' : p.value; x.avg_cost = p.expensed ? null : p.unit; } } // expensed goods carry no value
     const total = rows.reduce((a, x) => a + Number(x.value || 0), 0);
     return {asOf, items: rows, totalValue: total.toFixed(2)};
   });

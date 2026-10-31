@@ -260,9 +260,9 @@ export async function render(main, [docId], state) {
     if (r) {
       toast(r.alreadyApproved ? 'Jau buvo patvirtinta.' : `Patvirtinta ir užregistruota${r.number ? ` (${r.number})` : ''}.`, 'ok');
       // Cost of sales that may need a look: sold more than was in stock (a purchase not entered yet), or no cost known.
-      if (r.cogsShort?.length) toast(`Parduota daugiau, nei buvo atsargose (${r.cogsShort.join(', ')}): savikaina paskaičiuota pagal paskutinę vidutinę kainą. Jei pirkimo sąskaita dar neįvesta – įveskite ją ir patikrinkite savikainą.`, 'error');
+      if (r.cogsShort?.length) toast(`Parduota daugiau, nei buvo atsargose (${r.cogsShort.join(', ')}): savikaina paskaičiuota pagal paskutinę žinomą kainą. Įvedus trūkstamą pirkimo sąskaitą savikaina bus patikslinta automatiškai.`, 'error');
       if (r.cogsCardPrice?.length) toast(`Savikaina pagal prekės kortelės pirkimo kainą (pirkimų nerasta): ${r.cogsCardPrice.join(', ')}.`, 'info');
-      if (r.cogsMissing?.length) toast(`Savikaina nežinoma (nėra pirkimų ir kortelės kainos): ${r.cogsMissing.join(', ')} – ji liks mėnesio savikainos patikrai.`, 'error');
+      if (r.cogsMissing?.length) toast(`Savikaina nežinoma (nėra pirkimų ir kortelės kainos): ${r.cogsMissing.join(', ')} – kol kas užregistruota 0; įvedus pirkimą savikaina bus patikslinta automatiškai.`, 'error');
       await goNext();
     } else drawBar();
   }

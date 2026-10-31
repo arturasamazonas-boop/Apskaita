@@ -14,7 +14,7 @@ export async function cogsProposal(db, {period}) {
   const sold = (await db.query(`SELECT p.id, p.sku, p.name, p.unit, p.kind, p.purchase_price, sum(l.quantity) AS qty, array_agg(DISTINCT i.id::text) AS invoices
     FROM invoice_lines l JOIN invoices i ON i.id=l.invoice_id JOIN products p ON p.id=l.product_id
     WHERE i.register='sales' AND l.cogs_amount IS NULL AND i.issue_date BETWEEN $1 AND $2 AND p.kind='goods' AND p.track_stock
-    GROUP BY p.id HAVING sum(l.quantity) <> 0 ORDER BY p.sku, p.name`, [from, to])).rows;
+    GROUP BY p.id ORDER BY p.sku, p.name`, [from, to])).rows; // a sale and its return in one month still count (at their own costs)
   const pos = await stockPositions(db, sold.map((r) => r.id), to, {roles});
   const issues = [];
   const out = [];
@@ -22,7 +22,7 @@ export async function cogsProposal(db, {period}) {
     const p = pos.get(String(r.id));
     if (p.expensed) { issues.push({level: 'info', message: `${r.sku || r.name}: pirkimai nurašomi tiesiai į sąnaudas (${p.account}) – savikaina antrą kartą neskaičiuojama.`}); continue; }
     // Each sale at the moving average of its moment.
-    const mine = p.issues.filter((x) => x.date >= from && x.date <= to && r.invoices.includes(x.invoiceId));
+    const mine = p.issues.filter((x) => !x.costed && x.date >= from && x.date <= to && r.invoices.includes(x.invoiceId)); // lines costed with the sale are already booked
     const amount = money.sum(mine.map((x) => x.cost));
     const qty = String(r.qty);
     const unitCost = money.isZero(qty) ? null : fromUnits(divRound(toUnits(amount, 2) * 10n ** 6n, toUnits(qty, 4)), 4);
@@ -45,7 +45,14 @@ export async function cogsProposal(db, {period}) {
   // Entry lines ready to post: D cost of sales / K the accounts the goods are kept in.
   const credits = new Map();
   for (const r of out) if (r.amount !== null && !money.isZero(r.amount)) credits.set(r.account, money.add(credits.get(r.account) || '0', r.amount));
-  const lines = money.isZero(total) ? [] : [{account: roles.cogs || '6000', debit: total}, ...[...credits].filter(([, v]) => !money.isZero(v)).map(([account, v]) => (money.sign(v) > 0 ? {account, credit: v} : {account, debit: money.abs(v)}))];
+  // A month with more returns than sales: the cost comes back (D inventory / K cost of sales).
+  const cogsLine = money.sign(total) >= 0 ? {account: roles.cogs || '6000', debit: total} : {account: roles.cogs || '6000', credit: money.abs(total)};
+  const lines = money.isZero(total) ? [] : [cogsLine, ...[...credits].filter(([, v]) => !money.isZero(v)).map(([account, v]) => (money.sign(v) > 0 ? {account, credit: v} : {account, debit: money.abs(v)}))];
+  if (posted) {
+    // Already posted: a purchase or sale entered later changes the cost – say by how much.
+    const was = (await db.query(`SELECT coalesce(sum(debit - credit),0) AS v FROM journal_lines WHERE entry_id=$1 AND account_code=$2`, [posted.journal_entry_id, roles.cogs || '6000'])).rows[0].v;
+    if (!money.isZero(money.sub(total, was))) issues.push({level: 'warning', message: `Užregistruota ${money.norm(was)} EUR, o dabar apskaičiuota ${money.norm(total)} EUR (vėliau įvesti ar pataisyti dokumentai). Skirtumą ${money.norm(money.sub(total, was))} EUR užregistruokite rankiniu įrašu (D 6000 / K atsargos arba atvirkščiai) arba atšaukite mėnesio įrašą ir užregistruokite iš naujo.`});
+  }
   return {period, date: to, rows: out, total, issues, posted: posted ? posted.journal_entry_id : null, lines,
     accounts: {debit: roles.cogs || '6000', credit: [...credits.keys()][0] || roles.inventory || '204'},
     method: 'Slenkanti svertinė vidutinė savikaina: kiekvienas pirkimas perskaičiuoja likučio vidutinę kainą, pardavimas nurašomas tos dienos vidurkiu (neatskaitomas PVM įskaičiuojamas).'};

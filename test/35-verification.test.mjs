@@ -205,3 +205,23 @@ test('round 3: six-month term is not shorter than six months; end before start r
   assert.ok(r.warnings.some((w) => /Judrus Išėjimas/.test(w)));
   await acc.del(`/api/payroll/runs/${run.id}`);
 });
+
+test('round 3: selling all leaves 0.00 despite rounding; a purchase entered later re-prices a sale made before it; stock = ledger', async () => {
+  const p = (await acc.post('/api/products', {sku: 'R3-1', name: 'R3-1', kind: 'goods', unit: 'vnt.', track_stock: true})).body;
+  const line = (q, price) => ({productId: String(p.id), quantity: q, unitPrice: price});
+  // This product's part of the inventory account: entries of its invoices and of its cost adjustments.
+  const bal = async (to) => (await t.app.pool.query(`SELECT coalesce(sum(l.debit - l.credit),0) AS v FROM journal_lines l JOIN journal_entries e ON e.id=l.entry_id WHERE l.account_code='204' AND e.entry_date <= $1
+    AND (e.id IN (SELECT i.journal_entry_id FROM invoices i JOIN invoice_lines il ON il.invoice_id=i.id WHERE il.product_id=$2) OR e.id IN (SELECT journal_entry_id FROM stock_cost_adjustments WHERE product_id=$2))`, [to, p.id])).rows[0].v;
+  const value = async (asOf) => (await acc.get(`/api/stock?asOf=${asOf}`)).body.items.find((x) => x.sku === 'R3-1').value;
+  await approve(await invoice('purchase', '2026-08-01', [line('100', '0.33')]));
+  await approve(await invoice('purchase', '2026-08-02', [line('200', '0.335')]));
+  const all = await approve(await invoice('sales', '2026-08-03', [line('300', '1')]));
+  assert.equal(all.cogs, '100.00');
+  // Sold before the purchase invoice was entered: costed at the last known price, re-priced when it arrives.
+  const short = await approve(await invoice('sales', '2026-09-10', [line('5', '10')]));
+  assert.deepEqual(short.cogsShort, ['R3-1']);
+  await approve(await invoice('purchase', '2026-09-05', [line('6', '10')]));
+  const next = await approve(await invoice('sales', '2026-09-20', [line('1', '10')]));
+  assert.equal(next.cogs, '10.00');
+  for (const d of ['2026-08-31', '2026-09-30']) assert.equal(await bal(d), await value(d));
+});

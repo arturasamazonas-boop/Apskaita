@@ -60,7 +60,14 @@ export async function render(main, rest, state) {
   const bulkBtn = h('button', {class: 'btn btn-primary', disabled: true, onclick: async () => {
     if (!await confirmDialog('Patvirtinti pažymėtus', `Bus patvirtinta ${selected.size} pilnai patikrintų dokumentų. Kiekvienas patikrinamas iš naujo serveryje; turintys klaidų nebus užregistruoti.`)) return;
     const r = await guard(() => post('/api/proposals/bulk-approve', {items: [...selected].map(([proposalId, contentHash]) => ({proposalId, contentHash}))}));
-    if (r) { const ok = r.results.filter((x) => x.ok).length; toast(`Patvirtinta: ${ok}. Nepavyko: ${r.results.length - ok}.`, ok === r.results.length ? 'ok' : 'error'); selected.clear(); load(); }
+    if (r) {
+      const ok = r.results.filter((x) => x.ok).length; toast(`Patvirtinta: ${ok}. Nepavyko: ${r.results.length - ok}.`, ok === r.results.length ? 'ok' : 'error');
+      // Cost of sales to look at: goods sold beyond stock, or with no known cost.
+      const short = [...new Set(r.results.flatMap((x) => x.cogsShort || []))], missing = [...new Set(r.results.flatMap((x) => x.cogsMissing || []))];
+      if (short.length) toast(`Parduota daugiau, nei buvo atsargose: ${short.join(', ')} – įvedus trūkstamą pirkimą savikaina bus patikslinta automatiškai.`, 'error');
+      if (missing.length) toast(`Savikaina nežinoma: ${missing.join(', ')} – kol kas užregistruota 0; įvedus pirkimą bus patikslinta automatiškai.`, 'error');
+      selected.clear(); load();
+    }
   }}, 'Patvirtinti pažymėtus (0)');
   const search = input({type: 'search', placeholder: 'Ieškoti pagal pavadinimą…', 'aria-label': 'Paieška', oninput: debounce(() => { st.q = search.value; st.offset = 0; load(); })});
   const reg = select([['', 'Visi registrai'], ['purchase', 'Pirkimai'], ['sales', 'Pardavimai']], '', {'aria-label': 'Registras', onchange: () => { st.register = reg.value; load(); }});

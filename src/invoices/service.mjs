@@ -8,7 +8,7 @@ import {AppError, tx} from '../db.mjs';
 import {audit} from '../audit.mjs';
 import {requireCap} from '../auth/auth.mjs';
 import {money, toUnits, fromUnits, divRound} from '../lib/money.mjs';
-import {stockPositions} from '../ledger/stock-cost.mjs';
+import {stockPositions, issueCost, reconcileStock} from '../ledger/stock-cost.mjs';
 import {postEntry} from '../ledger/ledger.mjs';
 import {extractPdf, extractImage, extractDocx, plainText} from '../extraction/text.mjs';
 import {parseInvoice, PROVIDER} from '../extraction/invoice-parser.mjs';
@@ -392,7 +392,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     // booked now (for a correction also the old lines'), so the confirmed month stays right.
     const monthConfirmed = data.register === 'sales' && (await db.query(`SELECT 1 FROM cogs_periods c WHERE c.period=$1
       AND (c.journal_entry_id IS NULL OR NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id=c.journal_entry_id))`, [String(data.issueDate).slice(0, 7)])).rowCount > 0;
-    const cogs = data.register === 'sales' && (company.auto_cogs !== false || monthConfirmed) ? await saleCost(db, data, lines, ctx.roles) : null;
+    const cogs = data.register === 'sales' && (company.auto_cogs !== false || monthConfirmed) ? await saleCost(db, data, lines, ctx.roles, p.kind === 'correction' ? {root: p.corrects_invoice_id, addBack: true} : {root: data.relatedInvoiceId}) : null;
     const costLabel = `${series} ${number} savikaina`.trim();
     const costSide = (account, v, debitWhenPositive) => { const pos = money.sign(v) > 0 === debitWhenPositive, amt = money.abs(v); return {account, debit: pos ? amt : '0', credit: pos ? '0' : amt, counterpartyId: null, description: costLabel}; };
     if (cogs?.total && !money.isZero(cogs.total)) {
@@ -405,7 +405,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
       if (monthConfirmed && company.auto_cogs === false) {
         // Old lines costed by the monthly entry (no cost on the line): their cost goes back now.
         const old = lines.filter((l) => l.cogsAmount === null && l.productId && l.lineType === 'revenue_goods' && money.sign(l.quantity) < 0);
-        const back = old.length ? await saleCost(db, {...data, relatedInvoiceId: null}, old, ctx.roles) : null;
+        const back = old.length ? await saleCost(db, {...data, relatedInvoiceId: null}, old, ctx.roles, {root: p.corrects_invoice_id}) : null;
         if (back) {
           for (const [l, v] of back.byLine) l.cogsAmount = v;
           if (!money.isZero(back.total)) {
@@ -451,6 +451,10 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
       await db.query(`INSERT INTO invoice_vat_rows(invoice_id, tax_code, isaf_code, rate, taxable, vat, deductible_vat) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
         [invoiceId, v.taxCode, v.isafCode || '', v.rate, v.taxable, v.vat, v.deductible]);
     }
+    // Perpetual inventory: the inventory account of the goods on this invoice follows their stock value (a purchase
+    // entered later with an earlier date re-prices what was sold after it; the difference goes to cost of sales).
+    const stockAdjustments = company.auto_cogs !== false ? await reconcileStock(db, lines.filter((l) => l.productId).map((l) => l.productId),
+      {date: data.issueDate, roles: ctx.roles, userId: user.id, invoiceId, label: `${series} ${number}`.trim()}) : [];
     await db.query(`UPDATE proposals SET status='approved', decided_by=$2, decided_at=now() WHERE id=$1`, [p.id, user.id]);
     if (p.document_id) {
       await db.query(`UPDATE documents SET processing_status='posted', kind=CASE WHEN kind IN ('unknown','purchase_invoice','sales_invoice','credit_note','generated_invoice') THEN $2 ELSE kind END,
@@ -462,41 +466,57 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
     if (p.kind === 'correction' && data.register === 'sales') await enqueue(db, 'render_invoice_pdf', {invoiceId: String(relatedId), correctionId: String(invoiceId)}, {idempotencyKey: `pdf:${relatedId}:c${invoiceId}`});
     if (p.external_order_id) await db.query(`UPDATE external_orders SET state='posted', invoice_id=COALESCE(invoice_id,$2), updated_at=now() WHERE id=$1`, [p.external_order_id, invoiceId]);
     await audit(db, {userId: user.id, action: 'proposal.approve', entityType: 'proposal', entityId: p.id, details: {invoiceId, journalEntryId: entry.id, version: p.version, contentHash: p.content_hash, documentId: p.document_id, gross: totals.gross}});
-    return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim(), ...(cogs && {cogs: cogs.total, cogsMissing: cogs.missing, cogsCardPrice: cogs.cardPriced, cogsShort: cogs.short})};
+    return {invoiceId, journalEntryId: entry.id, number: `${series} ${number}`.trim(), ...(cogs && {cogs: cogs.total, cogsMissing: cogs.missing, cogsCardPrice: cogs.cardPriced, cogsShort: cogs.short}), ...(stockAdjustments.length && {stockAdjustments})};
   });
 }
 
 /**
- * Cost of the goods on a sales invoice: quantity × weighted average cost of the goods received (purchases, opening
- * balances, positive adjustments with a cost) up to the invoice date; the card's purchase price when nothing was bought.
- * Credit notes use the unit cost booked on the original invoice. Lines whose cost is unknown are listed in `missing`
- * and stay for the monthly cost-of-sales check.
+ * Cost of the goods on a sales invoice on the moving average (stockPositions): a sale takes its share of the stock
+ * value on the invoice date (the card's purchase price when nothing was bought); a returned or reversed line comes
+ * back at what the sale of that invoice group cost (`root`: the original invoice of a credit note or correction). A
+ * correction first takes back what its invoice group issued (`addBack`). Lines whose cost is unknown are listed in
+ * `missing` and stay for the monthly cost-of-sales check; `short` lists goods sold beyond what was in stock.
  */
-async function saleCost(db, data, lines, roles) {
+async function saleCost(db, data, lines, roles, {root = null, addBack = false} = {}) {
   if (!roles.cogs || !roles.inventory) return null;
   const goods = lines.filter((l) => l.productId && l.lineType === 'revenue_goods' && l.quantity && !money.isZero(l.quantity));
   if (!goods.length) return null;
   const ids = [...new Set(goods.map((l) => String(l.productId)))];
   const products = new Map((await db.query(`SELECT id, sku, name, kind, purchase_price, track_stock FROM products WHERE id = ANY($1::bigint[])`, [ids])).rows.map((r) => [String(r.id), r]));
   const pos = await stockPositions(db, ids, data.issueDate, {roles});
-  const original = data.relatedInvoiceId ? new Map((await db.query(`SELECT product_id, sum(cogs_amount) AS c, sum(quantity) AS q FROM invoice_lines WHERE invoice_id=$1 AND cogs_amount IS NOT NULL GROUP BY product_id`, [data.relatedInvoiceId])).rows
-    .filter((r) => Number(r.q) !== 0).map((r) => [String(r.product_id), fromUnits(divRound(toUnits(r.c, 2) * 1000000n, toUnits(r.q, 4)), 4)])) : new Map();
   const byLine = new Map(), byAccount = new Map(), missing = [], cardPriced = [], short = [];
-  const sold = new Map(); // quantity sold per product on this invoice, to spot a sale of more than is in stock
-  for (const l of goods) {
-    const prod = products.get(String(l.productId)), p = pos.get(String(l.productId));
+  // Each product once, by its net quantity on this document (as stockPositions replays it), then shared over its lines.
+  for (const id of ids) {
+    const prod = products.get(id), p = pos.get(id), mine = goods.filter((l) => String(l.productId) === id);
     if (!prod || prod.kind !== 'goods' || prod.track_stock === false) continue;
-    if (p.expensed) { byLine.set(l, '0.00'); continue; } // bought straight into expenses: the cost is already there
-    if (money.sign(l.quantity) > 0) {
-      const q = (sold.get(String(l.productId)) || 0) + Number(l.quantity); sold.set(String(l.productId), q);
-      if (q > Number(p.qty) + 1e-9 && !short.includes(prod.sku || prod.name)) short.push(prod.sku || prod.name);
+    if (p.expensed) { for (const l of mine) byLine.set(l, '0.00'); continue; } // bought straight into expenses: the cost is already there
+    const st = {q: p.state.q, v: p.state.v}, rec = (root && p.sold.get(String(root))) || {q: 0n, v: 0n};
+    const lineQ = mine.reduce((a, l) => a + toUnits(String(l.quantity), 4), 0n);
+    // A correction replaces what its invoice group issued: only the difference moves stock.
+    const net = lineQ - (addBack ? rec.q : 0n);
+    let c = 0n;
+    if (net > 0n) {
+      let unit = p.state.avg;
+      if (unit === null && st.q <= 0n && prod.purchase_price !== null && prod.purchase_price !== undefined) { unit = toUnits(money.norm(prod.purchase_price), 4); cardPriced.push(prod.sku || prod.name); }
+      if (net > st.q) short.push(prod.sku || prod.name);
+      // Nothing bought yet and no price on the card: cost 0 for now – the purchase, when entered, re-prices the sale.
+      if (st.q <= 0n && unit === null) missing.push(prod.sku || prod.name);
+      c = issueCost(st, net, unit);
+    } else if (net < 0n) {
+      const back = -net;
+      if (rec.q > 0n) c = -(back >= rec.q ? rec.v : divRound(rec.v * back, rec.q));
+      else if (p.state.avg !== null) c = -divRound(back * p.state.avg, 10n ** 6n);
+      else missing.push(prod.sku || prod.name);
     }
-    let unit = (money.sign(l.quantity) < 0 && original.get(String(l.productId))) || p.unit;
-    if (unit === null && prod.purchase_price !== null && prod.purchase_price !== undefined) { unit = money.norm(prod.purchase_price); cardPriced.push(prod.sku || prod.name); }
-    if (unit === null) { missing.push(prod.sku || prod.name); continue; }
-    const cost = fromUnits(divRound(toUnits(l.quantity, 4) * toUnits(unit, 4), 10n ** 6n), 2);
-    byLine.set(l, cost);
-    byAccount.set(p.account, money.add(byAccount.get(p.account) || '0', cost));
+    const total = (addBack ? rec.v : 0n) + c;
+    // Shared over the product's lines by quantity; the last line takes the rounding.
+    let left = total;
+    mine.forEach((l, i) => {
+      const part = i === mine.length - 1 ? left : lineQ === 0n ? (i === 0 ? total : 0n) : divRound(total * toUnits(String(l.quantity), 4), lineQ);
+      left -= part;
+      byLine.set(l, fromUnits(part, 2));
+    });
+    byAccount.set(p.account, money.add(byAccount.get(p.account) || '0', fromUnits(total, 2)));
   }
   return {byLine, byAccount, total: money.sum([...byLine.values()]), missing, cardPriced, short};
 }
