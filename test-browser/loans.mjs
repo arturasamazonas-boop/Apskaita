@@ -45,6 +45,9 @@ try {
   await page.waitForSelector('h1:text-matches("Gauta paskola Nr. P-2026/07")');
   await page.fill('input[type=date]', '2026-09-30'); await page.dispatchEvent('input[type=date]', 'change');
   await page.waitForSelector('text=Palūkanos iki 2026-09-30');
+  // New loans include the repayment day by default (as interest statements count it): 801,37; without it 797,26.
+  await page.waitForFunction(() => /801,37/.test(document.body.textContent));
+  await page.uncheck('label:has-text("Įskaičiuoti grąžinimo") input');
   await page.waitForFunction(() => /797,26/.test(document.body.textContent));
   await page.check('label:has-text("Įskaičiuoti grąžinimo") input');
   await page.waitForFunction(() => /801,37/.test(document.body.textContent));
@@ -56,6 +59,15 @@ try {
   await page.waitForSelector('text=Palūkanos jau sukauptos iki 2026-09-30');
   await page.waitForSelector('td:text("Užregistruota")');
   if (out) await page.screenshot({path: `${out}/loan-card.png`, fullPage: true});
+  // Interest statement in Excel: all fields filled, downloaded as a file.
+  await page.click('button:text("Palūkanų ataskaita (Excel)")');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('.modal button:text("Atsisiųsti Excel")')]);
+  assert.match(dl.suggestedFilename(), /^palukanos_P-2026_07_.*\.xlsx$/);
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook(); await wb.xlsx.readFile(await dl.path());
+  const ws = wb.worksheets[0];
+  assert.match(String(ws.getCell('A3').value), /PALŪKANŲ PRISKAIČIAVIMO ATASKAITA UŽ 2026 METUS/);
+  assert.equal(ws.getCell('D10').value, 25000);
   // List and the manual calculator.
   await page.click('a:text("← Palūkanos")'); await page.waitForSelector('h1:text("Palūkanos")');
   await page.waitForSelector('a:text("P-2026/07 (2026-03-15)")');

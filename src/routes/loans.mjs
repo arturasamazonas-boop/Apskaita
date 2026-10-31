@@ -10,6 +10,8 @@ import {extractText} from '../invoices/service.mjs';
 import {uploadFiles, indexVaultDocument} from '../vault/upload.mjs';
 import {loadDocumentForUser, visibilitySql} from '../vault/documents.mjs';
 import {calcInterest, simpleInterest, BASES} from '../loans/interest.mjs';
+import {interestReportXlsx} from '../loans/interest-report.xlsx.mjs';
+import {SECURITY_HEADERS} from '../http.mjs';
 import {parseLoanContract, parseAmount} from '../loans/contract-parser.mjs';
 import {loadLoanForAccrual, accrualPreview, postAccrual, cancelAccrual} from '../loans/accrual.mjs';
 
@@ -30,7 +32,7 @@ function loanFields(b, partial = false) {
   for (const k of ['contract_date', 'maturity_date']) if (has(k)) { if (b[k] && !isDate(b[k])) throw new AppError(400, k, 'Netinkama data.'); v[k] = b[k] || null; }
   if (has('currency')) { const c = String(b.currency || 'EUR').trim().toUpperCase(); if (!/^[A-Z]{3}$/.test(c)) throw new AppError(400, 'currency', 'Valiuta – trijų raidžių kodas (pvz., EUR, USD).'); v.currency = c; }
   for (const [k, n] of [['contract_no', 60], ['counterparty_name', 200], ['notes', 2000]]) if (has(k)) v[k] = s(b[k], n);
-  for (const k of ['include_last_day', 'rate_variable']) if (has(k)) v[k] = b[k] === true || b[k] === 'true';
+  for (const k of ['include_last_day', 'rate_variable']) if (has(k)) v[k] = k === 'include_last_day' && (b[k] === undefined || b[k] === null) ? true : b[k] === true || b[k] === 'true'; // the repayment day counts unless said otherwise
   if (has('counterparty_id')) v.counterparty_id = b.counterparty_id ? String(b.counterparty_id) : null;
   if (has('status')) v.status = b.status === 'closed' ? 'closed' : 'active';
   for (const k of ['interest_account', 'accrual_account']) if (has(k)) v[k] = s(b[k], 10) || null;
@@ -207,6 +209,22 @@ export function register(r, deps) {
     const accrual = await accrualPreview(pool, l, asOf);
     const names = Object.fromEntries((await pool.query('SELECT code, name FROM accounts WHERE code = ANY($1)', [[accrual.debit, accrual.credit]])).rows.map((a) => [a.code, a.name]));
     return {...l, calc, bankMatches: matches, bases: BASES, accrual: {...accrual, debitName: names[accrual.debit] || '', creditName: names[accrual.credit] || ''}};
+  });
+  // Palūkanų priskaičiavimo ataskaita (Excel) for a chosen period, laid out like the accountant's own sheet.
+  r.get('/api/loans/:id/interest-report', async ({user, params, query, res}) => {
+    requireCap(user, 'read');
+    const l = await loadLoan(pool, params.id);
+    const firstMoney = l.events.find((e) => e.kind === 'disbursement')?.event_date;
+    const from = isDate(query.from) ? query.from : firstMoney ? `${String(firstMoney).slice(0, 4)}-01-01` : `${todayVilnius().slice(0, 4)}-01-01`;
+    const to = isDate(query.to) ? query.to : todayVilnius();
+    if (to < from) throw new AppError(400, 'dates', 'Pabaigos data ankstesnė už pradžios datą.');
+    const company = (await pool.query('SELECT name FROM company_settings WHERE id=1')).rows[0] || {};
+    const buf = await interestReportXlsx(l, company, {from, to});
+    await audit(pool, {userId: user.id, action: 'loan.interest_report', entityType: 'loan', entityId: l.id, details: {from, to}});
+    const file = `palukanos_${(l.contract_no || `paskola-${l.id}`).replace(/[^\p{L}\d._-]+/gu, '_')}_${from}_${to}.xlsx`;
+    res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${file.replace(/[^\w.-]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(file)}`, 'Cache-Control': 'no-store'});
+    res.end(buf);
   });
   r.post('/api/loans', async ({req, user}) => {
     requireCap(user, 'write');

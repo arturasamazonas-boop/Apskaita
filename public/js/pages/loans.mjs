@@ -1,6 +1,6 @@
 // Palūkanos: loan agreements with interest calculated to a chosen date, from the day the money arrived.
 // Terms come from an uploaded / stored agreement (read automatically, confirmed by the user) or are typed in.
-import {h, clear, get, post, put, del, upload, pageHeader, section, table, money, date, guard, select, input, field, can, today, toast, showError, confirmDialog, modal, promptDialog} from '../core.mjs';
+import {h, clear, get, post, put, del, upload, pageHeader, section, table, money, date, guard, select, input, field, can, today, toast, showError, confirmDialog, modal, promptDialog, api} from '../core.mjs';
 
 const DIR = {received: 'Gauta paskola', granted: 'Suteikta paskola'};
 const EVENT = {disbursement: 'Išmokėta (pinigai gauti)', repayment: 'Grąžinta paskolos dalis', rate_change: 'Palūkanų normos pakeitimas', interest_payment: 'Sumokėtos palūkanos'};
@@ -91,6 +91,22 @@ async function list(main, state) {
     section(null, h('div', {class: 'filters'}, field('Skaičiuoti iki', asOf), h('label', {class: 'check'}, lastDay, ` ${lastDayLabel}`)), out),
     cand, calculator(state));
   await Promise.all([load(), loadCand()]);
+}
+
+/** Palūkanų priskaičiavimo ataskaita (Excel) for a chosen period: every field filled in, ready to download. */
+function reportDialog(l) {
+  const firstMoney = l.events.find((e) => e.kind === 'disbursement')?.event_date;
+  const from = input({type: 'date', value: firstMoney ? `${String(firstMoney).slice(0, 4)}-01-01` : `${today().slice(0, 4)}-01-01`}), to = input({type: 'date', value: today()});
+  const m = modal('Palūkanų priskaičiavimo ataskaita', h('form', {onsubmit: (e) => { e.preventDefault(); guard(async () => {
+    const res = await api('GET', `/api/loans/${l.id}/interest-report?${new URLSearchParams({from: from.value, to: to.value})}`, undefined, {raw: true});
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Ataskaitos sudaryti nepavyko.');
+    const name = decodeURIComponent((res.headers.get('content-disposition') || '').match(/filename\*=UTF-8''([^;]+)/)?.[1] || 'palukanos.xlsx');
+    const a = h('a', {href: URL.createObjectURL(await res.blob()), download: name});
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); m.close();
+  }); }},
+  h('p', {class: 'hint'}, 'Operacijos, likučiai, dienos, suma, nuo kurios skaičiuojamos palūkanos, norma ir palūkanos – kiekvieną laikotarpį iki metų pabaigos ir kiekvienų metų stulpelyje, su sumomis. Excel formulės išsaugomos, todėl lentelę galima tikrinti ir papildyti.'),
+  h('div', {class: 'form-grid'}, field('Nuo', from), field('Iki (imtinai)', to)),
+  h('div', {class: 'actions'}, h('button', {class: 'btn btn-primary'}, 'Atsisiųsti Excel'))));
 }
 
 /** Quick calculation without an agreement: amount, dates, rate. */
@@ -209,6 +225,7 @@ async function card(main, id, state) {
       write && l.bankMatches.length ? section('Banko operacijos, kurios gali būti susijusios', table([{label: 'Data', key: 'booking_date'}, {label: 'Suma', num: true, render: (t) => `${money(t.amount)} ${t.currency}`}, {label: 'Mokėtojas / gavėjas', key: 'counterparty_name'},
         {label: 'Paskirtis', key: 'reference'}, {label: 'Sąskaita', key: 'account_name'}, {label: '', render: (t) => h('button', {class: 'btn btn-small', onclick: () => useTx(t)}, txKind(t) === 'disbursement' ? 'Pridėti kaip pinigų gavimą' : 'Pridėti kaip grąžinimą')}], l.bankMatches)) : null);
     clear(head, pageHeader(`${DIR[l.direction]}${l.contract_no ? ` Nr. ${l.contract_no}` : ''}${l.cp_name || l.counterparty_name ? ` – ${l.cp_name || l.counterparty_name}` : ''}`, h('a', {class: 'btn', href: '#/palukanos'}, '← Palūkanos'),
+      h('button', {class: 'btn btn-primary', onclick: () => reportDialog(l)}, '⇩ Palūkanų ataskaita (Excel)'),
       write ? h('button', {class: 'btn', onclick: () => edit(l)}, 'Keisti sąlygas') : null,
       write ? h('button', {class: 'btn btn-danger', onclick: () => guard(async () => { if (await confirmDialog('Ištrinti paskolą', 'Paskola ir jos įrašai bus ištrinti (sutarties dokumentas saugykloje lieka).', 'Ištrinti')) { await del(`/api/loans/${id}`); location.hash = '#/palukanos'; } })}, 'Ištrinti') : null));
   };

@@ -245,3 +245,20 @@ test('round 3: a corrected due date reaches receivables; a correction cannot cha
   const spreadsheet = calcInterest({events: [{date: '2024-07-01', kind: 'disbursement', amount: '100000'}, {date: '2025-06-27', kind: 'repayment', amount: '100000'}], rate: '15', basis: 'actact', asOf: '2025-06-27', includeLastDay: true});
   assert.equal(spreadsheet.interest, '14856.05');
 });
+
+test('interest statement in Excel: the accountant\'s example (100 000 at 15 %, 2024-07-01 – 2025-06-27) gives 7 540,98 + 7 315,07', async () => {
+  const l = (await acc.post('/api/loans', {direction: 'received', counterparty_name: 'Paskolos davėjas', contract_no: 'CV-1', principal: '100000', annual_rate: '15',
+    events: [{kind: 'disbursement', date: '2024-07-01', amount: '100000'}]})).body;
+  assert.deepEqual([l.basis, l.include_last_day], ['actact', true], 'new loans: actual/actual, repayment day included');
+  await acc.post(`/api/loans/${l.id}/events`, {kind: 'repayment', date: '2025-06-27', amount: '100000'});
+  const res = await acc.raw('GET', `/api/loans/${l.id}/interest-report?from=2024-01-01&to=2025-12-31`, null, {raw: true});
+  assert.equal(res.status, 200);
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook(); await wb.xlsx.load(Buffer.from(await res.arrayBuffer()));
+  const ws = wb.worksheets[0];
+  const v = (a) => { const x = ws.getCell(a).value; return x && typeof x === 'object' && 'result' in x ? x.result : x; };
+  assert.deepEqual([ws.getCell('K8').value, ws.getCell('L8').value], [2024, 2025]);
+  assert.deepEqual([v('G11'), Number(v('J11')).toFixed(2), v('G12'), Number(v('J12')).toFixed(2)], [184, '7540.98', 178, '7315.07']);
+  assert.equal(Number(v('J14')).toFixed(2), '14856.05');
+  assert.deepEqual([Number(v('K14')).toFixed(2), Number(v('L14')).toFixed(2)], ['7540.98', '7315.07']);
+});
