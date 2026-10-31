@@ -39,9 +39,11 @@ async function loadOrder(db, id) {
   const rows = (await db.query(`SELECT v.kind, v.before, v.reason, v.changed_at, u.name AS changed_by FROM cash_order_revisions v LEFT JOIN users u ON u.id=v.changed_by WHERE v.order_id=$1 ORDER BY v.id`, [o.id])).rows;
   const cur = {...o, amount: money.norm(o.amount), doc_date: String(o.doc_date instanceof Date ? o.doc_date.toISOString() : o.doc_date).slice(0, 10)};
   // Each revision with what it changed: its "before" against the next revision's "before" (or the order as it is now).
-  const FIELDS = [['doc_date', 'Data'], ['amount', 'Suma'], ['person_name', 'Asmuo'], ['account_code', 'Kor. sąskaita'], ['cash_account', 'Kasos sąskaita'], ['basis', 'Pagrindas'], ['purpose', 'Paskirtis'], ['attachment', 'Priedai']];
+  const PURPOSES = {invoice: 'sąskaitos apmokėjimas', advance: 'avansas', bank: 'bankas', accountable: 'atskaitingas asmuo', other: 'kita'};
+  const withLabels = (x) => (x ? {...x, invoice: x.invoice_number ? `${x.invoice_series || ''} ${x.invoice_number}`.trim() : '', purpose: PURPOSES[x.purpose] || x.purpose} : x);
+  const FIELDS = [['doc_date', 'Data'], ['amount', 'Suma'], ['person_name', 'Asmuo'], ['counterparty_name', 'Kontrahentas'], ['invoice', 'Sąskaita'], ['account_code', 'Kor. sąskaita'], ['cash_account', 'Kasos sąskaita'], ['basis', 'Pagrindas'], ['purpose', 'Paskirtis'], ['attachment', 'Priedai']];
   const revisions = rows.map((v, i) => {
-    const after = rows[i + 1]?.before || cur, was = v.before || {};
+    const after = withLabels(rows[i + 1]?.before || cur), was = withLabels(v.before || {});
     const norm = (k, x) => (k === 'amount' && x !== undefined && x !== null && x !== '' ? money.norm(x) : String(x ?? ''));
     const changes = v.kind === 'edit' ? FIELDS.filter(([k]) => norm(k, was[k]) !== norm(k, after[k])).map(([k, label]) => `${label}: ${norm(k, was[k]) || '—'} → ${norm(k, after[k]) || '—'}`).join('; ') : '';
     return {kind: v.kind, reason: v.reason, changed_at: v.changed_at, changed_by: v.changed_by, doc_date: was.doc_date, amount: was.amount, person_name: was.person_name, account_code: was.account_code, changes};
@@ -223,7 +225,7 @@ export function register(r, {pool}) {
       const o = (await db.query('SELECT * FROM cash_orders WHERE id=$1 FOR UPDATE', [params.id])).rows[0];
       if (!o) throw new AppError(404, 'not_found', 'Orderis nerastas.');
       if (o.status !== 'posted') throw new AppError(409, 'not_posted', 'Taisyti galima tik galiojantį orderį.');
-      if (b.cashAccount === undefined || b.cashAccount === '') b.cashAccount = o.cash_account; // not given: stays in its cash account
+      if (b.cashAccount === undefined || b.cashAccount === null || b.cashAccount === '') b.cashAccount = o.cash_account; // not given: stays in its cash account
       const {revisions: _r, ...before} = await loadOrder(db, o.id);
       const rev = await unpost(db, o, 'edit', `taisoma: ${reason}`, user);
       const v = await prepare(db, b, o.kind);

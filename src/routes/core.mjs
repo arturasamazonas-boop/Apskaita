@@ -421,8 +421,8 @@ export async function sourceLink(db, e) {
     return a ? {type: 'loan_accrual', id: a.id, label: `Palūkanų kaupimas ${a.as_of}${a.contract_no ? ` (sutartis ${a.contract_no})` : ''}`, href: `#/palukanos/${a.loan_id}`} : null;
   }
   if (e.source_type === 'cash_order') {
-    const o = (await db.query('SELECT id, series, number FROM cash_orders WHERE id=$1', [e.source_id])).rows[0];
-    return o ? {type: 'cash_order', id: o.id, label: `Kasos orderis ${o.series} ${o.number}`, href: `#/kasa/${o.id}`} : null;
+    const o = (await db.query(`SELECT id, series, regexp_replace(number, '-del-[0-9]+$', '') AS number, status FROM cash_orders WHERE id=$1`, [e.source_id])).rows[0];
+    return o ? {type: 'cash_order', id: o.id, label: `Kasos orderis ${o.series} ${o.number}${o.status === 'deleted' ? ' (ištrintas)' : ''}`, href: `#/kasa/${o.id}`} : null;
   }
   if (e.source_type === 'asset_disposal') {
     const a = (await db.query('SELECT id, inv_no, name FROM fixed_assets WHERE id=$1', [e.source_id])).rows[0];

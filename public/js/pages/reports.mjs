@@ -61,13 +61,13 @@ async function reportView(body, [key, name, title, mode], rest) {
   };
   const exportBtn = (fmt) => h('button', {class: 'btn btn-small', onclick: () => guard(async () => {
     const res = await api('GET', `/api/reports/${name}?${qs()}&format=${fmt}`, undefined, {raw: true});
-    if (!res.ok) throw new Error('Eksportas nepavyko.');
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Eksportas nepavyko.');
     const blob = await res.blob(); const a = h('a', {href: URL.createObjectURL(blob), download: `${name}.${fmt}`}); document.body.append(a); a.click(); a.remove();
   })}, fmt.toUpperCase());
   // Ledger: the account box filters while typing (by the start of the account code); empty shows every operation.
   const accList = h('datalist', {id: 'ledger-accounts'});
   if (mode === 'ledger') f.account.addEventListener('input', debounce(() => { ledgerLimit = 500; guard(load); }, 350));
-  clear(body, h('div', {class: 'filters'}, inputs, accList, h('button', {class: 'btn btn-primary', onclick: () => guard(load)}, 'Rodyti'), exportBtn('csv'), exportBtn('xlsx')), out);
+  clear(body, h('div', {class: 'filters'}, inputs, accList, h('button', {class: 'btn btn-primary', onclick: () => { ledgerLimit = 500; guard(load); }}, 'Rodyti'), exportBtn('csv'), exportBtn('xlsx')), out);
   await load();
 }
 

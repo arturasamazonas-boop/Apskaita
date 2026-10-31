@@ -349,6 +349,8 @@ export function register(r, {pool, storage}) {
     const rep = await fn(pool, {...query, ...(exporting && params.name === 'ledger' && {limit: Infinity}), today: todayVilnius()});
     if (exporting) {
       await audit(pool, {userId: user.id, action: 'report.export', entityType: 'report', entityId: params.name, details: {format: query.format, filters: rep.filters}});
+      // Excel is built in memory: a very large ledger goes to CSV (which has every line) so the server is not exhausted.
+      if (query.format === 'xlsx' && rep.rows.length > 30000) throw new AppError(422, 'too_large', `Excel failui per daug eilučių (${rep.rows.length.toLocaleString('lt-LT')}). Atsisiųskite CSV (jame visos eilutės, atsidaro ir Excel) arba susiaurinkite laikotarpį ar sąskaitą.`);
       const buf = query.format === 'csv' ? Buffer.from(R.toCsv(rep), 'utf8') : await R.toXlsx(rep);
       res.writeHead(200, {...SECURITY_HEADERS, 'Content-Type': query.format === 'csv' ? 'text/csv; charset=utf-8' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="${params.name}.${query.format}"`, 'Cache-Control': 'no-store'});

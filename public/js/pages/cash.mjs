@@ -86,7 +86,7 @@ async function newOrder(main, kind, state, edit = null) {
     toast(`${r.series} ${r.number} ${edit ? 'pataisytas (senas įrašas atšauktas, užregistruotas naujas)' : 'užregistruotas'}.`, 'ok');
     location.hash = `#/kasa/${r.id}`;
   });
-  clear(main, pageHeader(edit ? `Taisyti ${kind === 'receipt' ? 'KPO' : 'KIO'} ${edit.series} ${edit.number}` : KIND[kind]), tabs(''),
+  clear(main, pageHeader(edit ? `Taisyti ${edit.series} ${edit.number}` : KIND[kind]), tabs(''),
     section(null, h('form', {onsubmit: submit},
       h('div', {class: 'form-grid'}, field('Data', f.date), field('Operacija', f.purpose), field('Suma, €', f.amount), cashAccounts.length > 1 || edit ? field('Kasa', f.cash) : null), extra,
       h('div', {class: 'form-grid'}, field(kind === 'receipt' ? 'Gauta iš' : 'Išmokėta (kam)', f.personName), field('Kodas', f.personCode), field('Pagrindas', f.basis), field('Priedai', f.attachment)),
