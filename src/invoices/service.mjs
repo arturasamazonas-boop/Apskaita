@@ -336,6 +336,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
       if (d10(data.issueDate) !== d10(orig.issue_date)) changed.push('išrašymo datą');
       if (d10(data.vatPointDate) !== d10(orig.vat_point_date)) changed.push('PVM apskaičiavimo datą');
       if ((data.currency || 'EUR') !== orig.currency) changed.push('valiutą');
+      if (`${data.series || ''} ${data.number || ''}`.trim() !== `${orig.series} ${orig.number}`.trim()) changed.push('numerį');
       if (changed.length) throw new AppError(422, 'locked_fields', `Taisant sąskaitą negalima keisti: ${changed.join(', ')}. Anuliuokite ją ir išrašykite naują.`);
     }
     // Counterparty record (created on approval, never from AI alone).
@@ -420,7 +421,7 @@ export async function approveProposal(pool, user, proposalId, {contentHash: hash
       if (!entryLines.length) {
         // Nothing to post: allowed when something printed on the invoice changes (due date, notes, line wording).
         const prev = (await db.query(`SELECT p.data FROM invoices i JOIN proposals p ON p.id=i.proposal_id WHERE i.id=$1 OR (i.related_invoice_id=$1 AND i.doc_type='correction') ORDER BY i.id DESC LIMIT 1`, [relatedId])).rows[0]?.data || {};
-        const shown = (d) => JSON.stringify([d.dueDate || '', d.notes || '', d.paymentReference || '', d.orderReference || '', (d.lines || []).map((l) => [l.description, l.sku || '', String(Number(l.quantity || 0)), l.unit || '', String(Number(l.unitPrice || 0))])]);
+        const shown = (d) => JSON.stringify([d.dueDate || '', d.notes || '', d.paymentReference || '', d.orderReference || '', (d.lines || []).map((l) => [l.description, l.sku || '', String(Number(l.quantity || 0)), l.unit || '', String(Number(l.unitPrice || 0)), l.taxCode || ''])]);
         if (shown(prev) === shown(data)) throw new AppError(422, 'no_change', 'Koregavimas nieko nekeičia.');
       }
     }

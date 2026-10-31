@@ -20,7 +20,7 @@ export async function emailDraft(db, invoiceId) {
   const g = (await db.query(`SELECT sum(gross_total) AS g, count(*) AS n FROM invoices WHERE id=$1 OR (related_invoice_id=$1 AND doc_type='correction')`, [inv.id])).rows[0];
   const lastData = Number(g.n) > 1 ? (await db.query(`SELECT p.data FROM invoices i JOIN proposals p ON p.id=i.proposal_id WHERE i.related_invoice_id=$1 AND i.doc_type='correction' ORDER BY i.id DESC LIMIT 1`, [inv.id])).rows[0]?.data : null;
   inv.gross_total = g.g; inv.annulled = Number(g.n) > 1 && money.isZero(g.g);
-  if (lastData?.dueDate) inv.due_date = lastData.dueDate;
+  if (lastData) inv.due_date = lastData.dueDate || null; // a correction may also remove the due date
   const sent = (await db.query(`SELECT recipients, status, sent_at, error FROM invoice_emails WHERE invoice_id=$1 ORDER BY id DESC LIMIT 10`, [inv.id])).rows;
   return {
     invoice: inv, to: inv.cp_email || '', subject: `${inv.doc_type === 'credit_note' ? 'Kreditinė sąskaita' : 'Sąskaita faktūra'} ${no}`,

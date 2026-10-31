@@ -218,7 +218,7 @@ export async function renderAndStorePdf({pool, storage}, invoiceId, {correctionI
       vat = (await pool.query('SELECT * FROM invoice_vat_rows WHERE invoice_id=$1', [inv.id])).rows;
       inv = {...inv, annulled: corrected, annulReason: String(cd.notes || '').replace(/^Anuliuota:\s*/, '')};
     } else {
-      inv = {...inv, net_total: tot.n, vat_total: tot.v, gross_total: tot.g, approved_by: c.approved_by, due_date: cd.dueDate || inv.due_date, proposal_id: c.proposal_id};
+      inv = {...inv, net_total: tot.n, vat_total: tot.v, gross_total: tot.g, approved_by: c.approved_by, due_date: cd.dueDate || null, payment_reference: cd.paymentReference ?? inv.payment_reference, order_reference: cd.orderReference ?? inv.order_reference, proposal_id: c.proposal_id};
     }
   }
   const rel = inv.related_invoice_id ? (await pool.query('SELECT series, number FROM invoices WHERE id=$1', [inv.related_invoice_id])).rows[0] : null;

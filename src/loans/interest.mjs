@@ -60,28 +60,35 @@ export function calcInterest({events = [], rate, basis = 'act365', asOf, include
     else if (e.kind === 'rate_change') changes.push({at: d, rate: toUnits(e.rate, 4)});
     else if (e.kind === 'interest_payment') { if (d <= toDay(asOf)) paid += toUnits(e.amount, 2); }
   }
-  // Rate changes first on the same day, so a disbursement on that day already earns the new rate.
-  changes.sort((x, y) => x.at - y.at || (x.rate !== undefined ? -1 : 0) - (y.rate !== undefined ? -1 : 0));
+  // Same day: rate changes first (a disbursement that day already earns the new rate), then money in, then money out –
+  // whatever order the events were entered in.
+  const order = (c) => (c.rate !== undefined ? 0 : c.dBal > 0n ? 1 : 2);
+  changes.sort((x, y) => x.at - y.at || order(x) - order(y));
   const firstMoney = changes.find((c) => c.dBal !== undefined && c.dBal > 0n)?.at;
   let bal = 0n, r = toUnits(rate ?? '0', 4), micro = 0n;
   const periods = [], issues = [];
   const flush = (a, b) => {
-    if (a >= b || bal === 0n || firstMoney === undefined) return;
+    if (a >= b || bal <= 0n || firstMoney === undefined) return; // nothing outstanding (an overpayment earns nothing)
     let periodMicro = 0n, days = 0;
+    const parts = [];
     for (const p of pieces(a, b, basis)) {
       // cents × 10 000 = 1/10 000 cent; rate has 4 decimals and is a percentage.
-      periodMicro += divRound(bal * 10000n * r * BigInt(p.days), BigInt(p.denom) * 100n * 10000n);
-      days += p.days;
+      const m = divRound(bal * 10000n * r * BigInt(p.days), BigInt(p.denom) * 100n * 10000n);
+      periodMicro += m; days += p.days;
+      parts.push({from: iso(p.a), to: iso(p.b - 1), days: p.days, denom: p.denom, interest: fromUnits(divRound(m, 10000n), 2)});
     }
+    // Shown per period so that the periods add up to the (once rounded) total: each takes the change of the rounded running sum.
+    const shown = divRound(micro + periodMicro, 10000n) - divRound(micro, 10000n);
     micro += periodMicro;
-    periods.push({from: iso(a), to: iso(b - 1), days, balance: fromUnits(bal, 2), rate: fromUnits(r, 4), interest: fromUnits(divRound(periodMicro, 10000n), 2)});
+    periods.push({from: iso(a), to: iso(b - 1), days, balance: fromUnits(bal, 2), rate: fromUnits(r, 4), interest: fromUnits(shown, 2), parts});
   };
   let cursor = firstMoney;
   for (const c of changes) {
     if (cursor !== undefined && c.at > cursor) { flush(cursor, Math.min(c.at, end)); cursor = Math.max(cursor, Math.min(c.at, end)); }
     if (c.dBal !== undefined) {
       bal += c.dBal;
-      if (bal < 0n) { issues.push(`Grąžinta daugiau, nei paskolinta (${iso(c.repayDay)}).`); bal = 0n; }
+      // An overpayment is set off against later money: the balance is not reset to 0.
+      if (bal < 0n && c.dBal < 0n) issues.push(`Grąžinta daugiau, nei paskolinta (${iso(c.repayDay)}).`);
     }
     if (c.rate !== undefined) r = c.rate;
   }

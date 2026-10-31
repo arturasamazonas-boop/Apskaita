@@ -62,7 +62,7 @@ export async function invoiceDetail(main, id, state) {
     inv.change && inv.change.blockers.length && !inv.change.annulled ? h('p', {class: 'hint'}, `Taisyti ar anuliuoti nebegalima: ${inv.change.blockers.join(' ')}`) : null,
     h('div', {class: 'cols'},
       section('Rekvizitai', h('dl', {class: 'dl'},
-        h('dt', null, 'Išrašyta'), h('dd', null, date(inv.issue_date)), h('dt', null, 'PVM data'), h('dd', null, date(inv.vat_point_date)), h('dt', null, 'Terminas'), h('dd', null, date(inv.corrected?.dueDate || inv.due_date)),
+        h('dt', null, 'Išrašyta'), h('dd', null, date(inv.issue_date)), h('dt', null, 'PVM data'), h('dd', null, date(inv.vat_point_date)), h('dt', null, 'Terminas'), h('dd', null, date(inv.corrected ? inv.corrected.dueDate : inv.due_date)),
         h('dt', null, inv.register === 'sales' ? 'Pirkėjas' : 'Tiekėjas'), h('dd', null, `${cp.name || ''} ${cp.companyCode ? `(${cp.companyCode})` : ''} ${cp.vatCode || ''}`),
         h('dt', null, 'Adresas'), h('dd', null, cp.address || '—'), h('dt', null, 'Užsakymas'), h('dd', null, inv.order ? `${inv.store_name || ''} #${inv.order.order_number} (${inv.order.state})` : inv.order_reference || '—'),
         h('dt', null, 'Patvirtino'), h('dd', null, `${inv.approved_by_name} ${dateTime(inv.approved_at)}`))),

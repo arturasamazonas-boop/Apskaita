@@ -4,6 +4,7 @@ import {AppError, tx} from '../db.mjs';
 import {requireCap} from '../auth/auth.mjs';
 import {readJson, readMultipart} from '../http.mjs';
 import {audit} from '../audit.mjs';
+import {money} from '../lib/money.mjs';
 import {todayVilnius} from '../invoices/context.mjs';
 import {extractText} from '../invoices/service.mjs';
 import {uploadFiles, indexVaultDocument} from '../vault/upload.mjs';
@@ -25,9 +26,9 @@ function loanFields(b, partial = false) {
   if (has('direction')) { if (!['received', 'granted'].includes(b.direction)) throw new AppError(400, 'direction', 'Pasirinkite: paskola gauta ar suteikta.'); v.direction = b.direction; }
   if (has('principal')) { v.principal = amt(b.principal); if (!v.principal || Number(v.principal) <= 0) throw new AppError(400, 'principal', 'Nurodykite paskolos sumą.'); }
   if (has('annual_rate')) v.annual_rate = rateOf(b.annual_rate);
-  if (has('basis')) { if (!BASES[b.basis || 'act365']) throw new AppError(400, 'basis', 'Netinkama dienų skaičiavimo bazė.'); v.basis = b.basis || 'act365'; }
+  if (has('basis')) { if (!BASES[b.basis || 'actact']) throw new AppError(400, 'basis', 'Netinkama dienų skaičiavimo bazė.'); v.basis = b.basis || 'actact'; }
   for (const k of ['contract_date', 'maturity_date']) if (has(k)) { if (b[k] && !isDate(b[k])) throw new AppError(400, k, 'Netinkama data.'); v[k] = b[k] || null; }
-  if (has('currency')) v.currency = /^[A-Z]{3}$/.test(String(b.currency || 'EUR').toUpperCase()) ? String(b.currency || 'EUR').toUpperCase() : 'EUR';
+  if (has('currency')) { const c = String(b.currency || 'EUR').trim().toUpperCase(); if (!/^[A-Z]{3}$/.test(c)) throw new AppError(400, 'currency', 'Valiuta – trijų raidžių kodas (pvz., EUR, USD).'); v.currency = c; }
   for (const [k, n] of [['contract_no', 60], ['counterparty_name', 200], ['notes', 2000]]) if (has(k)) v[k] = s(b[k], n);
   for (const k of ['include_last_day', 'rate_variable']) if (has(k)) v[k] = b[k] === true || b[k] === 'true';
   if (has('counterparty_id')) v.counterparty_id = b.counterparty_id ? String(b.counterparty_id) : null;
@@ -148,7 +149,8 @@ export function register(r, deps) {
     const amount = amt(b.amount);
     if (!amount) throw new AppError(400, 'amount', 'Nurodykite sumą.');
     if (!isDate(b.from) || !isDate(b.to)) throw new AppError(400, 'dates', 'Nurodykite pradžios ir pabaigos datas.');
-    return simpleInterest({amount, from: b.from, to: b.to, rate: rateOf(b.rate), basis: BASES[b.basis] ? b.basis : 'act365', includeLastDay: b.includeLastDay === true || b.includeLastDay === 'true'});
+    const rate = rateOf(b.rate);
+    return {...simpleInterest({amount, from: b.from, to: b.to, rate, basis: BASES[b.basis] ? b.basis : 'actact', includeLastDay: b.includeLastDay === true || b.includeLastDay === 'true'}), amount, rate};
   });
   r.post('/api/loans/read-contract', async ({req, user}) => {
     requireCap(user, 'write');
@@ -164,11 +166,13 @@ export function register(r, deps) {
     requireCap(user, 'approve');
     const b = await readJson(req);
     if (!isDate(b.asOf)) throw new AppError(400, 'date', 'Nurodykite datą.');
-    const ids = (await pool.query(`SELECT id, contract_no, counterparty_name FROM loans WHERE status='active' ORDER BY id`)).rows;
+    // Active loans, and closed ones that still have interest not yet accrued (repaid during the period).
+    const ids = (await pool.query(`SELECT id, contract_no, counterparty_name, status FROM loans WHERE status IN ('active','closed') ORDER BY id`)).rows;
     const results = [];
     for (const l of ids) {
       const label = `${l.contract_no || `#${l.id}`}${l.counterparty_name ? ` – ${l.counterparty_name}` : ''}`;
       const p = await accrualPreview(pool, await loadLoanForAccrual(pool, l.id), b.asOf);
+      if (l.status === 'closed' && (p.blockers.length || money.isZero(p.amount))) continue;
       if (p.blockers.length) { results.push({loanId: String(l.id), label, status: 'skipped', message: p.blockers.join(' ')}); continue; }
       try {
         const r2 = await tx(pool, (db) => postAccrual(db, user, l.id, b.asOf));
@@ -230,6 +234,9 @@ export function register(r, deps) {
     const accrued = (await pool.query(`SELECT 1 FROM loan_accruals WHERE loan_id=$1 AND status='posted' LIMIT 1`, [params.id])).rowCount;
     if (accrued) {
       const cur = (await pool.query('SELECT direction, currency, interest_account, accrual_account FROM loans WHERE id=$1', [params.id])).rows[0];
+      // The terms that decide the interest itself would re-price periods already in the ledger.
+      const terms = (await pool.query('SELECT annual_rate, basis, include_last_day FROM loans WHERE id=$1', [params.id])).rows[0];
+      for (const k of ['annual_rate', 'basis', 'include_last_day']) if (k in v && String(v[k]) !== String(terms?.[k]) && !(k === 'annual_rate' && Number(v[k]) === Number(terms?.[k]))) throw new AppError(409, 'accrued', 'Palūkanos jau sukauptos DK – normos pakeitimą įrašykite kaip įvykį „Palūkanų normos pakeitimas“ nuo jo datos; dienų bazę ar grąžinimo dienos nuostatą galima keisti tik atšaukus kaupimus.');
       for (const k of ['direction', 'currency', 'interest_account', 'accrual_account']) if (k in v && String(v[k] ?? '') !== String(cur?.[k] ?? '')) throw new AppError(409, 'accrued', 'Palūkanos jau sukauptos DK – tipo, valiutos ir sąskaitų keisti negalima. Pirmiausia atšaukite kaupimus.');
     }
     const keys = Object.keys(v);
@@ -242,7 +249,7 @@ export function register(r, deps) {
   r.delete('/api/loans/:id', async ({user, params}) => {
     requireCap(user, 'write');
     const l = await loadLoan(pool, params.id);
-    if (l.accruals.some((a) => a.status === 'posted')) throw new AppError(409, 'accrued', 'Paskolos palūkanos sukauptos DK – pirmiausia atšaukite kaupimus.');
+    if (l.accruals.length) throw new AppError(409, 'accrued', l.accruals.some((a) => a.status === 'posted') ? 'Paskolos palūkanos sukauptos DK – pirmiausia atšaukite kaupimus.' : 'Paskolai buvo kaupimų DK (atšauktų) – jų įrašai lieka žurnale, todėl paskolos ištrinti negalima; pažymėkite ją uždaryta.');
     await pool.query('DELETE FROM loan_accruals WHERE loan_id=$1', [l.id]);
     await pool.query('DELETE FROM loans WHERE id=$1', [l.id]);
     await audit(pool, {userId: user.id, action: 'loan.delete', entityType: 'loan', entityId: l.id, details: {contract_no: l.contract_no, principal: l.principal, events: l.events.length}});

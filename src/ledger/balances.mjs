@@ -19,11 +19,13 @@ export async function invoiceBalances(db, {register = null, asOf = null, counter
     ), tot AS (
       SELECT root_id, sum(gross_total) AS gross, sum(orig_gross) AS orig_gross, count(*) FILTER (WHERE doc_type='credit_note') AS credit_notes FROM g GROUP BY root_id
     )
-    SELECT r.id, r.register, r.doc_type, r.series, r.number, r.issue_date, r.due_date, r.currency, r.counterparty_id, r.counterparty_snapshot->>'name' AS counterparty_name,
-      r.store_id, r.document_id, r.payment_reference, r.order_reference, r.gross_total AS original_gross,
+    SELECT r.id, r.register, r.doc_type, r.series, r.number, r.issue_date, CASE WHEN lc.id IS NULL THEN r.due_date ELSE lc.due_date END AS due_date, r.currency, r.counterparty_id, r.counterparty_snapshot->>'name' AS counterparty_name,
+      r.store_id, r.document_id, coalesce(lc.payment_reference, r.payment_reference) AS payment_reference, coalesce(lc.order_reference, r.order_reference) AS order_reference, r.gross_total AS original_gross,
       tot.gross, coalesce(paid.paid, 0) AS paid, tot.gross - coalesce(paid.paid, 0) AS outstanding, paid.last_payment, tot.credit_notes,
       r.fx_rate, tot.orig_gross, tot.orig_gross - coalesce(paid.orig_paid, 0) AS orig_outstanding
     FROM tot JOIN invoices r ON r.id = tot.root_id LEFT JOIN paid ON paid.root_id = tot.root_id
+    -- After a correction with the same number: its due date and references are the invoice's current ones.
+    LEFT JOIN LATERAL (SELECT c.id, c.due_date, c.payment_reference, c.order_reference FROM invoices c WHERE c.related_invoice_id = r.id AND c.doc_type = 'correction' AND c.issue_date <= $1 ORDER BY c.id DESC LIMIT 1) lc ON true
     ${where.length || openOnly ? 'WHERE ' + [...where, ...(openOnly ? ['(tot.gross - coalesce(paid.paid,0) <> 0 OR tot.orig_gross - coalesce(paid.orig_paid,0) <> 0)'] : [])].join(' AND ') : ''}
     ORDER BY r.issue_date, r.id LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
   const rows = (await db.query(sql, params)).rows;

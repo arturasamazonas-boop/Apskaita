@@ -40,6 +40,8 @@ export async function accrualPreview(db, loan, asOf) {
   if (last && asOf <= last.as_of) blockers.push(`Palūkanos jau sukauptos iki ${last.as_of}. Pasirinkite vėlesnę datą arba atšaukite paskutinį kaupimą.`);
   if (!loan.events.some((e) => e.kind === 'disbursement')) blockers.push('Nenurodyta pinigų gavimo diena.');
   if (money.isZero(amount) && !blockers.length) blockers.push('Kaupti nėra ką – palūkanos jau užregistruotos.');
+  const locked = (await db.query('SELECT locked_through FROM company_settings WHERE id=1')).rows[0]?.locked_through;
+  if (locked && asOf <= String(locked).slice(0, 10)) blockers.push(`Laikotarpis užrakintas iki ${String(locked).slice(0, 10)} – pasirinkite vėlesnę datą.`);
   let amountEur = amount, rate = null;
   if (loan.currency !== 'EUR' && !money.isZero(amount)) {
     const fx = await rateFor(db, loan.currency, asOf);
@@ -74,7 +76,10 @@ export async function cancelAccrual(db, user, loanId, accrualId, reason) {
   const a = posted.find((x) => String(x.id) === String(accrualId));
   if (!a) throw new AppError(404, 'not_found', 'Galiojantis kaupimas nerastas.');
   if (posted.at(-1).id !== a.id) throw new AppError(409, 'later', 'Atšaukti galima tik paskutinį kaupimą.');
-  const rev = await reverseEntry(db, {entryId: a.journal_entry_id, date: a.as_of, reason: `palūkanų kaupimas ${a.as_of}: ${reason}`, userId: user.id});
+  // Reversed on the accrual's own date, or on the first open day when that period is locked.
+  const locked = (await db.query('SELECT locked_through FROM company_settings WHERE id=1')).rows[0]?.locked_through;
+  const at = locked && String(a.as_of).slice(0, 10) <= String(locked).slice(0, 10) ? nextDay(String(locked).slice(0, 10)) : a.as_of;
+  const rev = await reverseEntry(db, {entryId: a.journal_entry_id, date: at, reason: `palūkanų kaupimas ${a.as_of}: ${reason}`, userId: user.id});
   await db.query(`UPDATE loan_accruals SET status='cancelled', cancel_entry_id=$2 WHERE id=$1`, [a.id, rev.id]);
   return {ok: true};
 }

@@ -45,12 +45,14 @@ async function list(main, state) {
   const lastDay = h('input', {type: 'checkbox'});
   const out = h('div'), cand = h('div');
   const approve = can(state.user, 'approve');
-  let seq = 0;
+  let seq = 0, touched = false; // until the box is used, each loan is calculated with its own repayment-day setting
+  lastDay.addEventListener('change', () => { touched = true; });
   const load = async () => {
     const my = ++seq;
-    const d = await get(`/api/loans?${new URLSearchParams({asOf: asOf.value, includeLastDay: String(lastDay.checked)})}`);
+    const d = await get(`/api/loans?${new URLSearchParams({asOf: asOf.value, ...(touched && {includeLastDay: String(lastDay.checked)})})}`);
     if (my !== seq) return;
-    const sum = (dir, k) => d.items.filter((l) => l.direction === dir).reduce((a, l) => a + Number(l.calc[k]), 0);
+    // Totals per currency (amounts in different currencies are not added up).
+    const sum = (dir, k) => { const m = new Map(); for (const l of d.items.filter((x) => x.direction === dir)) m.set(l.currency, (m.get(l.currency) || 0) + Number(l.calc[k])); return [...m].map(([c, v]) => `${money(v)} ${c}`).join(' + ') || money(0); };
     clear(out, table([
       {label: 'Sutartis', render: (l) => h('a', {href: `#/palukanos/${l.id}`}, `${l.contract_no || 'be nr.'}${l.contract_date ? ` (${l.contract_date})` : ''}`)},
       {label: 'Kita šalis', render: (l) => l.cp_name || l.counterparty_name || '—'}, {label: 'Tipas', render: (l) => DIR[l.direction]},
@@ -62,8 +64,8 @@ async function list(main, state) {
       {label: 'Sukaupta DK', num: true, render: (l) => (l.lastAccrual ? h('span', {title: `Sukaupta iki ${l.lastAccrual}`}, money(l.accrued)) : '—')},
       {label: '', render: (l) => (l.calc.notes.length ? h('span', {class: 'text-error', title: l.calc.notes.join('\n')}, '⚠') : '')}],
     d.items, {onRow: (l) => { location.hash = `#/palukanos/${l.id}`; }, empty: 'Paskolų dar nėra. Įkelkite paskolos sutartį arba įveskite sąlygas ranka.'}),
-    d.items.length ? h('p', {class: 'total-line'}, `Iki ${d.asOf}: mokėtinos palūkanos (gautos paskolos) `, h('strong', null, money(sum('received', 'due'))),
-      `; gautinos palūkanos (suteiktos paskolos) `, h('strong', null, money(sum('granted', 'due'))), '.') : null,
+    d.items.length ? h('p', {class: 'total-line'}, `Iki ${d.asOf}: mokėtinos palūkanos (gautos paskolos) `, h('strong', null, sum('received', 'due')),
+      `; gautinos palūkanos (suteiktos paskolos) `, h('strong', null, sum('granted', 'due')), '.') : null,
     d.items.length && approve ? h('div', {class: 'actions-left'}, h('button', {class: 'btn', onclick: () => accrueAll(d.asOf)}, `Kaupti palūkanas DK iki ${d.asOf}`),
       h('span', {class: 'hint'}, ' Kiekvienai paskolai – atskiras įrašas (gautos: D 6802 / K 491, suteiktos: D 292 / K 5802), kaupiama palūkanų dalis, dar neužregistruota DK. Taikoma kiekvienos paskolos grąžinimo dienos nuostata.')) : null);
   };
@@ -94,15 +96,15 @@ async function list(main, state) {
 /** Quick calculation without an agreement: amount, dates, rate. */
 function calculator(state) {
   const f = {amount: input({inputmode: 'decimal', placeholder: '10 000,00'}), from: input({type: 'date'}), to: input({type: 'date', value: today()}), rate: input({inputmode: 'decimal', placeholder: '5,5'}),
-    basis: select(Object.entries(BASES), 'act365'), lastDay: h('input', {type: 'checkbox'})};
+    basis: select(Object.entries(BASES), 'actact'), lastDay: h('input', {type: 'checkbox', checked: true})};
   const out = h('div');
   const calc = (e) => guard(async () => {
     e?.preventDefault();
     const r = await post('/api/loans/calc', {amount: f.amount.value, from: f.from.value, to: f.to.value, rate: f.rate.value, basis: f.basis.value, includeLastDay: f.lastDay.checked});
-    clear(out, h('p', {class: 'calc-result'}, `${r.days} d. × ${pct(f.rate.value.replace(',', '.'))} per metus nuo ${money(f.amount.value.replace(/\s/g, '').replace(',', '.'))}: palūkanos `, h('strong', null, `${money(r.interest)}`)),
+    clear(out, h('p', {class: 'calc-result'}, `${r.days} d. × ${pct(r.rate)} per metus nuo ${money(r.amount)}: palūkanos `, h('strong', null, `${money(r.interest)}`)),
       r.periods.length > 1 ? periodsTable(r) : null,
       can(state.user, 'write') ? h('button', {type: 'button', class: 'btn', onclick: () => {
-        draft = {fields: {principal: f.amount.value, rate: f.rate.value, basis: f.basis.value, disbursementDate: f.from.value, includeLastDay: f.lastDay.checked}, evidence: {}, warnings: [], bankMatches: []};
+        draft = {fields: {principal: r.amount, rate: r.rate, basis: f.basis.value, disbursementDate: f.from.value, includeLastDay: f.lastDay.checked}, evidence: {}, warnings: [], bankMatches: []};
         location.hash = '#/palukanos/nauja';
       }}, 'Išsaugoti kaip paskolą') : null);
   });
@@ -124,8 +126,8 @@ async function form(main, state) {
     direction: select([['', '— pasirinkite —'], ...Object.entries(DIR)], x.direction || ''), counterparty_name: input({value: x.counterpartyName || ''}), counterparty_code: input({value: x.counterpartyCode || '', inputmode: 'numeric'}),
     contract_no: input({value: x.contractNo || ''}), contract_date: input({type: 'date', value: x.contractDate || ''}), principal: input({value: x.principal ? money(x.principal) : '', inputmode: 'decimal'}),
     currency: input({value: x.currency || 'EUR', maxlength: 3, style: {maxWidth: '6rem'}}), annual_rate: input({value: x.rate ? String(x.rate).replace('.', ',') : '', inputmode: 'decimal'}),
-    rate_variable: h('input', {type: 'checkbox', checked: !!x.rateVariable}), basis: select(Object.entries(BASES), x.basis || 'act365'), maturity_date: input({type: 'date', value: x.maturityDate || ''}),
-    include_last_day: h('input', {type: 'checkbox', checked: !!x.includeLastDay}), notes: h('textarea', {rows: 2}),
+    rate_variable: h('input', {type: 'checkbox', checked: !!x.rateVariable}), basis: select(Object.entries(BASES), x.basis || 'actact'), maturity_date: input({type: 'date', value: x.maturityDate || ''}),
+    include_last_day: h('input', {type: 'checkbox', checked: x.includeLastDay === undefined ? true : !!x.includeLastDay}), notes: h('textarea', {rows: 2}),
     disb_date: input({type: 'date', value: x.disbursementDate || ''}), disb_amount: input({inputmode: 'decimal', value: x.principal ? money(x.principal) : ''}),
   };
   let bankTx = null;
@@ -215,7 +217,7 @@ async function card(main, id, state) {
     const sign = Number(a.amount) < 0;
     return section('Palūkanų kaupimas DK',
       h('p', {class: 'hint'}, `Kaupiama palūkanų dalis, dar neužregistruota DK: apskaičiuotos palūkanos iki pasirinktos datos (${a.includeLastDay ? 'su' : 'be'} grąžinimo / paskutinės dienos – pagal paskolos nuostatą) minus jau sukauptos. Sąskaitas galima pakeisti „Keisti sąlygas“ arba Nustatymai → Kontavimo susiejimai.`),
-      h('dl', {class: 'dl'}, h('dt', null, 'Apskaičiuota iki ' + a.asOf), h('dd', null, money(a.interestTotal)), h('dt', null, 'Jau sukaupta DK'), h('dd', null, `${money(a.booked)}${a.lastAccrual ? ` (iki ${a.lastAccrual})` : ''}`),
+      h('dl', {class: 'dl'}, h('dt', null, `Apskaičiuota iki ${a.asOf} imtinai`), h('dd', null, h('span', {title: 'Kaupiant DK pasirinkta diena įskaičiuojama visada (mėnesio paskutinė diena priklauso tam mėnesiui), todėl suma gali būti 1 dienos palūkanomis didesnė nei viršuje, jei grąžinimo diena neįskaičiuojama.'}, money(a.interestTotal))), h('dt', null, 'Jau sukaupta DK'), h('dd', null, `${money(a.booked)}${a.lastAccrual ? ` (iki ${a.lastAccrual})` : ''}`),
         h('dt', null, 'Bus užregistruota'), h('dd', null, a.blockers.length ? '—' : h('strong', null, `D ${a.debit} ${a.debitName} / K ${a.credit} ${a.creditName}: ${money(a.amountEur)} €${sign ? ' (koregavimas)' : ''}${a.fxRate ? ` (${money(a.amount)} ${l.currency} / ${a.fxRate})` : ''}, laikotarpis ${a.from || '—'} – ${a.asOf}`))),
       a.blockers.length ? h('p', {class: 'hint'}, a.blockers.join(' ')) : approve ? h('button', {class: 'btn btn-primary', onclick: () => guard(async () => {
         if (!await confirmDialog('Palūkanų kaupimas', `Užregistruoti DK: D ${a.debit} / K ${a.credit} ${money(a.amountEur)} € (${a.asOf})?`, 'Registruoti')) return;

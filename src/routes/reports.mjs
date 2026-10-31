@@ -368,7 +368,8 @@ export function register(r, {pool, storage}) {
     if (query.to) add('i.issue_date <= ?', query.to);
     if (query.store) add('i.store_id = ?', query.store);
     if (query.q) add(`(i.number ILIKE '%'||?||'%' OR i.counterparty_snapshot->>'name' ILIKE '%'||$${params.length + 1}||'%')`, String(query.q).slice(0, 100)), params.push(String(query.q).slice(0, 100));
-    const rows = (await pool.query(`SELECT i.id, i.register, i.doc_type, i.series, i.number, i.issue_date, i.due_date, i.net_total, i.vat_total, i.gross_total, i.counterparty_snapshot->>'name' AS counterparty,
+    const rows = (await pool.query(`SELECT i.id, i.register, i.doc_type, i.series, i.number, i.issue_date,
+        coalesce((SELECT c.due_date FROM invoices c WHERE c.related_invoice_id=i.id AND c.doc_type='correction' ORDER BY c.id DESC LIMIT 1), i.due_date) AS due_date, i.net_total, i.vat_total, i.gross_total, i.counterparty_snapshot->>'name' AS counterparty,
         i.document_id, i.related_invoice_id, i.store_id, s.name AS store_name, i.approved_at, i.external_order_id,
         (i.doc_type IN ('invoice','vat_invoice') AND EXISTS (SELECT 1 FROM invoices c WHERE c.related_invoice_id=i.id AND c.doc_type='correction')
           AND (SELECT sum(g.gross_total) FROM invoices g WHERE g.id=i.id OR (g.related_invoice_id=i.id AND g.doc_type='correction')) = 0) AS annulled

@@ -225,3 +225,23 @@ test('round 3: selling all leaves 0.00 despite rounding; a purchase entered late
   assert.equal(next.cogs, '10.00');
   for (const d of ['2026-08-31', '2026-09-30']) assert.equal(await bal(d), await value(d));
 });
+
+test('round 3: a corrected due date reaches receivables; a correction cannot change the number; same-day loan events in any order', async () => {
+  const s = await approve(await invoice('sales', '2026-10-05', [{description: 'Paslauga', quantity: '1', unitPrice: '100'}], {dueDate: '2026-10-10'}));
+  const c = (await acc.post(`/api/invoices/${s.invoiceId}/correct`, {})).body;
+  const p = (await acc.get(`/api/proposals/${c.proposalId}`)).body;
+  await approve((await acc.put(`/api/proposals/${p.id}`, {contentHash: p.content_hash, data: {...p.data, dueDate: '2026-11-30', paymentReference: 'NAUJA-REF'}})).body);
+  const {invoiceBalances} = await import('../src/ledger/balances.mjs');
+  const [b] = await invoiceBalances(t.app.pool, {ids: [s.invoiceId]});
+  assert.deepEqual([String(b.due_date).slice(0, 10), b.payment_reference], ['2026-11-30', 'NAUJA-REF']);
+  const c2 = (await acc.post(`/api/invoices/${s.invoiceId}/correct`, {})).body;
+  const p2 = (await acc.get(`/api/proposals/${c2.proposalId}`)).body;
+  const e2 = (await acc.put(`/api/proposals/${p2.id}`, {contentHash: p2.content_hash, data: {...p2.data, series: 'ZZ', number: '999', notes: 'x'}})).body;
+  const r2 = await acc.post(`/api/proposals/${e2.id}/approve`, {contentHash: e2.content_hash});
+  assert.equal(r2.status, 422); assert.match(r2.body.error, /numerį/);
+  const {calcInterest} = await import('../src/loans/interest.mjs');
+  const one = calcInterest({events: [{date: '2025-03-10', kind: 'repayment', amount: '1000'}, {date: '2025-03-10', kind: 'disbursement', amount: '1000'}], rate: '10', basis: 'act365', asOf: '2025-12-31'});
+  assert.equal(one.interest, '0.00');
+  const spreadsheet = calcInterest({events: [{date: '2024-07-01', kind: 'disbursement', amount: '100000'}, {date: '2025-06-27', kind: 'repayment', amount: '100000'}], rate: '15', basis: 'actact', asOf: '2025-06-27', includeLastDay: true});
+  assert.equal(spreadsheet.interest, '14856.05');
+});

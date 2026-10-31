@@ -216,7 +216,7 @@ export async function render(main, [docId], state) {
       issuesBox(v),
       section('Dokumentas', h('div', {class: 'form-grid'},
         fieldOf('Tipas', 'docType', {options: docTypes}), fieldOf('Registras', 'register', {options: [['', '— pasirinkite —'], ['purchase', 'Pirkimai'], ['sales', 'Pardavimai']]}),
-        model.issueHere ? h('p', {class: 'hint'}, `Numeris bus suteiktas patvirtinant (serija ${model.seriesCode}).`) : [fieldOf('Serija', 'series'), fieldOf('Numeris', 'number')],
+        model.issueHere ? h('p', {class: 'hint'}, `Numeris bus suteiktas patvirtinant (serija ${model.seriesCode}).`) : p.kind === 'correction' && model.register === 'sales' ? h('p', {class: 'hint'}, `Taisoma sąskaita ${model.series} ${model.number} – numeris lieka tas pats.`) : [fieldOf('Serija', 'series'), fieldOf('Numeris', 'number')],
         fieldOf('Išrašymo data', 'issueDate', {type: 'date'}), fieldOf('Apmokėti iki', 'dueDate', {type: 'date'}), fieldOf('PVM apskaičiavimo data (jei kita)', 'vatPointDate', {type: 'date'}),
         fieldOf('Valiuta', 'currency'), model.currency && model.currency !== 'EUR' ? fieldOf(`Kursas: ${model.currency} už 1 EUR`, 'fxRate') : null, fieldOf('Mokėjimo paskirtis', 'paymentReference'), fieldOf('Užsakymo nr.', 'orderReference'), model.register === 'sales' && (model.issueHere || p.kind === 'correction') ? fieldOf('Pastabos (spausdinamos sąskaitoje)', 'notes') : null, fieldOf('Koreguojamas dokumentas', 'relatedDocument')),
       model.registerReason ? h('p', {class: 'hint'}, model.registerReason) : null),
